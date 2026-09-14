@@ -1,4 +1,26 @@
 services:
+  backend:
+    build:
+      context: ./backend
+    container_name: stentio-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-changeme}@mongodb:27017/admin?authSource=admin
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-myuser}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    depends_on:
+      - postgres
+      - mongodb
+      - rabbitmq
+    networks:
+      - app
+
   postgres:
     container_name: postgresdb
     image: postgres
@@ -11,7 +33,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     networks:
-      - postgres
+      - app
     restart: unless-stopped
 
   mongodb:
@@ -24,6 +46,8 @@ services:
       - mongo_data:/data/db
     ports:
       - "${MONGO_PORT:-27017}:27017"
+    networks:
+      - app
     restart: unless-stopped
 
   rabbitmq:
@@ -37,6 +61,8 @@ services:
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    networks:
+      - app
     restart: unless-stopped
 
 volumes:
@@ -45,5 +71,5 @@ volumes:
   rabbitmq_data:
 
 networks:
-  postgres:
+  app:
     driver: bridge

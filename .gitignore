@@ -12,3 +12,6 @@ CLAUDE.md
 # ---- OS ----
 .DS_Store
 Thumbs.db
+
+# ---- Variáveis de ambiente ----
+.env
