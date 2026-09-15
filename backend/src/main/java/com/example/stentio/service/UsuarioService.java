@@ -32,7 +32,7 @@ public class UsuarioService {
         Usuario usuarioEncontrado = user.get();
         String senhalimpa = dadosLogin.getSenha();
         String senhaHash = usuarioEncontrado.getSenha();
-        if (!senhalimpa.equals(senhaHash)) {   //if (!passwordEncoder.matches(senhalimpa, senhaHash))
+        if (!passwordEncoder.matches(senhalimpa, senhaHash)) {
             throw new RuntimeException("Senha inválida");
         }
 
