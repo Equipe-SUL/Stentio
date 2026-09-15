@@ -41,3 +41,7 @@ management:
     web:
       exposure:
         include: health,info
+api:
+  security:
+    token:
+      secret: minha-chave-secreta-super-longa-para-jwt-stentio-2026
