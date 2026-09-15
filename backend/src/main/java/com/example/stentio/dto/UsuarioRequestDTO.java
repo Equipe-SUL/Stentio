@@ -25,7 +25,7 @@ public class UsuarioRequestDTO {
     @NotBlank(message = "Senha é obrigatória")
     @Size(min = 8, message = "Senha deve ter no mínimo 8")
     @Pattern(
-            regexp = "^(?=.*[0-9])(?=.*[@#$%^&+=!?*]]).*$",
+            regexp = "^(?=.*[0-9])(?=.*[@#$%^&+=!?*]).*$",
             message = "Senha deve conter um digito e um caractere especial (como:  #, $ ou !)"
     )
     private String senha;
