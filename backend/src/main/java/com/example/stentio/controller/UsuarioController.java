@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/usuarios")
@@ -40,27 +41,27 @@ public class UsuarioController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UsuarioResponseDTO> buscarPorId(@PathVariable Long id) {
+    public ResponseEntity<UsuarioResponseDTO> buscarPorId(@PathVariable UUID id) {
         return ResponseEntity.ok(usuarioService.buscarPorId(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UsuarioResponseDTO> editar(@PathVariable Long id, @RequestBody @Valid UsuarioRequestDTO dto) {
+    public ResponseEntity<UsuarioResponseDTO> editar(@PathVariable UUID id, @RequestBody @Valid UsuarioRequestDTO dto) {
         return ResponseEntity.ok(usuarioService.editar(id, dto));
     }
 
     @PatchMapping("/{id}/ativar")
-    public ResponseEntity<UsuarioResponseDTO> ativar(@PathVariable Long id) {
+    public ResponseEntity<UsuarioResponseDTO> ativar(@PathVariable UUID id) {
         return ResponseEntity.ok(usuarioService.ativarOuDesativar(id, true));
     }
 
     @PatchMapping("/{id}/desativar")
-    public ResponseEntity<UsuarioResponseDTO> desativar(@PathVariable Long id) {
+    public ResponseEntity<UsuarioResponseDTO> desativar(@PathVariable UUID id) {
         return ResponseEntity.ok(usuarioService.ativarOuDesativar(id, false));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> excluir(@PathVariable Long id) {
+    public ResponseEntity<Void> excluir(@PathVariable UUID id) {
         usuarioService.excluir(id);
         return ResponseEntity.noContent().build();
     }

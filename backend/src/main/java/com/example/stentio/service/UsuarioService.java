@@ -8,6 +8,7 @@ import com.example.stentio.repository.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Optional;
 
@@ -64,13 +65,13 @@ public class UsuarioService {
                 .collect(Collectors.toList());
     }
 
-    public UsuarioResponseDTO buscarPorId(Long id) {
+    public UsuarioResponseDTO buscarPorId(UUID id) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
         return new UsuarioResponseDTO(usuario);
     }
 
-    public UsuarioResponseDTO editar(Long id, UsuarioRequestDTO dto) {
+    public UsuarioResponseDTO editar(UUID id, UsuarioRequestDTO dto) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
 
@@ -86,7 +87,7 @@ public class UsuarioService {
         return new UsuarioResponseDTO(atualizado);
     }
 
-    public UsuarioResponseDTO ativarOuDesativar(Long id, boolean ativo) {
+    public UsuarioResponseDTO ativarOuDesativar(UUID id, boolean ativo) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
 
@@ -95,7 +96,7 @@ public class UsuarioService {
         return new UsuarioResponseDTO(atualizado);
     }
 
-    public void excluir(Long id) {
+    public void excluir(UUID id) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
 
