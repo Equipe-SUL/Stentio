@@ -45,3 +45,10 @@ api:
   security:
     token:
       secret: ${JWT_SECRET:minha-chave-secreta-super-longa-para-jwt-stentio-2026}
+
+app:
+  seed:
+    admin:
+      enabled: ${SEED_ADMIN_ENABLED:false}
+      email: ${ADMIN_INITIAL_EMAIL:}
+      password: ${ADMIN_INITIAL_PASSWORD:}
