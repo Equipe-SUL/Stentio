@@ -1,0 +1,58 @@
+package com.example.stentio.controller;
+
+import com.example.stentio.dto.UsuarioRequestDTO;
+import com.example.stentio.dto.UsuarioResponseDTO;
+import com.example.stentio.service.UsuarioService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/usuarios")
+public class UsuarioController {
+
+    private final UsuarioService usuarioService;
+
+    public UsuarioController(UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
+
+    @PostMapping
+    public ResponseEntity<UsuarioResponseDTO> criar(@RequestBody UsuarioRequestDTO dto) {
+        UsuarioResponseDTO criado = usuarioService.criar(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(criado);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UsuarioResponseDTO>> listarTodos() {
+        return ResponseEntity.ok(usuarioService.listarTodos());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UsuarioResponseDTO> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(usuarioService.buscarPorId(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UsuarioResponseDTO> editar(@PathVariable Long id, @RequestBody UsuarioRequestDTO dto) {
+        return ResponseEntity.ok(usuarioService.editar(id, dto));
+    }
+
+    @PatchMapping("/{id}/ativar")
+    public ResponseEntity<UsuarioResponseDTO> ativar(@PathVariable Long id) {
+        return ResponseEntity.ok(usuarioService.ativarOuDesativar(id, true));
+    }
+
+    @PatchMapping("/{id}/desativar")
+    public ResponseEntity<UsuarioResponseDTO> desativar(@PathVariable Long id) {
+        return ResponseEntity.ok(usuarioService.ativarOuDesativar(id, false));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable Long id) {
+        usuarioService.excluir(id);
+        return ResponseEntity.noContent().build();
+    }
+}
