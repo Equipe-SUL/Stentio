@@ -3,10 +3,12 @@ package com.example.stentio.controller;
 import com.example.stentio.dto.UsuarioRequestDTO;
 import com.example.stentio.dto.UsuarioResponseDTO;
 import com.example.stentio.service.UsuarioService;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -17,6 +19,12 @@ public class UsuarioController {
 
     public UsuarioController(UsuarioService usuarioService) {
         this.usuarioService = usuarioService;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody UsuarioRequestDTO dadosLogin) {
+        String token = usuarioService.login(dadosLogin);
+        return ResponseEntity.ok(token);
     }
 
     @PostMapping
@@ -56,3 +64,4 @@ public class UsuarioController {
         return ResponseEntity.noContent().build();
     }
 }
+

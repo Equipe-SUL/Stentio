@@ -1,5 +1,4 @@
 package com.example.stentio.service;
-
 import com.example.stentio.dto.UsuarioRequestDTO;
 import com.example.stentio.dto.UsuarioResponseDTO;
 import com.example.stentio.exception.EmailJaCadastradoException;
@@ -8,19 +7,38 @@ import com.example.stentio.model.Usuario;
 import com.example.stentio.repository.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Optional;
+
+
 
 @Service
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TokenService tokenService;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, TokenService tokenService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.tokenService = tokenService;
+    }
+
+    public String login(UsuarioRequestDTO dadosLogin) {
+        Optional<Usuario> user = usuarioRepository.findByEmail(dadosLogin.getEmail());
+        if (user.isEmpty()) {
+            throw new RuntimeException("User not found");
+        }
+        Usuario usuarioEncontrado = user.get();
+        String senhalimpa = dadosLogin.getSenha();
+        String senhaHash = usuarioEncontrado.getSenha();
+        if (!passwordEncoder.matches(senhalimpa, senhaHash)) {
+            throw new RuntimeException("Senha inválida");
+        }
+
+        return tokenService.gerarToken(usuarioEncontrado);
     }
 
     public UsuarioResponseDTO criar(UsuarioRequestDTO dto) {
@@ -88,3 +106,4 @@ public class UsuarioService {
         usuarioRepository.deleteById(id);
     }
 }
+

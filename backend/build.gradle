@@ -27,6 +27,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.amqp:spring-rabbit-stream'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'com.auth0:java-jwt:4.4.0'
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
