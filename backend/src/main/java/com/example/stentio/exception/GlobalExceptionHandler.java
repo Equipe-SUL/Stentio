@@ -14,6 +14,11 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(CredenciaisLoginException.class)
+    public ResponseEntity<Map<String, Object>> handleCredenciaisLogin(CredenciaisLoginException ex) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
     @ExceptionHandler(EmailJaCadastradoException.class)
     public ResponseEntity<Map<String, Object>> handleEmailJaCadastrado(EmailJaCadastradoException ex) {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage());

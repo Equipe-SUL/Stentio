@@ -1,5 +1,7 @@
 package com.example.stentio.controller;
 
+import com.example.stentio.dto.LoginRequestDTO;
+import com.example.stentio.dto.LoginResponseDTO;
 import com.example.stentio.dto.UsuarioRequestDTO;
 import com.example.stentio.dto.UsuarioResponseDTO;
 import com.example.stentio.service.UsuarioService;
@@ -24,9 +26,9 @@ public class UsuarioController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody UsuarioRequestDTO dadosLogin) {
-        String token = usuarioService.login(dadosLogin);
-        return ResponseEntity.ok(token);
+    public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid LoginRequestDTO dadosLogin) {
+        LoginResponseDTO resposta = usuarioService.login(dadosLogin);
+        return ResponseEntity.ok(resposta);
     }
 
     @PostMapping

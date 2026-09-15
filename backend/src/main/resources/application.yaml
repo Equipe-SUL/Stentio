@@ -44,4 +44,4 @@ management:
 api:
   security:
     token:
-      secret: minha-chave-secreta-super-longa-para-jwt-stentio-2026
+      secret: ${JWT_SECRET:minha-chave-secreta-super-longa-para-jwt-stentio-2026}
