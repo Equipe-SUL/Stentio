@@ -3,6 +3,7 @@ package com.example.stentio.controller;
 import com.example.stentio.dto.UsuarioRequestDTO;
 import com.example.stentio.dto.UsuarioResponseDTO;
 import com.example.stentio.service.UsuarioService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,7 +29,7 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<UsuarioResponseDTO> criar(@RequestBody UsuarioRequestDTO dto) {
+    public ResponseEntity<UsuarioResponseDTO> criar(@RequestBody @Valid UsuarioRequestDTO dto) {
         UsuarioResponseDTO criado = usuarioService.criar(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(criado);
     }
@@ -44,7 +45,7 @@ public class UsuarioController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UsuarioResponseDTO> editar(@PathVariable Long id, @RequestBody UsuarioRequestDTO dto) {
+    public ResponseEntity<UsuarioResponseDTO> editar(@PathVariable Long id, @RequestBody @Valid UsuarioRequestDTO dto) {
         return ResponseEntity.ok(usuarioService.editar(id, dto));
     }
 
