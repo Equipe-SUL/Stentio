@@ -29,6 +29,15 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
+        return ResponseEntity.status(status).body(Map.of(
+                "timestamp", Instant.now().toString(),
+                "status", status.value(),
+                "error", status.getReasonPhrase(),
+                "message", message
+        ));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     private ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         List<String> erros = ex.getBindingResult()
