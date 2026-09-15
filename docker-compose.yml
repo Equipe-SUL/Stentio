@@ -12,6 +12,10 @@ services:
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-myuser}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-changeme}
+      JWT_SECRET: ${JWT_SECRET:-minha-chave-secreta-super-longa-para-jwt-stentio-2026}
+      SEED_ADMIN_ENABLED: ${SEED_ADMIN_ENABLED:-false}
+      ADMIN_INITIAL_EMAIL: ${ADMIN_INITIAL_EMAIL:-}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
     ports:
       - "${SERVER_PORT:-8081}:8080"
     depends_on:
