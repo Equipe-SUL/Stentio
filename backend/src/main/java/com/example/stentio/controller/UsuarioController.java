@@ -22,8 +22,9 @@ public class UsuarioController {
     }
 
     @PostMapping("/login")
-    public UsuarioResponseDTO login(@RequestBody UsuarioRequestDTO dadosLogin) {
-        return usuarioService.login(dadosLogin);
+    public ResponseEntity<String> login(@RequestBody UsuarioRequestDTO dadosLogin) {
+        String token = usuarioService.login(dadosLogin);
+        return ResponseEntity.ok(token);
     }
 
     @PostMapping

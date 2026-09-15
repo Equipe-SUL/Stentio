@@ -18,13 +18,15 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TokenService tokenService;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, TokenService tokenService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.tokenService = tokenService;
     }
 
-    public UsuarioResponseDTO login(UsuarioRequestDTO dadosLogin) {
+    public String login(UsuarioRequestDTO dadosLogin) {
         Optional<Usuario> user = usuarioRepository.findByEmail(dadosLogin.getEmail());
         if (user.isEmpty()) {
             throw new RuntimeException("User not found");
@@ -36,7 +38,7 @@ public class UsuarioService {
             throw new RuntimeException("Senha inválida");
         }
 
-        return new UsuarioResponseDTO(usuarioEncontrado);
+        return tokenService.gerarToken(usuarioEncontrado);
     }
 
     public UsuarioResponseDTO criar(UsuarioRequestDTO dto) {
