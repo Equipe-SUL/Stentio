@@ -52,3 +52,7 @@ app:
       enabled: ${SEED_ADMIN_ENABLED:false}
       email: ${ADMIN_INITIAL_EMAIL:}
       password: ${ADMIN_INITIAL_PASSWORD:}
+  cookie:
+    secure: ${APP_COOKIE_SECURE:false}
+  cors:
+    allowed-origins: http://localhost:8080,http://localhost:8081,http://localhost:19006

@@ -71,6 +71,12 @@ public class UsuarioService {
         return new UsuarioResponseDTO(usuario);
     }
 
+    public UsuarioResponseDTO buscarPorEmail(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new UsuarioNaoEncontradoException(email));
+        return new UsuarioResponseDTO(usuario);
+    }
+
     public UsuarioResponseDTO editar(UUID id, UsuarioRequestDTO dto) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));

@@ -4,6 +4,7 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.example.stentio.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,10 +30,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String header = request.getHeader(HEADER_AUTHORIZATION);
+        String token = obterToken(request);
 
-        if (header != null && header.startsWith(PREFIXO_BEARER)) {
-            String token = header.substring(PREFIXO_BEARER.length());
+        if (token != null && !token.isBlank()) {
             try {
                 TokenService.TokenDados dados = tokenService.validarToken(token);
                 var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + dados.role().name()));
@@ -44,6 +44,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String obterToken(HttpServletRequest request) {
+        String header = request.getHeader(HEADER_AUTHORIZATION);
+        if (header != null && header.startsWith(PREFIXO_BEARER)) {
+            return header.substring(PREFIXO_BEARER.length());
+        }
+
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (AuthCookieService.COOKIE_NAME.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+
+        return null;
     }
 
 }

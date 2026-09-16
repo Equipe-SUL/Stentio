@@ -1,11 +1,13 @@
 package com.example.stentio.controller;
 
+import com.example.stentio.config.AuthCookieService;
 import com.example.stentio.dto.LoginRequestDTO;
 import com.example.stentio.dto.LoginResponseDTO;
 import com.example.stentio.dto.UsuarioRequestDTO;
 import com.example.stentio.dto.UsuarioResponseDTO;
 import com.example.stentio.service.UsuarioService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,15 +22,26 @@ import java.util.UUID;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+    private final AuthCookieService authCookieService;
 
-    public UsuarioController(UsuarioService usuarioService) {
+    public UsuarioController(UsuarioService usuarioService, AuthCookieService authCookieService) {
         this.usuarioService = usuarioService;
+        this.authCookieService = authCookieService;
     }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid LoginRequestDTO dadosLogin) {
         LoginResponseDTO resposta = usuarioService.login(dadosLogin);
-        return ResponseEntity.ok(resposta);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, authCookieService.criar(resposta.token()).toString())
+                .body(resposta);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, authCookieService.limpar().toString())
+                .build();
     }
 
     @PostMapping
