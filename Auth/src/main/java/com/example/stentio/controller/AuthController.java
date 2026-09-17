@@ -25,4 +25,3 @@ public class AuthController {
         String email = (String) authentication.getPrincipal();
         return ResponseEntity.ok(usuarioService.buscarPorEmail(email));
     }
-}
