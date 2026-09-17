@@ -2,17 +2,24 @@ spring:
   docker:
     compose:
       enabled: false
+  # desabilitar as configurações automáticas do MongoDB enquanto não é usado
+  # para silenciar o erro de conexão com o MongoDB no console
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration
 
   application:
     name: stentio
 
   datasource:
-    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_USER:postgres}
-    username: ${POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
 
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: update
     show-sql: true
@@ -20,15 +27,21 @@ spring:
       hibernate:
         format_sql: true
 
+  security:
+    user:
+      name: ${APP_SECURITY_USER:admin}
+      password: ${APP_SECURITY_PASSWORD:admin123}
+      roles: ADMIN
+
   data:
     mongodb:
-      uri: mongodb://${MONGO_INITDB_ROOT_USERNAME:root}:${MONGO_INITDB_ROOT_PASSWORD:changeme}@localhost:${MONGO_PORT:27017}/admin?authSource=admin
+      uri: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/admin?authSource=admin
 
   rabbitmq:
-    host: localhost
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_DEFAULT_USER:myuser}
-    password: ${RABBITMQ_DEFAULT_PASS:changeme}
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASS}
 
 management:
   health:
@@ -44,4 +57,15 @@ management:
 api:
   security:
     token:
-      secret: minha-chave-secreta-super-longa-para-jwt-stentio-2026
+      secret: ${JWT_SECRET}
+
+app:
+  seed:
+    admin:
+      enabled: ${SEED_ADMIN_ENABLED:false}
+      email: ${ADMIN_INITIAL_EMAIL:-admin@stentio.com}
+      password: ${ADMIN_INITIAL_PASSWORD:}
+  cookie:
+    secure: ${APP_COOKIE_SECURE:false}
+  cors:
+    allowed-origins: http://localhost:8080,http://localhost:8081,http://localhost:19006

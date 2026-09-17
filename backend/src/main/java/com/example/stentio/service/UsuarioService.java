@@ -1,17 +1,21 @@
 package com.example.stentio.service;
+
+import com.example.stentio.dto.LoginRequestDTO;
+import com.example.stentio.dto.LoginResponseDTO;
 import com.example.stentio.dto.UsuarioRequestDTO;
 import com.example.stentio.dto.UsuarioResponseDTO;
+import com.example.stentio.exception.CredenciaisLoginException;
 import com.example.stentio.exception.EmailJaCadastradoException;
 import com.example.stentio.exception.UsuarioNaoEncontradoException;
+import com.example.stentio.model.Role;
 import com.example.stentio.model.Usuario;
 import com.example.stentio.repository.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.Optional;
-
-
 
 @Service
 public class UsuarioService {
@@ -26,19 +30,16 @@ public class UsuarioService {
         this.tokenService = tokenService;
     }
 
-    public String login(UsuarioRequestDTO dadosLogin) {
-        Optional<Usuario> user = usuarioRepository.findByEmail(dadosLogin.getEmail());
-        if (user.isEmpty()) {
-            throw new RuntimeException("User not found");
-        }
-        Usuario usuarioEncontrado = user.get();
-        String senhalimpa = dadosLogin.getSenha();
-        String senhaHash = usuarioEncontrado.getSenha();
-        if (!passwordEncoder.matches(senhalimpa, senhaHash)) {
-            throw new RuntimeException("Senha inválida");
+    public LoginResponseDTO login(LoginRequestDTO dadosLogin) {
+        Usuario usuario = usuarioRepository.findByEmail(dadosLogin.email())
+                .orElseThrow(CredenciaisLoginException::new);
+
+        if (!passwordEncoder.matches(dadosLogin.senha(), usuario.getSenha())) {
+            throw new CredenciaisLoginException();
         }
 
-        return tokenService.gerarToken(usuarioEncontrado);
+        String token = tokenService.gerarToken(usuario);
+        return new LoginResponseDTO(token, "Bearer", TokenService.EXPIRES_IN, usuario.getEmail(), usuario.getRole());
     }
 
     public UsuarioResponseDTO criar(UsuarioRequestDTO dto) {
@@ -50,7 +51,7 @@ public class UsuarioService {
         usuario.setNome(dto.getNome());
         usuario.setEmail(dto.getEmail());
         usuario.setSenha(passwordEncoder.encode(dto.getSenha()));
-        usuario.setRole(dto.getRole());
+        usuario.setRole(dto.getRole() != null ? dto.getRole() : Role.ATENDENTE);
         usuario.setAtivo(true);
 
         Usuario salvo = usuarioRepository.save(usuario);
@@ -64,19 +65,27 @@ public class UsuarioService {
                 .collect(Collectors.toList());
     }
 
-    public UsuarioResponseDTO buscarPorId(Long id) {
+    public UsuarioResponseDTO buscarPorId(UUID id) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
         return new UsuarioResponseDTO(usuario);
     }
 
-    public UsuarioResponseDTO editar(Long id, UsuarioRequestDTO dto) {
+    public UsuarioResponseDTO buscarPorEmail(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new UsuarioNaoEncontradoException(email));
+        return new UsuarioResponseDTO(usuario);
+    }
+
+    public UsuarioResponseDTO editar(UUID id, UsuarioRequestDTO dto) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
 
         usuario.setNome(dto.getNome());
         usuario.setEmail(dto.getEmail());
-        usuario.setRole(dto.getRole());
+        if (dto.getRole() != null) {
+            usuario.setRole(dto.getRole());
+        }
 
         if (dto.getSenha() != null && !dto.getSenha().isBlank()) {
             usuario.setSenha(passwordEncoder.encode(dto.getSenha()));
@@ -86,7 +95,7 @@ public class UsuarioService {
         return new UsuarioResponseDTO(atualizado);
     }
 
-    public UsuarioResponseDTO ativarOuDesativar(Long id, boolean ativo) {
+    public UsuarioResponseDTO ativarOuDesativar(UUID id, boolean ativo) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
 
@@ -95,7 +104,7 @@ public class UsuarioService {
         return new UsuarioResponseDTO(atualizado);
     }
 
-    public void excluir(Long id) {
+    public void excluir(UUID id) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
 
@@ -106,4 +115,3 @@ public class UsuarioService {
         usuarioRepository.deleteById(id);
     }
 }
-
