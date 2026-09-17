@@ -1,6 +1,8 @@
-import "./global.css";
-import { Stack } from "expo-router";
+import { Slot } from 'expo-router';
+
+// Mude de ../global.css para ./global.css (com apenas um ponto)
+import './global.css'; 
 
 export default function RootLayout() {
-  return <Stack />;
+  return <Slot />;
 }
