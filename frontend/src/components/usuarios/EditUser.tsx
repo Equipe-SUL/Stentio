@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Modal, View, Text, TextInput, Pressable } from "react-native";
+import { ActivityIndicator, Modal, View, Text, TextInput, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 type Cargo = "Gestor_Projeto" | "Atendente" | "Admin" | "Financeiro";
 type Status = "Ativo" | "Inativo";
@@ -24,9 +25,10 @@ export interface UsuarioAtualizado {
 interface FormularioEdicaoUsuarioProps {
   visible: boolean;
   usuario: Usuario | null;
-  onSubmit: (dados: UsuarioAtualizado) => void;
+  onSubmit: (dados: UsuarioAtualizado) => Promise<boolean>;
   onCancel: () => void;
   onDelete: () => void;
+  erro?: string;
 }
 
 const cargos: Cargo[] = ["Gestor_Projeto", "Atendente", "Admin", "Financeiro"];
@@ -38,12 +40,14 @@ export function FormularioEdicaoUsuario({
   onSubmit,
   onCancel,
   onDelete,
+  erro,
 }: FormularioEdicaoUsuarioProps) {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [cargo, setCargo] = useState<Cargo>("Atendente");
   const [status, setStatus] = useState<Status>("Ativo");
   const [senha, setSenha] = useState("");
+  const [enviando, setEnviando] = useState(false);
 
   // Preenche os campos sempre que o usuário selecionado para edição mudar
   useEffect(() => {
@@ -56,18 +60,23 @@ export function FormularioEdicaoUsuario({
     }
   }, [usuario]);
 
-  function handleSubmit() {
-    if (!nome.trim() || !email.trim() || !senha.trim()) {
+  async function handleSubmit() {
+    if (!nome.trim() || !email.trim()) {
       return;
     }
 
-    onSubmit({
-      nome: nome.trim(),
-      email: email.trim(),
-      cargo,
-      status,
-      senha,
-    });
+    setEnviando(true);
+    try {
+      await onSubmit({
+        nome: nome.trim(),
+        email: email.trim(),
+        cargo,
+        status,
+        senha,
+      });
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -75,6 +84,12 @@ export function FormularioEdicaoUsuario({
       <View className="flex-1 items-center justify-center bg-black/40 px-6">
         <View className="w-full max-w-sm gap-4 rounded-2xl bg-white p-6">
           <Text className="text-lg font-semibold text-neutral-900">Editar usuário</Text>
+
+          {erro ? (
+            <View className="rounded-lg border border-red-200 bg-red-50 p-3">
+              <Text className="text-sm font-medium text-red-600">{erro}</Text>
+            </View>
+          ) : null}
 
           <View className="gap-2">
             <Text className="text-sm font-medium text-neutral-700">Nome</Text>
@@ -141,11 +156,13 @@ export function FormularioEdicaoUsuario({
           </View>
 
           <View className="gap-2">
-            <Text className="text-sm font-medium text-neutral-700">Senha</Text>
+            <Text className="text-sm font-medium text-neutral-700">
+              Senha (em branco para manter)
+            </Text>
             <TextInput
               value={senha}
               onChangeText={setSenha}
-              placeholder="Digite a senha"
+              placeholder="Nova senha (opcional)"
               secureTextEntry
               autoCapitalize="none"
               className="rounded-lg border border-neutral-300 px-4 py-3 text-neutral-900"
@@ -153,7 +170,12 @@ export function FormularioEdicaoUsuario({
           </View>
 
           <View className="flex-row items-center justify-between pt-2">
-            <Pressable onPress={onDelete}>
+            <Pressable
+              onPress={onDelete}
+              className="flex-row items-center gap-2"
+              accessibilityLabel="Excluir usuário"
+            >
+              <Ionicons name="trash-outline" size={18} color="#dc2626" />
               <Text className="text-sm font-medium text-red-600">Excluir usuário</Text>
             </Pressable>
 
@@ -162,8 +184,16 @@ export function FormularioEdicaoUsuario({
                 <Text className="font-medium text-neutral-700">Cancelar</Text>
               </Pressable>
 
-              <Pressable onPress={handleSubmit} className="rounded-lg bg-neutral-900 px-5 py-3">
-                <Text className="font-medium text-white">Salvar</Text>
+              <Pressable
+                onPress={handleSubmit}
+                disabled={enviando}
+                className="rounded-lg bg-neutral-900 px-5 py-3"
+              >
+                {enviando ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="font-medium text-white">Salvar</Text>
+                )}
               </Pressable>
             </View>
           </View>

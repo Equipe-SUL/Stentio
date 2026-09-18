@@ -72,6 +72,8 @@ export default function TabelaUsuarios() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [erroCriacao, setErroCriacao] = useState("");
+  const [erroEdicao, setErroEdicao] = useState("");
+  const [erroAcao, setErroAcao] = useState("");
 
   useEffect(() => {
     let ativo = true;
@@ -122,22 +124,41 @@ export default function TabelaUsuarios() {
     }
   }
 
-  function handleUpdateUsuario(dados: UsuarioAtualizado) {
-    if (!usuarioEmEdicao) return;
+  async function handleUpdateUsuario(dados: UsuarioAtualizado): Promise<boolean> {
+    if (!usuarioEmEdicao) return false;
 
-    setUsuarios((usuariosAtuais) =>
-      usuariosAtuais.map((u) => (u.id === usuarioEmEdicao.id ? { ...u, ...dados } : u))
-    );
+    setErroEdicao("");
+    try {
+      await api.put<UsuarioApi>(`/api/v1/usuarios/${usuarioEmEdicao.id}`, {
+        nome: dados.nome,
+        email: dados.email,
+        role: ROLE_POR_CARGO[dados.cargo],
+        ...(dados.senha.trim() ? { senha: dados.senha } : {}),
+      });
 
-    setUsuarioEmEdicao(null);
+      if (dados.status !== usuarioEmEdicao.status) {
+        const acao = dados.status === "Ativo" ? "ativar" : "desativar";
+        await api.patch(`/api/v1/usuarios/${usuarioEmEdicao.id}/${acao}`);
+      }
+
+      setUsuarioEmEdicao(null);
+      await recarregar();
+      return true;
+    } catch (error) {
+      setErroEdicao(getApiErrorMessage(error));
+      return false;
+    }
   }
 
-  function handleToggleStatus(usuario: Usuario) {
-    setUsuarios((usuariosAtuais) =>
-      usuariosAtuais.map((u) =>
-        u.id === usuario.id ? { ...u, status: u.status === "Ativo" ? "Inativo" : "Ativo" } : u
-      )
-    );
+  async function handleToggleStatus(usuario: Usuario) {
+    setErroAcao("");
+    const acao = usuario.status === "Ativo" ? "desativar" : "ativar";
+    try {
+      await api.patch(`/api/v1/usuarios/${usuario.id}/${acao}`);
+      await recarregar();
+    } catch (error) {
+      setErroAcao(getApiErrorMessage(error));
+    }
   }
 
   // Excluir é acionado de dentro do FormularioEdicaoUsuario.
@@ -148,11 +169,18 @@ export default function TabelaUsuarios() {
     setUsuarioEmEdicao(null);
   }
 
-  function handleConfirmarExclusao() {
+  async function handleConfirmarExclusao() {
     if (!usuarioParaExcluir) return;
 
-    setUsuarios((usuariosAtuais) => usuariosAtuais.filter((u) => u.id !== usuarioParaExcluir.id));
-    setUsuarioParaExcluir(null);
+    setErroAcao("");
+    try {
+      await api.delete(`/api/v1/usuarios/${usuarioParaExcluir.id}`);
+      setUsuarioParaExcluir(null);
+      await recarregar();
+    } catch (error) {
+      setUsuarioParaExcluir(null);
+      setErroAcao(getApiErrorMessage(error));
+    }
   }
 
   const columns: ColumnDef<Usuario>[] = [
@@ -176,7 +204,10 @@ export default function TabelaUsuarios() {
       render: (usuario) => (
         <RowActions
           toggleLabel={usuario.status === "Ativo" ? "Desativar" : "Ativar"}
-          onEdit={() => setUsuarioEmEdicao(usuario)}
+          onEdit={() => {
+            setErroEdicao("");
+            setUsuarioEmEdicao(usuario);
+          }}
           onToggle={() => handleToggleStatus(usuario)}
         />
       ),
@@ -219,6 +250,12 @@ return (
           </Pressable>
         </View>
       </View>
+
+      {erroAcao ? (
+        <View className="rounded-lg border border-red-200 bg-red-50 p-3">
+          <Text className="text-sm font-medium text-red-600">{erroAcao}</Text>
+        </View>
+      ) : null}
 
       <View className="shadow-lg">
         {carregando ? (
@@ -264,6 +301,7 @@ return (
       onSubmit={handleUpdateUsuario}
       onCancel={() => setUsuarioEmEdicao(null)}
       onDelete={handleSolicitarExclusao}
+      erro={erroEdicao}
     />
 
     <ConfirmDialog
