@@ -1,0 +1,18 @@
+# ---- IntelliJ IDEA ----
+.idea/
+.vscode/
+*.iml
+*.iws
+out/
+
+# ---- Claude Code ----
+.claude/
+CLAUDE.md
+.claude.json
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Variáveis de ambiente ----
+.env
