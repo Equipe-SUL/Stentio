@@ -5,6 +5,7 @@ import com.example.stentio.dto.LoginRequestDTO;
 import com.example.stentio.dto.LoginResponseDTO;
 import com.example.stentio.dto.UsuarioRequestDTO;
 import com.example.stentio.dto.UsuarioResponseDTO;
+import com.example.stentio.dto.UsuarioUpdateRequestDTO;
 import com.example.stentio.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -61,7 +62,7 @@ public class UsuarioController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UsuarioResponseDTO> editar(@PathVariable UUID id, @RequestBody @Valid UsuarioRequestDTO dto) {
+    public ResponseEntity<UsuarioResponseDTO> editar(@PathVariable UUID id, @RequestBody @Valid UsuarioUpdateRequestDTO dto) {
         return ResponseEntity.ok(usuarioService.editar(id, dto));
     }
 
