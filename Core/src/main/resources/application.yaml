@@ -26,8 +26,14 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        # Carrega coleções LAZY (tipos, preços, idiomas) em lotes, evitando uma consulta por recurso na listagem.
+        default_batch_fetch_size: 50
 
   data:
+    web:
+      pageable:
+        # Impede requisições como ?size=1000000, que carregariam a tabela inteira em memória.
+        max-page-size: 100
     mongodb:
       uri: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/admin?authSource=admin
 

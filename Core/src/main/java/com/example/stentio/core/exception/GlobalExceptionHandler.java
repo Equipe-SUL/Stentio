@@ -101,7 +101,9 @@ public class GlobalExceptionHandler {
 
     private CampoErro paraCampoErro(FieldError erro) {
         String campo = erro.getField().replaceAll("\\[(\\d+)]", ".$1");
-        return new CampoErro(campo, erro.getDefaultMessage());
+        // Falha de conversão (ex.: ?tipoServicoId=abc) traz uma mensagem técnica do Spring; não a expomos.
+        String mensagem = erro.isBindingFailure() ? "Valor em formato inválido" : erro.getDefaultMessage();
+        return new CampoErro(campo, mensagem);
     }
 
     private ResponseEntity<ErroResponse> responder(HttpStatus status, String mensagem) {
