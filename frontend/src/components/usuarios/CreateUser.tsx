@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, View, Text, TextInput, Pressable } from "react-native";
+import { ActivityIndicator, Modal, View, Text, TextInput, Pressable } from "react-native";
 
 type Cargo = "Gestor_Projeto" | "Atendente" | "Admin" | "Financeiro";
 type Status = "Ativo" | "Inativo";
@@ -14,8 +14,9 @@ export interface NovoUsuario {
 
 interface FormularioUsuarioProps {
   visible: boolean;
-  onSubmit: (usuario: NovoUsuario) => void;
+  onSubmit: (usuario: NovoUsuario) => Promise<boolean>;
   onCancel: () => void;
+  erro?: string;
 }
 
 const cargos: Cargo[] = ["Gestor_Projeto", "Atendente", "Admin", "Financeiro"];
@@ -25,31 +26,40 @@ export function FormularioUsuario({
   visible,
   onSubmit,
   onCancel,
+  erro,
 }: FormularioUsuarioProps) {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [cargo, setCargo] = useState<Cargo>("Atendente");
   const [status, setStatus] = useState<Status>("Ativo");
   const [senha, setSenha] = useState("");
+  const [enviando, setEnviando] = useState(false);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!nome.trim() || !email.trim() || !senha.trim()) {
       return;
     }
 
-    onSubmit({
-      nome: nome.trim(),
-      email: email.trim(),
-      cargo,
-      status,
-      senha,
-    });
+    setEnviando(true);
+    try {
+      const sucesso = await onSubmit({
+        nome: nome.trim(),
+        email: email.trim(),
+        cargo,
+        status,
+        senha,
+      });
 
-    setNome("");
-    setEmail("");
-    setCargo("Atendente");
-    setStatus("Ativo");
-    setSenha("");
+      if (sucesso) {
+        setNome("");
+        setEmail("");
+        setCargo("Atendente");
+        setStatus("Ativo");
+        setSenha("");
+      }
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -57,6 +67,12 @@ export function FormularioUsuario({
       <View className="flex-1 items-center justify-center bg-black/40 px-6">
         <View className="w-full max-w-sm gap-4 rounded-2xl bg-white p-6">
           <Text className="text-lg font-semibold text-neutral-900">Novo usuário</Text>
+
+          {erro ? (
+            <View className="rounded-lg border border-red-200 bg-red-50 p-3">
+              <Text className="text-sm font-medium text-red-600">{erro}</Text>
+            </View>
+          ) : null}
 
           <View className="gap-2">
             <Text className="text-sm font-medium text-neutral-700">Nome</Text>
@@ -139,8 +155,16 @@ export function FormularioUsuario({
               <Text className="font-medium text-neutral-700">Cancelar</Text>
             </Pressable>
 
-            <Pressable onPress={handleSubmit} className="rounded-lg bg-neutral-900 px-5 py-3">
-              <Text className="font-medium text-white">Cadastrar</Text>
+            <Pressable
+              onPress={handleSubmit}
+              disabled={enviando}
+              className="rounded-lg bg-neutral-900 px-5 py-3"
+            >
+              {enviando ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="font-medium text-white">Cadastrar</Text>
+              )}
             </Pressable>
           </View>
         </View>

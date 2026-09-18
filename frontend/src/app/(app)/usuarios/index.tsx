@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, View, Text, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { DataTable } from "../../../components/usuarios/DataTable";
 import { RoleBadge, StatusBadge } from "../../../components/usuarios/Badge";
 import { RowActions } from "../../../components/usuarios/RowActions";
@@ -38,6 +39,13 @@ const CARGO_POR_ROLE: Record<RoleApi, Cargo> = {
   FINANCEIRO: "Financeiro",
 };
 
+const ROLE_POR_CARGO: Record<Cargo, RoleApi> = {
+  Admin: "ADMIN",
+  Atendente: "ATENDENTE",
+  Gestor_Projeto: "GESTOR_PROJETO",
+  Financeiro: "FINANCEIRO",
+};
+
 function paraUsuario({ id, nome, email, role, ativo }: UsuarioApi): Usuario {
   return {
     id,
@@ -63,6 +71,7 @@ export default function TabelaUsuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [erroCriacao, setErroCriacao] = useState("");
 
   useEffect(() => {
     let ativo = true;
@@ -81,23 +90,36 @@ export default function TabelaUsuarios() {
     };
   }, []);
 
-  const tentarNovamente = useCallback(() => {
+  const recarregar = useCallback(() => {
     setCarregando(true);
     setErro("");
-    buscarUsuarios()
+    return buscarUsuarios()
       .then(setUsuarios)
       .catch((error) => setErro(getApiErrorMessage(error)))
       .finally(() => setCarregando(false));
   }, []);
 
-  function handleCreateUsuario(novoUsuario: NovoUsuario) {
-    const usuario: Usuario = {
-      id: String(Date.now()),
-      ...novoUsuario,
-    };
+  async function handleCreateUsuario(novoUsuario: NovoUsuario): Promise<boolean> {
+    setErroCriacao("");
+    try {
+      const { data } = await api.post<UsuarioApi>("/api/v1/usuarios", {
+        nome: novoUsuario.nome,
+        email: novoUsuario.email,
+        senha: novoUsuario.senha,
+        role: ROLE_POR_CARGO[novoUsuario.cargo],
+      });
 
-    setUsuarios((usuariosAtuais) => [...usuariosAtuais, usuario]);
-    setMostrarFormulario(false);
+      if (novoUsuario.status === "Inativo") {
+        await api.patch(`/api/v1/usuarios/${data.id}/desativar`);
+      }
+
+      setMostrarFormulario(false);
+      await recarregar();
+      return true;
+    } catch (error) {
+      setErroCriacao(getApiErrorMessage(error));
+      return false;
+    }
   }
 
   function handleUpdateUsuario(dados: UsuarioAtualizado) {
@@ -179,15 +201,20 @@ return (
         <View className="flex-row items-center gap-3">
           <Pressable
             onPress={() => sair()}
-            className="rounded-lg border border-neutral-300 px-5 py-3"
+            className="flex-row items-center gap-2 rounded-lg border border-neutral-300 px-5 py-3"
           >
+            <Ionicons name="log-out-outline" size={18} color="#404040" />
             <Text className="font-medium text-neutral-700">Sair</Text>
           </Pressable>
 
           <Pressable
-            onPress={() => setMostrarFormulario(true)}
-            className="rounded-lg bg-[#6f4f28] px-5 py-3"
+            onPress={() => {
+              setErroCriacao("");
+              setMostrarFormulario(true);
+            }}
+            className="flex-row items-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3"
           >
+            <Ionicons name="add" size={18} color="#ffffff" />
             <Text className="font-medium text-white">Novo usuário</Text>
           </Pressable>
         </View>
@@ -203,7 +230,7 @@ return (
           <View className="items-center justify-center gap-3 rounded-2xl bg-white p-10">
             <Text className="text-center text-sm text-red-600">{erro}</Text>
             <Pressable
-              onPress={tentarNovamente}
+              onPress={recarregar}
               className="rounded-lg border border-neutral-300 px-5 py-3"
             >
               <Text className="font-medium text-neutral-700">Tentar de novo</Text>
@@ -228,6 +255,7 @@ return (
       visible={mostrarFormulario}
       onSubmit={handleCreateUsuario}
       onCancel={() => setMostrarFormulario(false)}
+      erro={erroCriacao}
     />
 
     <FormularioEdicaoUsuario
