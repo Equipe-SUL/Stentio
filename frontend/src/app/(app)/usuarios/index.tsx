@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ScrollView, View, Text, Pressable } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, View, Text, Pressable } from "react-native";
 import { DataTable } from "../../../components/usuarios/DataTable";
 import { RoleBadge, StatusBadge } from "../../../components/usuarios/Badge";
 import { RowActions } from "../../../components/usuarios/RowActions";
@@ -8,9 +8,11 @@ import { FormularioUsuario, NovoUsuario } from "../../../components/usuarios/Cre
 import { FormularioEdicaoUsuario, UsuarioAtualizado } from "../../../components/usuarios/EditUser";
 import { ConfirmDialog } from "../../../components/usuarios/ConfirmDialog";
 import { useSession } from "../../../lib/session";
+import { api, getApiErrorMessage } from "../../../lib/api";
 
 type Cargo = "Gestor_Projeto" | "Atendente" | "Admin" | "Financeiro";
 type Status = "Ativo" | "Inativo";
+type RoleApi = "ADMIN" | "ATENDENTE" | "GESTOR_PROJETO" | "FINANCEIRO";
 
 interface Usuario {
   id: string;
@@ -21,38 +23,72 @@ interface Usuario {
   senha: string;
 }
 
+interface UsuarioApi {
+  id: string;
+  nome: string;
+  email: string;
+  role: RoleApi;
+  ativo: boolean;
+}
+
+const CARGO_POR_ROLE: Record<RoleApi, Cargo> = {
+  ADMIN: "Admin",
+  ATENDENTE: "Atendente",
+  GESTOR_PROJETO: "Gestor_Projeto",
+  FINANCEIRO: "Financeiro",
+};
+
+function paraUsuario({ id, nome, email, role, ativo }: UsuarioApi): Usuario {
+  return {
+    id,
+    nome,
+    email,
+    cargo: CARGO_POR_ROLE[role],
+    status: ativo ? "Ativo" : "Inativo",
+    senha: "",
+  };
+}
+
+async function buscarUsuarios(): Promise<Usuario[]> {
+  const { data } = await api.get<UsuarioApi[]>("/api/v1/usuarios");
+  return data.map(paraUsuario);
+}
+
 export default function TabelaUsuarios() {
   const { sair } = useSession();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | null>(null);
   const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<Usuario | null>(null);
 
-  const [usuarios, setUsuarios] = useState<Usuario[]>([
-    {
-      id: "1",
-      nome: "João Silva",
-      email: "joao@email.com",
-      cargo: "Gestor_Projeto",
-      status: "Ativo",
-      senha: "123456",
-    },
-    {
-      id: "2",
-      nome: "Maria Souza",
-      email: "maria@email.com",
-      cargo: "Financeiro",
-      status: "Ativo",
-      senha: "123456",
-    },
-    {
-      id: "3",
-      nome: "Carlos Lima",
-      email: "carlos@email.com",
-      cargo: "Atendente",
-      status: "Inativo",
-      senha: "123456",
-    },
-  ]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    let ativo = true;
+    buscarUsuarios()
+      .then((lista) => {
+        if (ativo) setUsuarios(lista);
+      })
+      .catch((error) => {
+        if (ativo) setErro(getApiErrorMessage(error));
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  const tentarNovamente = useCallback(() => {
+    setCarregando(true);
+    setErro("");
+    buscarUsuarios()
+      .then(setUsuarios)
+      .catch((error) => setErro(getApiErrorMessage(error)))
+      .finally(() => setCarregando(false));
+  }, []);
 
   function handleCreateUsuario(novoUsuario: NovoUsuario) {
     const usuario: Usuario = {
@@ -158,16 +194,33 @@ return (
       </View>
 
       <View className="shadow-lg">
-        <DataTable
-          data={usuarios}
-          columns={columns}
-          keyExtractor={(usuario) => usuario.id}
-          onRowPress={(usuario) => {
-            console.log("Usuário selecionado:", usuario);
-          }}
-          emptyMessage="Nenhum usuário cadastrado"
-          scrollEnabled={false}
-        />
+        {carregando ? (
+          <View className="items-center justify-center gap-3 rounded-2xl bg-white p-10">
+            <ActivityIndicator color="#6f4f28" />
+            <Text className="text-sm text-neutral-500">Carregando usuários...</Text>
+          </View>
+        ) : erro ? (
+          <View className="items-center justify-center gap-3 rounded-2xl bg-white p-10">
+            <Text className="text-center text-sm text-red-600">{erro}</Text>
+            <Pressable
+              onPress={tentarNovamente}
+              className="rounded-lg border border-neutral-300 px-5 py-3"
+            >
+              <Text className="font-medium text-neutral-700">Tentar de novo</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <DataTable
+            data={usuarios}
+            columns={columns}
+            keyExtractor={(usuario) => usuario.id}
+            onRowPress={(usuario) => {
+              console.log("Usuário selecionado:", usuario);
+            }}
+            emptyMessage="Nenhum usuário cadastrado"
+            scrollEnabled={false}
+          />
+        )}
       </View>
     </View>
 
