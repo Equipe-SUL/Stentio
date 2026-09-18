@@ -43,7 +43,7 @@ management:
       enabled: false
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
   endpoints:
     web:
       exposure:
