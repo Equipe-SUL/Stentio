@@ -39,6 +39,17 @@ public record RecursoRequest(
         List<@NotNull(message = "Par de idioma inválido") @Valid PrecoRequest> precos
 ) {
 
+    // Roda antes do @Valid: espaços em volta não devem reprovar um e-mail que seria válido.
+    public RecursoRequest {
+        nome = semEspacosNasPontas(nome);
+        email = semEspacosNasPontas(email);
+        telefone = semEspacosNasPontas(telefone);
+    }
+
+    private static String semEspacosNasPontas(String valor) {
+        return valor == null ? null : valor.strip();
+    }
+
     public record PrecoRequest(
 
             @NotNull(message = "Idioma de origem é obrigatório")
