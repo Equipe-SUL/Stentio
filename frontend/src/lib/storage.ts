@@ -8,31 +8,18 @@ function isWeb(): boolean {
   return Platform.OS === "web";
 }
 
-function webStorage(): Storage | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage;
-}
-
 async function getItem(key: string): Promise<string | null> {
-  if (isWeb()) {
-    return webStorage()?.getItem(key) ?? null;
-  }
+  if (isWeb()) return null;
   return SecureStore.getItemAsync(key);
 }
 
 async function setItem(key: string, value: string): Promise<void> {
-  if (isWeb()) {
-    webStorage()?.setItem(key, value);
-    return;
-  }
+  if (isWeb()) return;
   await SecureStore.setItemAsync(key, value);
 }
 
 async function removeItem(key: string): Promise<void> {
-  if (isWeb()) {
-    webStorage()?.removeItem(key);
-    return;
-  }
+  if (isWeb()) return;
   await SecureStore.deleteItemAsync(key);
 }
 

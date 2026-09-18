@@ -10,6 +10,8 @@ export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
 export const api = axios.create({
   baseURL: API_URL,
   timeout: 15000,
+  // Necessário no web para o browser guardar/enviar o cookie HttpOnly (cross-origin).
+  withCredentials: true,
 });
 
 api.interceptors.request.use(async (config) => {
