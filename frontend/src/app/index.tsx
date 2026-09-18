@@ -3,6 +3,19 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Pressable, Activit
 import Svg, { Defs, Pattern, Rect, Circle, G } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { api, getApiErrorMessage } from '../lib/api';
+import { setToken } from '../lib/auth';
+
+type Cargo = "Admin" | "Atendente" | "Financeiro" | "Gestor_Projeto";
+
+interface LoginResponse {
+  token: string;
+  tipo: string;
+  expiresIn: number;
+  email: string;
+  role: Cargo;
+}
 
 const languagesListA = [
   "Hallo, Willkommen", "مرحبا بك", "你好，歡迎", "안녕하세요, 환영합니다",
@@ -239,8 +252,15 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
+      const { data } = await api.post<LoginResponse>('/api/v1/usuarios/login', {
+        email,
+        senha: password,
+      });
+
+      await setToken(data.token, rememberSession);
+      router.replace('/usuarios');
     } catch (error) {
-      setErrorMessage('E-mail ou senha inválidos');
+      setErrorMessage(getApiErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
