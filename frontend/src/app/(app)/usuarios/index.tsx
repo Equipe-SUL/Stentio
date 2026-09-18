@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { ScrollView, View, Text, Pressable } from "react-native";
-import { DataTable } from "../../components/usuarios/DataTable";
-import { RoleBadge, StatusBadge } from "../../components/usuarios/Badge";
-import { RowActions } from "../../components/usuarios/RowActions";
-import type { ColumnDef } from "../../components/usuarios/types";
-import { FormularioUsuario, NovoUsuario } from "../../components/usuarios/CreateUser";
-import { FormularioEdicaoUsuario, UsuarioAtualizado } from "../../components/usuarios/EditUser";
-import { ConfirmDialog } from "../../components/usuarios/ConfirmDialog";
+import { DataTable } from "../../../components/usuarios/DataTable";
+import { RoleBadge, StatusBadge } from "../../../components/usuarios/Badge";
+import { RowActions } from "../../../components/usuarios/RowActions";
+import type { ColumnDef } from "../../../components/usuarios/types";
+import { FormularioUsuario, NovoUsuario } from "../../../components/usuarios/CreateUser";
+import { FormularioEdicaoUsuario, UsuarioAtualizado } from "../../../components/usuarios/EditUser";
+import { ConfirmDialog } from "../../../components/usuarios/ConfirmDialog";
+import { useSession } from "../../../lib/session";
 
 type Cargo = "Gestor_Projeto" | "Atendente" | "Admin" | "Financeiro";
 type Status = "Ativo" | "Inativo";
@@ -21,6 +22,7 @@ interface Usuario {
 }
 
 export default function TabelaUsuarios() {
+  const { sair } = useSession();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | null>(null);
   const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<Usuario | null>(null);
@@ -138,12 +140,21 @@ return (
           </Text>
         </View>
 
-        <Pressable
-          onPress={() => setMostrarFormulario(true)}
-          className="rounded-lg bg-[#6f4f28] px-5 py-3"
-        >
-          <Text className="font-medium text-white">Novo usuário</Text>
-        </Pressable>
+        <View className="flex-row items-center gap-3">
+          <Pressable
+            onPress={() => sair()}
+            className="rounded-lg border border-neutral-300 px-5 py-3"
+          >
+            <Text className="font-medium text-neutral-700">Sair</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setMostrarFormulario(true)}
+            className="rounded-lg bg-[#6f4f28] px-5 py-3"
+          >
+            <Text className="font-medium text-white">Novo usuário</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View className="shadow-lg">

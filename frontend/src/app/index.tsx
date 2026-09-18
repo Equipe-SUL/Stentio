@@ -3,19 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Pressable, Activit
 import Svg, { Defs, Pattern, Rect, Circle, G } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { api, getApiErrorMessage } from '../lib/api';
-import { setToken } from '../lib/auth';
-
-type Cargo = "Admin" | "Atendente" | "Financeiro" | "Gestor_Projeto";
-
-interface LoginResponse {
-  token: string;
-  tipo: string;
-  expiresIn: number;
-  email: string;
-  role: Cargo;
-}
+import { Redirect, router } from 'expo-router';
+import { getApiErrorMessage } from '../lib/api';
+import { useSession } from '../lib/session';
 
 const languagesListA = [
   "Hallo, Willkommen", "مرحبا بك", "你好，歡迎", "안녕하세요, 환영합니다",
@@ -235,11 +225,11 @@ const LeftArtPanel = () => {
 };
 
 export default function LoginScreen() {
+  const { usuario, carregando, entrar } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberSession, setRememberSession] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -252,12 +242,7 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      const { data } = await api.post<LoginResponse>('/api/v1/usuarios/login', {
-        email,
-        senha: password,
-      });
-
-      await setToken(data.token, rememberSession);
+      await entrar(email, password, rememberSession);
       router.replace('/usuarios');
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error));
@@ -265,6 +250,10 @@ export default function LoginScreen() {
       setIsLoading(false);
     }
   };
+
+  if (!carregando && usuario?.role === 'ADMIN') {
+    return <Redirect href="/usuarios" />;
+  }
 
   return (
     <View className="flex-1 bg-white">
@@ -330,25 +319,12 @@ export default function LoginScreen() {
 
               <Pressable 
                 onPress={() => setRememberSession(!rememberSession)}
-                className="flex-row items-center mb-4"
+                className="flex-row items-center mb-8"
               >
                 <View className={`w-5 h-5 border-2 rounded-md mr-3 items-center justify-center ${rememberSession ? 'bg-[#8c5230] border-[#8c5230]' : 'border-zinc-300 bg-white'}`}>
                   {rememberSession && <Ionicons name="checkmark" size={14} color="white" />}
                 </View>
                 <Text className="text-zinc-600 text-sm font-medium">Salvar sessão</Text>
-              </Pressable>
-
-              <Pressable 
-                onPress={() => setAgreeTerms(!agreeTerms)}
-                className="flex-row items-center mb-8"
-              >
-                <View className={`w-5 h-5 border-2 rounded-md mr-3 items-center justify-center ${agreeTerms ? 'bg-[#8c5230] border-[#8c5230]' : 'border-zinc-300 bg-white'}`}>
-                  {agreeTerms && <Ionicons name="checkmark" size={14} color="white" />}
-                </View>
-                <Text className="text-zinc-600 text-sm">
-                  Concordo com os{' '}
-                  <Text className="text-[#8c5230] underline font-semibold">Termos e Condições</Text>
-                </Text>
               </Pressable>
 
               <TouchableOpacity 

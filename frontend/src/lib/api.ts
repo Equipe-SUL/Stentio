@@ -5,7 +5,27 @@ import { getToken } from "./auth";
 const DEFAULT_API_URL =
   Platform.OS === "android" ? "http://10.0.2.2:8081" : "http://localhost:8081";
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
+function resolveApiUrl(): string {
+  const configured = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
+
+  // No web o cookie de sessão é SameSite=Lax: página e API precisam estar no
+  // mesmo host. Alinha a URL da API ao host atual da página, mantendo a porta.
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    try {
+      const url = new URL(configured);
+      if (url.hostname !== window.location.hostname) {
+        url.hostname = window.location.hostname;
+        return url.toString().replace(/\/$/, "");
+      }
+    } catch {
+      // URL inválida: usa como configurada.
+    }
+  }
+
+  return configured;
+}
+
+export const API_URL = resolveApiUrl();
 
 export const api = axios.create({
   baseURL: API_URL,
