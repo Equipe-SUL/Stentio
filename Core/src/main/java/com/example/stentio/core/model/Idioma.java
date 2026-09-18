@@ -1,3 +1,7 @@
+package com.example.stentio.core.model;
+
+import lombok.Getter;
+import lombok.Setter;
 import jakarta.persistence.*;
 import java.util.UUID;
 
