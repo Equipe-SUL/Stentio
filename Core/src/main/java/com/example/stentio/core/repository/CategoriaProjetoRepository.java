@@ -10,6 +10,7 @@ import java.util.UUID;
 
 public interface CategoriaProjetoRepository extends JpaRepository<CategoriaProjeto, UUID> {
     boolean existsByNome(String nome);
+
     Page<CategoriaProjeto> findByNomeContainingIgnoreCase(String nome, Pageable pageable);
 
 
