@@ -84,8 +84,6 @@ services:
   mailhog:
     image: mailhog/mailhog
     container_name: email-service-mailhog
-    profiles:
-      - mailhog
     networks:
       - app
     ports:

@@ -17,12 +17,7 @@ public class EmailConsumer {
     }
 
     @RabbitListener(queues = RabbitMQConfig.EMAIL_QUEUE)
-    public String consume(SendEmailRequest request) {
-        try {
-            emailService.send(request);
-            return "EMAIL_SENT";
-        } catch (MailException | IllegalArgumentException exception) {
-            return "EMAIL_SEND_FAILED";
-        }
+    public void consume(SendEmailRequest request) {
+        emailService.send(request);
     }
 }
