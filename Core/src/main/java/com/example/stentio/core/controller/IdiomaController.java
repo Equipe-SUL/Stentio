@@ -1,4 +1,5 @@
 package com.example.stentio.core.controller;
+import com.example.stentio.core.dto.AlteracaoStatusRequest;
 import com.example.stentio.core.dto.IdiomaRequest;
 import com.example.stentio.core.dto.IdiomaResponse;
 import com.example.stentio.core.model.Idioma;
@@ -10,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping(IdiomaController.BASE_PATH)
@@ -39,6 +42,22 @@ public class IdiomaController {
 
         // devolve o resultado com status HTTP 200 (OK)
         return ResponseEntity.ok(pagina);
+
+    }
+
+    @PostMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<IdiomaResponse> alterar(@PathVariable UUID id, @Valid @RequestBody IdiomaRequest request){
+        idiomaService.editar(id, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<IdiomaResponse> alterarStatus(@PathVariable UUID id, @Valid @RequestBody AlteracaoStatusRequest request) {
+        IdiomaResponse resposta = idiomaService.alterarStatus(id, request.ativo());
+        return ResponseEntity.ok(resposta);
+
 
     }
 

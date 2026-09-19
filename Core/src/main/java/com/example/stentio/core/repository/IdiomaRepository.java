@@ -11,5 +11,7 @@ public interface IdiomaRepository extends JpaRepository<Idioma, UUID> {
     boolean existsByCodigoIso(String codigoIso);
     //bussca idiomas se nome tem o texto informado, ignorando maiúsculas/minúsculas,
     Page<Idioma> findByNomeContainingIgnoreCase(String nome, Pageable pageable);
+    // verifica se o codigo id ja existe em outro registro
+    boolean existsByCodigoIsoAndIdNot(String codigoIso, UUID id);
 
 }
