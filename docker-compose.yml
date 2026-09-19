@@ -81,6 +81,15 @@ services:
       - app
     restart: unless-stopped
 
+  mailhog:
+    image: mailhog/mailhog
+    container_name: email-service-mailhog
+    networks:
+      - app
+    ports:
+      - "${MAILHOG_PORT_SMTP:-1025}:1025"
+      - "${MAILHOG_PORT:-8025}:8025"
+
 volumes:
   postgres:
   mongo_data:
