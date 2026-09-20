@@ -9,6 +9,6 @@ public record TipoServicoResponse(
         boolean ativo
 ) {
     public TipoServicoResponse(TipoServico tipoServico) {
-        this(tipoServico.getId(), tipoServico.getNome(), tipoServico.isAtivo());
+        this(tipoServico.getId(), tipoServico.getNome(), tipoServico.getAtivo());
     }
 }
