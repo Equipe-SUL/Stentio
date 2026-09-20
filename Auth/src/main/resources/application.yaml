@@ -67,5 +67,6 @@ app:
       password: ${ADMIN_INITIAL_PASSWORD:}
   cookie:
     secure: ${APP_COOKIE_SECURE:false}
+    same-site: ${APP_COOKIE_SAME_SITE:Lax}
   cors:
-    allowed-origins: http://localhost:8080,http://localhost:8081,http://localhost:19006
+    allowed-origins: http://localhost:8080,http://localhost:8081,http://localhost:8082,http://localhost:19006
