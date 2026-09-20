@@ -14,9 +14,9 @@ spring:
     name: stentio-core
 
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-    username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:stentio}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
 
   jpa:
     open-in-view: false
@@ -38,10 +38,10 @@ spring:
       uri: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/admin?authSource=admin
 
   rabbitmq:
-    host: ${RABBITMQ_HOST}
-    port: ${RABBITMQ_PORT}
-    username: ${RABBITMQ_USER}
-    password: ${RABBITMQ_PASS}
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:myuser}
+    password: ${RABBITMQ_PASS:changeme}
 
 management:
   health:
@@ -58,7 +58,7 @@ management:
 api:
   security:
     token:
-      secret: ${JWT_SECRET}
+      secret: ${JWT_SECRET:dev-secret}
 
 app:
   cors:
