@@ -11,16 +11,20 @@ public class AuthCookieService {
     public static final String COOKIE_NAME = "stentio_token";
 
     private final boolean secure;
+    private final String sameSite;
 
-    public AuthCookieService(@Value("${app.cookie.secure:false}") boolean secure) {
+    public AuthCookieService(
+            @Value("${app.cookie.secure:false}") boolean secure,
+            @Value("${app.cookie.same-site:Lax}") String sameSite) {
         this.secure = secure;
+        this.sameSite = sameSite;
     }
 
     public ResponseCookie criar(String token) {
         return ResponseCookie.from(COOKIE_NAME, token)
                 .httpOnly(true)
                 .secure(secure)
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .path("/")
                 .maxAge(TokenService.EXPIRES_IN)
                 .build();
@@ -30,7 +34,7 @@ public class AuthCookieService {
         return ResponseCookie.from(COOKIE_NAME, "")
                 .httpOnly(true)
                 .secure(secure)
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .path("/")
                 .maxAge(0)
                 .build();

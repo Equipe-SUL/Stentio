@@ -4,6 +4,7 @@ import com.example.stentio.dto.LoginRequestDTO;
 import com.example.stentio.dto.LoginResponseDTO;
 import com.example.stentio.dto.UsuarioRequestDTO;
 import com.example.stentio.dto.UsuarioResponseDTO;
+import com.example.stentio.dto.UsuarioUpdateRequestDTO;
 import com.example.stentio.exception.CredenciaisLoginException;
 import com.example.stentio.exception.EmailJaCadastradoException;
 import com.example.stentio.exception.UsuarioNaoEncontradoException;
@@ -77,7 +78,7 @@ public class UsuarioService {
         return new UsuarioResponseDTO(usuario);
     }
 
-    public UsuarioResponseDTO editar(UUID id, UsuarioRequestDTO dto) {
+    public UsuarioResponseDTO editar(UUID id, UsuarioUpdateRequestDTO dto) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
 
