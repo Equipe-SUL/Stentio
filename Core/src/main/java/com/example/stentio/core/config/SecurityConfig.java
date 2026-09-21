@@ -33,6 +33,7 @@ public class SecurityConfig {
     private static final String ROTAS_RECURSOS = "/api/v1/recursos/**";
     private static final String ROTAS_CATEGORIAS_PROJETO = "/api/v1/categorias-projeto/**";
     private static final String ROTAS_IDIOMAS = "/api/v1/idiomas/**";
+    private static final String ROTAS_TIPOS_SERVICO = "/api/v1/tipos-servico/**";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenService tokenService) throws Exception {
@@ -55,6 +56,7 @@ public class SecurityConfig {
                         .requestMatchers(ROTAS_RECURSOS).hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
                         .requestMatchers(ROTAS_CATEGORIAS_PROJETO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
                         .requestMatchers(ROTAS_IDIOMAS).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
+                        .requestMatchers(ROTAS_TIPOS_SERVICO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthFilter(tokenService), UsernamePasswordAuthenticationFilter.class)
