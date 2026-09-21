@@ -9,7 +9,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -25,7 +24,6 @@ public class IdiomaController {
         this.idiomaService = idiomaService;
     }
 
-    @PreAuthorize("hasRole('Admin')")
     @PostMapping
     public ResponseEntity<IdiomaResponse> criar(@Valid @RequestBody IdiomaRequest request){
         IdiomaResponse response = idiomaService.criar(request);
@@ -45,15 +43,13 @@ public class IdiomaController {
 
     }
 
-    @PostMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}")
     public ResponseEntity<IdiomaResponse> alterar(@PathVariable UUID id, @Valid @RequestBody IdiomaRequest request){
         idiomaService.editar(id, request);
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<IdiomaResponse> alterarStatus(@PathVariable UUID id, @Valid @RequestBody AlteracaoStatusRequest request) {
         IdiomaResponse resposta = idiomaService.alterarStatus(id, request.ativo());
         return ResponseEntity.ok(resposta);
