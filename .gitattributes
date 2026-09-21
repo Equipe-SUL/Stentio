@@ -1,0 +1,16 @@
+* text=auto
+
+# Scripts Linux/Bash devem sempre usar LF (evita erro /bin/sh: ./gradlew: not found no Docker em Windows)
+*gradlew text eol=lf
+*.sh text eol=lf
+
+# Windows batch
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binários
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
