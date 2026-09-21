@@ -126,9 +126,18 @@ export async function testSmtpConnection(params: SmtpTestRequest): Promise<SmtpR
       testEmail,
     });
 
+    if (response.data && response.data.success === false) {
+      return {
+        success: false,
+        message: response.data.message || 'Falha no teste de conexão SMTP.',
+        details: response.data.details,
+      };
+    }
+
     return {
       success: true,
       message: response.data?.message || `E-mail de teste enviado com sucesso para ${testEmail}!`,
+      details: response.data?.details,
     };
   } catch (error: any) {
     // Tenta rota direta do microserviço de e-mail se disponível
