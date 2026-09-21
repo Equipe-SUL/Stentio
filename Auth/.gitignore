@@ -27,6 +27,7 @@ CLAUDE.md
 application-local.yml
 application-local.yaml
 application-local.properties
+bin/
 
 # ---- OS ----
 .DS_Store
