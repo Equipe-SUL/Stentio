@@ -1,0 +1,65 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+  # desabilitar as configurações automáticas do MongoDB enquanto não é usado
+  # para silenciar o erro de conexão com o MongoDB no console
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration
+
+  application:
+    name: stentio-core
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:stentio}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        # Carrega coleções LAZY (tipos, preços, idiomas) em lotes, evitando uma consulta por recurso na listagem.
+        default_batch_fetch_size: 50
+
+  data:
+    web:
+      pageable:
+        # Impede requisições como ?size=1000000, que carregariam a tabela inteira em memória.
+        max-page-size: 100
+    mongodb:
+      uri: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/admin?authSource=admin
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:myuser}
+    password: ${RABBITMQ_PASS:changeme}
+
+management:
+  health:
+    mongodb:
+      enabled: false
+  endpoint:
+    health:
+      show-details: when-authorized
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+api:
+  security:
+    token:
+      secret: ${JWT_SECRET:dev-secret}
+
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:8080,http://localhost:8081,http://localhost:19006}
