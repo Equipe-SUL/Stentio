@@ -34,9 +34,10 @@ public class IdiomaController {
     @GetMapping
     public ResponseEntity<Page<IdiomaResponse>> listar(
             @RequestParam(required = false) String nome,
+            @RequestParam(required = false) Boolean ativo,
             Pageable pageable) {
         // passa os parâmetros para a camada de regra de negócio
-        Page<IdiomaResponse> pagina = idiomaService.listar(nome, pageable);
+        Page<IdiomaResponse> pagina = idiomaService.listar(nome, ativo, pageable);
 
         // devolve o resultado com status HTTP 200 (OK)
         return ResponseEntity.ok(pagina);

@@ -1,9 +1,26 @@
+    import { useCallback, useState } from "react";
     import { ScrollView, View, Text } from "react-native";
     import { CrudSection } from "../../../../../components/usuarios/CrudSection";
+    import { useBuscaDebounce } from "../../../../../components/usuarios/useBuscaDebounce";
     import { coreApi } from "../../../../../lib/api";
-    import type { FieldDef } from "../../../../../components/usuarios/types";
+    import type { FieldDef, FiltroLista, FiltroStatus } from "../../../../../components/usuarios/types";
     
     // --- Tipos ------------------------------------------------------------
+    
+    function ativoDeFiltro(status: FiltroStatus): boolean | undefined {
+      if (status === "ativos") return true;
+      if (status === "inativos") return false;
+      return undefined;
+    }
+    
+    function montarQuery(filtro: FiltroLista): string {
+      const params = new URLSearchParams();
+      if (filtro.nome?.trim()) params.set("nome", filtro.nome.trim());
+      if (filtro.ativo !== undefined) params.set("ativo", String(filtro.ativo));
+      // Busca única: sem paginação para listar o catálogo inteiro em uma chamada.
+      params.set("size", "100");
+      return params.toString();
+    }
     
     interface Categoria {
       id: string;
@@ -27,8 +44,10 @@
     
     const camposCategoria: FieldDef<Categoria>[] = [{ key: "nome", label: "Nome", type: "text" }];
     
-    async function listarCategorias(): Promise<Categoria[]> {
-      const { data } = await coreApi.get<{ content: Categoria[] }>("/api/v1/categorias-projeto");
+    async function listarCategorias(filtro: FiltroLista = {}): Promise<Categoria[]> {
+      const { data } = await coreApi.get<{ content: Categoria[] }>(
+        `/api/v1/categorias-projeto?${montarQuery(filtro)}`,
+      );
       return data.content ?? data;
     }
     
@@ -52,8 +71,10 @@ async function criarCategoria(valores: Omit<Categoria, "id">): Promise<Categoria
       { key: "ativo", label: "Status", type: "boolean" },
     ];
     
-    async function listarServicos(): Promise<Servico[]> {
-      const { data } = await coreApi.get<{ content: Servico[] }>("/api/v1/tipos-servico");
+    async function listarServicos(filtro: FiltroLista = {}): Promise<Servico[]> {
+      const { data } = await coreApi.get<{ content: Servico[] }>(
+        `/api/v1/tipos-servico?${montarQuery(filtro)}`,
+      );
       return data.content ?? data;
     }
     
@@ -83,8 +104,10 @@ async function criarServico(valores: Omit<Servico, "id">): Promise<Servico> {
       { key: "ativo", label: "Status", type: "boolean" },
     ];
     
-    async function listarIdiomas(): Promise<Idioma[]> {
-      const { data } = await coreApi.get<{ content: Idioma[] }>("/api/v1/idiomas");
+    async function listarIdiomas(filtro: FiltroLista = {}): Promise<Idioma[]> {
+      const { data } = await coreApi.get<{ content: Idioma[] }>(
+        `/api/v1/idiomas?${montarQuery(filtro)}`,
+      );
       return data.content ?? data;
     }
     
@@ -114,7 +137,26 @@ async function criarIdioma(valores: Omit<Idioma, "id">): Promise<Idioma> {
     
     // --- Componente -------------------------------------------------------
     
-    export default function TiposDeCadastro() {
+    export default function CatalogoDeReferenciais() {
+      const buscaCategorias = useBuscaDebounce();
+      const buscaServicos = useBuscaDebounce();
+      const buscaIdiomas = useBuscaDebounce();
+      const [statusServicos, setStatusServicos] = useState<FiltroStatus>("todos");
+      const [statusIdiomas, setStatusIdiomas] = useState<FiltroStatus>("todos");
+
+      const fetchCategorias = useCallback(
+        () => listarCategorias({ nome: buscaCategorias.debounced }),
+        [buscaCategorias.debounced],
+      );
+      const fetchServicos = useCallback(
+        () => listarServicos({ nome: buscaServicos.debounced, ativo: ativoDeFiltro(statusServicos) }),
+        [buscaServicos.debounced, statusServicos],
+      );
+      const fetchIdiomas = useCallback(
+        () => listarIdiomas({ nome: buscaIdiomas.debounced, ativo: ativoDeFiltro(statusIdiomas) }),
+        [buscaIdiomas.debounced, statusIdiomas],
+      );
+
       return (
         <ScrollView
           className="flex-1 bg-neutral-50"
@@ -136,11 +178,15 @@ async function criarIdioma(valores: Omit<Idioma, "id">): Promise<Idioma> {
                 editTitle="Editar categoria"
                 fields={camposCategoria}
                 defaultValues={{ nome: "" }}
-                fetchList={listarCategorias}
+                fetchList={fetchCategorias}
                 createItem={criarCategoria}
                 updateItem={atualizarCategoria}
                 deleteItem={excluirCategoria}
                 emptyMessage="Nenhuma categoria cadastrada"
+                filtros={{
+                  busca: buscaCategorias.valor,
+                  onBusca: buscaCategorias.setValor,
+                }}
               />
     
               <CrudSection
@@ -149,13 +195,20 @@ async function criarIdioma(valores: Omit<Idioma, "id">): Promise<Idioma> {
                 editTitle="Editar serviço"
                 fields={camposServico}
                 defaultValues={{ nome: "", ativo: true }}
-                fetchList={listarServicos}
+                fetchList={fetchServicos}
                 createItem={criarServico}
                 updateItem={atualizarServico}
                 deleteItem={excluirServico}
                 updateStatus={atualizarStatusServico}
                 deleteMessage="Este registro será desativado e ficará oculto da listagem. Você pode reativá-lo depois."
                 emptyMessage="Nenhum serviço cadastrado"
+                filtros={{
+                  busca: buscaServicos.valor,
+                  onBusca: buscaServicos.setValor,
+                  comStatus: true,
+                  status: statusServicos,
+                  onStatus: setStatusServicos,
+                }}
               />
 
               <CrudSection
@@ -164,13 +217,20 @@ async function criarIdioma(valores: Omit<Idioma, "id">): Promise<Idioma> {
                 editTitle="Editar idioma"
                 fields={camposIdioma}
                 defaultValues={{ nome: "", codigoIso: "", ativo: true }}
-                fetchList={listarIdiomas}
+                fetchList={fetchIdiomas}
                 createItem={criarIdioma}
                 updateItem={atualizarIdioma}
                 deleteItem={excluirIdioma}
                 updateStatus={atualizarStatusIdioma}
                 deleteMessage="Este registro será desativado e ficará oculto da listagem. Você pode reativá-lo depois."
                 emptyMessage="Nenhum idioma cadastrado"
+                filtros={{
+                  busca: buscaIdiomas.valor,
+                  onBusca: buscaIdiomas.setValor,
+                  comStatus: true,
+                  status: statusIdiomas,
+                  onStatus: setStatusIdiomas,
+                }}
               />
             </View>
           </View>

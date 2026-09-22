@@ -26,3 +26,11 @@ export interface FieldDef<T> {
   type: "text" | "boolean" | "iso";
   placeholder?: string;
 }
+
+// Filtros de status usados na listagem do Catálogo de Referenciais.
+export type FiltroStatus = "todos" | "ativos" | "inativos";
+
+export interface FiltroLista {
+  nome?: string;
+  ativo?: boolean;
+}

@@ -25,12 +25,18 @@ public class TipoServicoService {
     }
 
 
-    public Page<TipoServicoResponse> listar(String nome, Pageable pageable) {
+    public Page<TipoServicoResponse> listar(String nome, Boolean ativo, Pageable pageable) {
         Page<TipoServico> pagina;
-        if (nome == null || nome.isBlank()) {
-            pagina = tipoServicoRepository.findAll(pageable);
-        } else {
+        boolean filtroNome = nome != null && !nome.isBlank();
+
+        if (filtroNome && ativo != null) {
+            pagina = tipoServicoRepository.findByNomeContainingIgnoreCaseAndAtivo(nome, ativo, pageable);
+        } else if (filtroNome) {
             pagina = tipoServicoRepository.findByNomeContainingIgnoreCase(nome, pageable);
+        } else if (ativo != null) {
+            pagina = tipoServicoRepository.findByAtivo(ativo, pageable);
+        } else {
+            pagina = tipoServicoRepository.findAll(pageable);
         }
         return pagina.map(TipoServicoResponse::new);
     }

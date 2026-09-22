@@ -1,16 +1,24 @@
 // CrudSection.tsx
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, View, Text, Pressable } from "react-native";
+import { ActivityIndicator, View, Text, Pressable, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { DataTable } from "./DataTable";
 import { RowActions } from "./RowActions";
 import { EntityFormModal } from "./EntityFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { StatusBadge } from "./Badge";
-import type { ColumnDef, FieldDef } from "./types";
+import type { ColumnDef, FieldDef, FiltroStatus } from "./types";
 
 interface EntityBase {
   id: string;
+}
+
+interface FiltrosCrud {
+  busca: string;
+  comStatus?: boolean;
+  onBusca: (valor: string) => void;
+  status?: FiltroStatus;
+  onStatus?: (status: FiltroStatus) => void;
 }
 
 interface CrudSectionProps<T extends EntityBase> {
@@ -26,6 +34,7 @@ interface CrudSectionProps<T extends EntityBase> {
   updateStatus?: (id: string, ativo: boolean) => Promise<void>;
   deleteMessage?: string;
   emptyMessage?: string;
+  filtros?: FiltrosCrud;
 }
 
 function getApiErrorMessage(error: unknown): string {
@@ -68,6 +77,7 @@ export function CrudSection<T extends EntityBase>({
   updateStatus,
   deleteMessage = "Tem certeza que deseja excluir este registro? Essa ação não pode ser desfeita.",
   emptyMessage = "Nenhum registro cadastrado",
+  filtros,
 }: CrudSectionProps<T>) {
   const [itens, setItens] = useState<T[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -227,6 +237,43 @@ export function CrudSection<T extends EntityBase>({
           <Text className="text-xs font-medium text-white">Novo</Text>
         </Pressable>
       </View>
+
+      {filtros ? (
+        <View className="gap-2">
+          <View className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2">
+            <Ionicons name="search" size={16} color="#a3a3a3" />
+            <TextInput
+              value={filtros.busca}
+              onChangeText={filtros.onBusca}
+              placeholder="Buscar por nome..."
+              placeholderTextColor="#a3a3a3"
+              className="flex-1 py-0 text-sm text-neutral-800"
+              clearButtonMode="while-editing"
+            />
+          </View>
+
+          {filtros.comStatus ? (
+            <View className="flex-row gap-1 rounded-lg bg-neutral-100 p-1">
+              {(["todos", "ativos", "inativos"] as FiltroStatus[]).map((opcao) => {
+                const selecionado = (filtros.status ?? "todos") === opcao;
+                return (
+                  <Pressable
+                    key={opcao}
+                    onPress={() => filtros.onStatus?.(opcao)}
+                    className={`flex-1 items-center rounded-md px-3 py-1.5 ${selecionado ? "bg-white shadow-sm" : ""}`}
+                  >
+                    <Text
+                      className={`text-xs font-medium ${selecionado ? "text-neutral-900" : "text-neutral-500"}`}
+                    >
+                      {opcao === "todos" ? "Todos" : opcao === "ativos" ? "Ativos" : "Inativos"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {erroAcao ? (
         <View className="rounded-lg border border-red-200 bg-red-50 p-3">
