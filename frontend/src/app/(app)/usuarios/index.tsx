@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { router } from "expo-router";
 import { ActivityIndicator, ScrollView, View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { DataTable } from "../../../components/usuarios/DataTable";
@@ -230,6 +231,17 @@ return (
         </View>
 
         <View className="flex-row items-center gap-3">
+          {/* TEMP (gambiarra): atalho temporário para o Catálogo de Referenciais,
+              acessível no Expo Go sem a navegação real pronta.
+              REMOVER quando existir menu lateral de verdade. */}
+          <Pressable
+            onPress={() => router.push("/configs/sistema/catalogo")}
+            className="flex-row items-center gap-2 rounded-lg border border-dashed border-[#6f4f28] bg-[#6f4f28]/5 px-5 py-3"
+          >
+            <Ionicons name="book-outline" size={18} color="#6f4f28" />
+            <Text className="font-medium text-[#6f4f28]">Catálogo</Text>
+          </Pressable>
+
           <Pressable
             onPress={() => sair()}
             className="flex-row items-center gap-2 rounded-lg border border-neutral-300 px-5 py-3"
