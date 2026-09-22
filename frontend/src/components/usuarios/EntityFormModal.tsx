@@ -43,7 +43,7 @@ export function EntityFormModal<T extends Record<string, any>>({
     return fields.every((field) => {
       if (field.type === "boolean") return true;
       const valor = String(values[field.key] ?? "").trim();
-      if (field.type === "iso") return /^[a-z]{2}$/.test(valor);
+      if (field.type === "iso") return /^[a-z]{2,3}(-[a-zA-Z]{2,4})?$/.test(valor);
       return valor.length > 0;
     });
   }
@@ -104,7 +104,7 @@ export function EntityFormModal<T extends Record<string, any>>({
                     setField(
                       field.key,
                       (field.type === "iso"
-                        ? texto.toLowerCase().slice(0, 2)
+                        ? texto.toLowerCase()
                         : texto) as T[typeof field.key]
                     )
                   }

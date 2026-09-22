@@ -100,7 +100,7 @@ async function criarServico(valores: Omit<Servico, "id">): Promise<Servico> {
     
     const camposIdioma: FieldDef<Idioma>[] = [
       { key: "nome", label: "Nome", type: "text" },
-      { key: "codigoIso", label: "Código (ISO)", type: "iso", placeholder: "ex: pt" },
+      { key: "codigoIso", label: "Código (ISO)", type: "iso", placeholder: "ex: pt, pt-BR" },
       { key: "ativo", label: "Status", type: "boolean" },
     ];
     
@@ -173,7 +173,7 @@ async function criarIdioma(valores: Omit<Idioma, "id">): Promise<Idioma> {
     
             <View className="gap-6 web:md:flex-row">
               <CrudSection
-                title="Categorias"
+                title="Categorias de Projetos"
                 createTitle="Nova categoria"
                 editTitle="Editar categoria"
                 fields={camposCategoria}
@@ -190,7 +190,7 @@ async function criarIdioma(valores: Omit<Idioma, "id">): Promise<Idioma> {
               />
     
               <CrudSection
-                title="Serviços"
+                title="Tipos de Serviços"
                 createTitle="Novo serviço"
                 editTitle="Editar serviço"
                 fields={camposServico}
