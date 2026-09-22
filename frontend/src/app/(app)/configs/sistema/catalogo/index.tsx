@@ -1,7 +1,7 @@
     import { ScrollView, View, Text } from "react-native";
-    import { CrudSection } from "../../../components/usuarios/CrudSection";
-    import { coreApi } from "../../../lib/api";
-    import type { FieldDef } from "../../../components/usuarios/types";
+    import { CrudSection } from "../../../../../components/usuarios/CrudSection";
+    import { coreApi } from "../../../../../lib/api";
+    import type { FieldDef } from "../../../../../components/usuarios/types";
     
     // --- Tipos ------------------------------------------------------------
     
@@ -123,9 +123,9 @@ async function criarIdioma(valores: Omit<Idioma, "id">): Promise<Idioma> {
         >
           <View className="w-full web:max-w-6xl gap-6">
             <View>
-              <Text className="text-2xl font-bold text-neutral-900">Cadastros base</Text>
+              <Text className="text-2xl font-bold text-neutral-900">Catálogo de Referenciais</Text>
               <Text className="text-sm text-neutral-500">
-                Categorias, serviços e idiomas utilizados no sistema
+                Tipos de serviço, categorias de projeto e idiomas que servem de base no sistema
               </Text>
             </View>
     
