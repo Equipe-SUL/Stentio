@@ -51,6 +51,25 @@ public class CategoriaProjetoService {
         return new CategoriaProjetoResponse(salvo);
     }
 
+    // CA.3 - Edição
+    @Transactional
+    public CategoriaProjetoResponse editar(UUID id, CategoriaProjetoRequest request) {
+        Optional<CategoriaProjeto> caixa = categoriaProjetoRepository.findById(id);
+        if (caixa.isEmpty()) {
+            throw new RecursoNaoEncontradoException(id);
+        }
+
+        if (categoriaProjetoRepository.existsByNomeAndIdNot(request.nome(), id)) {
+            throw new RecursoInvalidoException("Já existe outra categoria de projeto com esse nome.");
+        }
+
+        CategoriaProjeto categoriaProjeto = caixa.get();
+        categoriaProjeto.setNome(request.nome());
+
+        CategoriaProjeto salvo = categoriaProjetoRepository.save(categoriaProjeto);
+        return new CategoriaProjetoResponse(salvo);
+    }
+
     // CA.2 - Remoção real
     @Transactional
     public void deletar(UUID id) {
