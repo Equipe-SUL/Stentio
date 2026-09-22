@@ -32,8 +32,9 @@
       return data.content ?? data;
     }
     
-    async function criarCategoria(valores: Omit<Categoria, "id">) {
-      await coreApi.post("/api/v1/categorias-projeto", { nome: valores.nome });
+async function criarCategoria(valores: Omit<Categoria, "id">): Promise<Categoria> {
+      const { data } = await coreApi.post<Categoria>("/api/v1/categorias-projeto", { nome: valores.nome });
+      return data;
     }
     
     async function atualizarCategoria(id: string, valores: Omit<Categoria, "id">) {
@@ -56,17 +57,22 @@
       return data.content ?? data;
     }
     
-    async function criarServico(valores: Omit<Servico, "id">) {
-      await coreApi.post("/api/v1/tipos-servico", { nome: valores.nome });
+async function criarServico(valores: Omit<Servico, "id">): Promise<Servico> {
+      const { data } = await coreApi.post<Servico>("/api/v1/tipos-servico", { nome: valores.nome });
+      return data;
     }
-    
+
     async function atualizarServico(id: string, valores: Omit<Servico, "id">) {
       await coreApi.put(`/api/v1/tipos-servico/${id}`, { nome: valores.nome });
     }
-    
+
+    async function atualizarStatusServico(id: string, ativo: boolean) {
+      await coreApi.patch(`/api/v1/tipos-servico/${id}/status`, { ativo });
+    }
+
+    // Soft delete: sem DELETE físico no Core (associação com recursos); apenas desativa.
     async function excluirServico(id: string) {
-      // No Core não existe DELETE físico para serviços; inativa alterando o status
-      await coreApi.patch(`/api/v1/tipos-servico/${id}/status`, { ativo: false });
+      await atualizarStatusServico(id, false);
     }
     
     // --- Idiomas ----------------------------------------------------------
@@ -82,23 +88,28 @@
       return data.content ?? data;
     }
     
-    async function criarIdioma(valores: Omit<Idioma, "id">) {
-      await coreApi.post("/api/v1/idiomas", {
+async function criarIdioma(valores: Omit<Idioma, "id">): Promise<Idioma> {
+      const { data } = await coreApi.post<Idioma>("/api/v1/idiomas", {
         nome: valores.nome,
         codigoIso: valores.codigoIso,
       });
+      return data;
     }
-    
+
     async function atualizarIdioma(id: string, valores: Omit<Idioma, "id">) {
       await coreApi.put(`/api/v1/idiomas/${id}`, {
         nome: valores.nome,
         codigoIso: valores.codigoIso,
       });
     }
-    
+
+    async function atualizarStatusIdioma(id: string, ativo: boolean) {
+      await coreApi.patch(`/api/v1/idiomas/${id}/status`, { ativo });
+    }
+
+    // Soft delete: sem DELETE físico no Core (associação com recursos); apenas desativa.
     async function excluirIdioma(id: string) {
-      // No Core não existe DELETE físico para idiomas; inativa alterando o status
-      await coreApi.patch(`/api/v1/idiomas/${id}/status`, { ativo: false });
+      await atualizarStatusIdioma(id, false);
     }
     
     // --- Componente -------------------------------------------------------
@@ -142,6 +153,8 @@
                 createItem={criarServico}
                 updateItem={atualizarServico}
                 deleteItem={excluirServico}
+                updateStatus={atualizarStatusServico}
+                deleteMessage="Este registro será desativado e ficará oculto da listagem. Você pode reativá-lo depois."
                 emptyMessage="Nenhum serviço cadastrado"
               />
 
@@ -155,6 +168,8 @@
                 createItem={criarIdioma}
                 updateItem={atualizarIdioma}
                 deleteItem={excluirIdioma}
+                updateStatus={atualizarStatusIdioma}
+                deleteMessage="Este registro será desativado e ficará oculto da listagem. Você pode reativá-lo depois."
                 emptyMessage="Nenhum idioma cadastrado"
               />
             </View>

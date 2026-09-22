@@ -20,9 +20,11 @@ interface CrudSectionProps<T extends EntityBase> {
   fields: FieldDef<T>[];
   defaultValues: Omit<T, "id">;
   fetchList: () => Promise<T[]>;
-  createItem: (values: Omit<T, "id">) => Promise<void>;
+  createItem: (values: Omit<T, "id">) => Promise<T>;
   updateItem: (id: string, values: Omit<T, "id">) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
+  updateStatus?: (id: string, ativo: boolean) => Promise<void>;
+  deleteMessage?: string;
   emptyMessage?: string;
 }
 
@@ -63,6 +65,8 @@ export function CrudSection<T extends EntityBase>({
   createItem,
   updateItem,
   deleteItem,
+  updateStatus,
+  deleteMessage = "Tem certeza que deseja excluir este registro? Essa ação não pode ser desfeita.",
   emptyMessage = "Nenhum registro cadastrado",
 }: CrudSectionProps<T>) {
   const [itens, setItens] = useState<T[]>([]);
@@ -107,7 +111,10 @@ export function CrudSection<T extends EntityBase>({
     setErroCriacao("");
     try {
       const { id: _ignorado, ...dados } = values;
-      await createItem(dados as Omit<T, "id">);
+      const criado = await createItem(dados as Omit<T, "id">);
+      if (updateStatus && "ativo" in values && values.ativo === false) {
+        await updateStatus(criado.id, false);
+      }
       setMostrarCriar(false);
       await recarregar();
       return true;
@@ -124,6 +131,14 @@ export function CrudSection<T extends EntityBase>({
     try {
       const { id: _ignorado, ...dados } = values;
       await updateItem(itemEmEdicao.id, dados as Omit<T, "id">);
+      if (
+        updateStatus &&
+        "ativo" in values &&
+        "ativo" in itemEmEdicao &&
+        Boolean(itemEmEdicao.ativo) !== Boolean(values.ativo)
+      ) {
+        await updateStatus(itemEmEdicao.id, Boolean(values.ativo));
+      }
       setItemEmEdicao(null);
       await recarregar();
       return true;
@@ -131,6 +146,15 @@ export function CrudSection<T extends EntityBase>({
       setErroEdicao(getApiErrorMessage(error));
       return false;
     }
+  }
+
+  function handleToggleStatus(item: T) {
+    if (!updateStatus) return;
+
+    setErroAcao("");
+    updateStatus(item.id, !Boolean((item as unknown as { ativo?: boolean }).ativo))
+      .then(recarregar)
+      .catch((error) => setErroAcao(getApiErrorMessage(error)));
   }
 
   function handleSolicitarExclusao() {
@@ -162,7 +186,7 @@ export function CrudSection<T extends EntityBase>({
     {
       key: "id" as keyof T,
       header: "",
-      width: 56,
+      width: 92,
       align: "right",
       render: (item: T) => (
         <RowActions
@@ -170,6 +194,18 @@ export function CrudSection<T extends EntityBase>({
             setErroEdicao("");
             setItemEmEdicao(item);
           }}
+          onToggle={
+            updateStatus
+              ? () => handleToggleStatus(item)
+              : undefined
+          }
+          toggleLabel={
+            updateStatus
+              ? Boolean((item as unknown as { ativo?: boolean }).ativo)
+                ? "Desativar"
+                : "Ativar"
+              : undefined
+          }
         />
       ),
     },
@@ -247,7 +283,7 @@ export function CrudSection<T extends EntityBase>({
       <ConfirmDialog
         visible={itemParaExcluir !== null}
         title="Excluir registro"
-        message="Tem certeza que deseja excluir este registro? Essa ação não pode ser desfeita."
+        message={deleteMessage}
         confirmLabel="Excluir"
         onConfirm={handleConfirmarExclusao}
         onCancel={() => setItemParaExcluir(null)}
