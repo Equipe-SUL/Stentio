@@ -52,7 +52,7 @@ export const API_URL = resolveApiUrl();
 export const api = axios.create({
   baseURL: API_URL,
   timeout: 15000,
-  withCredentials: true,
+  withCredentials: false,
 });
 
 // Configuração padrão inicial caso ainda não haja dados no banco

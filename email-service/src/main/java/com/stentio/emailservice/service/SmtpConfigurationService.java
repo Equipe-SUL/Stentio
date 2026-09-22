@@ -5,10 +5,15 @@ import com.stentio.emailservice.dto.SmtpConfigResponse;
 import com.stentio.emailservice.dto.SmtpTestResponse;
 import com.stentio.emailservice.model.SmtpConfigurationDocument;
 import com.stentio.emailservice.repository.SmtpConfigurationRepository;
+import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+
+import java.io.UnsupportedEncodingException;
 
 @Service
 public class SmtpConfigurationService {
@@ -45,17 +50,32 @@ public class SmtpConfigurationService {
     public SmtpTestResponse testConnection(SmtpConfigRequest config, String testEmail) {
         try {
             JavaMailSender sender = mailSenderFactory.create(config);
-            SimpleMailMessage message = new SimpleMailMessage();
+            MimeMessage mimeMessage = sender.createMimeMessage();
+            MimeMessageHelper message = new MimeMessageHelper(mimeMessage, false, "UTF-8");
             message.setTo(testEmail);
             message.setSubject("Stentio - Teste de Conexão SMTP");
             message.setText("E-mail de teste enviado pelo serviço Stentio.");
             if (config.fromEmail() != null && !config.fromEmail().isBlank()) {
-                message.setFrom(config.fromEmail());
+                message.setFrom(buildFromAddress(config.fromEmail(), config.fromName()));
             }
-            sender.send(message);
+            sender.send(mimeMessage);
             return new SmtpTestResponse(true, "E-mail de teste enviado!");
-        } catch (RuntimeException exception) {
+        } catch (Exception exception) {
             return new SmtpTestResponse(false, "Falha ao conectar ao servidor SMTP: " + exception.getMessage());
+        }
+    }
+
+    private InternetAddress buildFromAddress(String email, String name) {
+        try {
+            if (name != null && !name.isBlank()) {
+                return new InternetAddress(email, name, "UTF-8");
+            }
+        } catch (UnsupportedEncodingException ignored) {
+        }
+        try {
+            return new InternetAddress(email);
+        } catch (AddressException exception) {
+            throw new IllegalArgumentException("E-mail do remetente inválido: " + email, exception);
         }
     }
 
