@@ -6,13 +6,11 @@ import { Ionicons } from "@expo/vector-icons";
 interface RowActionsProps {
   onEdit?: () => void;
   onToggle?: () => void;
-  toggleLabel: "Ativar" | "Desativar";
+  toggleLabel?: "Ativar" | "Desativar";
 }
 
 type ElementoWeb = { setAttribute?: (nome: string, valor: string) => void };
 
-// No web o atributo title vira a legenda nativa que aparece sob o cursor.
-// No nativo não existe hover, então ali só o accessibilityLabel se aplica.
 function legenda(texto: string) {
   if (Platform.OS !== "web") return {};
   return {
@@ -25,21 +23,26 @@ function legenda(texto: string) {
 export function RowActions({ onEdit, onToggle, toggleLabel }: RowActionsProps) {
   return (
     <View className="flex-row justify-end gap-5">
-      <Pressable {...legenda("Editar")} onPress={onEdit} accessibilityLabel="Editar" hitSlop={8}>
-        <Ionicons name="create-outline" size={20} color="#ef4444" />
-      </Pressable>
-      <Pressable
-        {...legenda(toggleLabel)}
-        onPress={onToggle}
-        accessibilityLabel={toggleLabel}
-        hitSlop={8}
-      >
-        <Ionicons
-          name={toggleLabel === "Ativar" ? "checkmark-circle-outline" : "close-circle-outline"}
-          size={20}
-          color={toggleLabel === "Ativar" ? "#16a34a" : "#ef4444"}
-        />
-      </Pressable>
+      {onEdit ? (
+        <Pressable {...legenda("Editar")} onPress={onEdit} accessibilityLabel="Editar" hitSlop={8}>
+          <Ionicons name="create-outline" size={20} color="#ef4444" />
+        </Pressable>
+      ) : null}
+
+      {onToggle && toggleLabel ? (
+        <Pressable
+          {...legenda(toggleLabel)}
+          onPress={onToggle}
+          accessibilityLabel={toggleLabel}
+          hitSlop={8}
+        >
+          <Ionicons
+            name={toggleLabel === "Ativar" ? "checkmark-circle-outline" : "close-circle-outline"}
+            size={20}
+            color={toggleLabel === "Ativar" ? "#16a34a" : "#ef4444"}
+          />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
