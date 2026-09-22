@@ -32,8 +32,9 @@ public class TipoServicoController {
     @GetMapping
     public ResponseEntity<Page<TipoServicoResponse>> listar(
             @RequestParam(required = false) String nome,
+            @RequestParam(required = false) Boolean ativo,
             Pageable pageable) {
-        Page<TipoServicoResponse> pagina = tipoServicoService.listar(nome, pageable);
+        Page<TipoServicoResponse> pagina = tipoServicoService.listar(nome, ativo, pageable);
         return ResponseEntity.ok(pagina);
     }
 

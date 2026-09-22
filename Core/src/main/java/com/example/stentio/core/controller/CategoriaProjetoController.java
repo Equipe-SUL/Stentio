@@ -36,6 +36,12 @@ public class CategoriaProjetoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<CategoriaProjetoResponse> editar(@PathVariable UUID id, @Valid @RequestBody CategoriaProjetoRequest request) {
+        CategoriaProjetoResponse response = categoriaProjetoService.editar(id, request);
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable UUID id) {
         categoriaProjetoService.deletar(id);

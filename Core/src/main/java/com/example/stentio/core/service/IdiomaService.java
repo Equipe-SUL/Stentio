@@ -44,15 +44,21 @@ public class IdiomaService {
 
     }
 
-    public Page<IdiomaResponse> listar(String nome, Pageable pageable) {
+    public Page<IdiomaResponse> listar(String nome, Boolean ativo, Pageable pageable) {
         Page<Idioma> paginaDeIdiomas;
+        boolean filtroNome = nome != null && !nome.isBlank();
 
-        if (nome == null || nome.isBlank()) {
-            paginaDeIdiomas = idiomaRepository.findAll(pageable);
+        if (filtroNome && ativo != null) {
+            paginaDeIdiomas = idiomaRepository.findByNomeContainingIgnoreCaseAndAtivo(nome, ativo, pageable);
         }
-        //  faz a busca filtrada
-        else {
+        else if (filtroNome) {
             paginaDeIdiomas = idiomaRepository.findByNomeContainingIgnoreCase(nome, pageable);
+        }
+        else if (ativo != null) {
+            paginaDeIdiomas = idiomaRepository.findByAtivo(ativo, pageable);
+        }
+        else {
+            paginaDeIdiomas = idiomaRepository.findAll(pageable);
         }
 
         //  Converte a página de Idioma para a página de DTOs response
@@ -78,24 +84,18 @@ public class IdiomaService {
 
     }
 
-     @Transactional
-     public IdiomaResponse alterarStatus(UUID id, boolean ativo) {
+    @Transactional
+    public IdiomaResponse alterarStatus(UUID id, boolean ativo) {
 
-         Optional<Idioma> caixa = idiomaRepository.findById(id);
-         if (caixa.isEmpty()) {
-             throw new RecursoNaoEncontradoException(id);
-         }
+        Optional<Idioma> caixa = idiomaRepository.findById(id);
+        if (caixa.isEmpty()) {
+            throw new RecursoNaoEncontradoException(id);
+        }
 
-         Idioma idioma = caixa.get();
-         idioma.setAtivo(ativo);
+        Idioma idioma = caixa.get();
+        idioma.setAtivo(ativo);
 
-         Idioma idiomaSalvo = idiomaRepository.save(idioma);
-         return new IdiomaResponse(idiomaSalvo);
-     }
-
-
-
-
-
-
+        Idioma idiomaSalvo = idiomaRepository.save(idioma);
+        return new IdiomaResponse(idiomaSalvo);
+    }
 }

@@ -76,3 +76,22 @@ export function getApiErrorMessage(error: unknown): string {
 
   return "Erro inesperado. Tente novamente.";
 }
+
+    const DEFAULT_CORE_API_URL =
+      Platform.OS === "android" ? "http://10.0.2.2:8082" : "http://localhost:8082";
+    
+    export const CORE_API_URL = process.env.EXPO_PUBLIC_CORE_API_URL ?? DEFAULT_CORE_API_URL;
+    
+    export const coreApi = axios.create({
+      baseURL: CORE_API_URL,
+      timeout: 15000,
+      withCredentials: true,
+    });
+    
+    coreApi.interceptors.request.use(async (config) => {
+      const token = await getToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });

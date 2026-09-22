@@ -1,28 +1,20 @@
-import { FlatList, Pressable, Text, useWindowDimensions, View } from "react-native";
+import { useState } from "react";
+import { FlatList, LayoutChangeEvent, Pressable, Text, View } from "react-native";
 import type { ColumnDef, DataTableProps } from "./types";
 
-const MOBILE_BREAKPOINT = 768;
+const DEFAULT_MOBILE_BREAKPOINT = 480;
 
 function cellStyle(width?: number) {
   if (width) {
-    return {
-      width,
-      flexGrow: 0,
-      flexShrink: 0,
-    };
+    return { width, flexGrow: 0, flexShrink: 0 };
   }
-
-  return {
-    flex: 1,
-    minWidth: 0,
-  };
+  return { flex: 1, minWidth: 0 };
 }
 
 function renderCellValue<T>(item: T, column: ColumnDef<T>) {
   if (column.render) {
     return column.render(item);
   }
-
   return (
     <Text className="text-sm text-neutral-800" numberOfLines={1}>
       {String(item[column.key])}
@@ -41,20 +33,33 @@ export function DataTable<T>({
   onRowPress,
   emptyMessage = "Nenhum registro encontrado",
   scrollEnabled = true,
+  mobileBreakpoint = DEFAULT_MOBILE_BREAKPOINT,
 }: DataTableProps<T>) {
-  const { width } = useWindowDimensions();
-  const isMobile = width < MOBILE_BREAKPOINT;
+  const [containerWidth, setContainerWidth] = useState(0);
+  // Antes da primeira medição (containerWidth === 0), assume modo tabela
+  // para evitar um "flash" visual — o onLayout normalmente dispara antes da pintura.
+  const isMobile = containerWidth > 0 && containerWidth < mobileBreakpoint;
+
+  function handleLayout(event: LayoutChangeEvent) {
+    setContainerWidth(event.nativeEvent.layout.width);
+  }
 
   if (data.length === 0) {
     return (
-      <View className="items-center justify-center rounded-2xl border border-neutral-200 bg-white px-6 py-16">
+      <View
+        onLayout={handleLayout}
+        className="items-center justify-center rounded-2xl border border-neutral-200 bg-white px-6 py-16"
+      >
         <Text className="text-sm text-neutral-400">{emptyMessage}</Text>
       </View>
     );
   }
 
   return (
-    <View className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+    <View
+      onLayout={handleLayout}
+      className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+    >
       {!isMobile && (
         <View className="flex-row items-center border-b border-neutral-200 bg-neutral-50 px-6 py-4">
           {columns.map((column) => (
@@ -134,17 +139,11 @@ function CardRow<T>({
       className="gap-3 px-5 py-4 active:bg-neutral-50"
     >
       {visibleColumns.map((column) => (
-        <View
-          key={String(column.key)}
-          className="flex-row items-center justify-between"
-        >
+        <View key={String(column.key)} className="flex-row items-center justify-between">
           <Text className="text-xs font-medium uppercase tracking-wide text-neutral-500">
             {column.header}
           </Text>
-
-          <View className="ml-4 shrink items-end">
-            {renderCellValue(item, column)}
-          </View>
+          <View className="ml-4 shrink items-end">{renderCellValue(item, column)}</View>
         </View>
       ))}
     </Pressable>
