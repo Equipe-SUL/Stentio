@@ -34,7 +34,7 @@ services:
       - mongodb
       - rabbitmq
     networks:
-      - app
+      - stentio-network
 
   core:
     build:
@@ -65,7 +65,7 @@ services:
       - mongodb
       - rabbitmq
     networks:
-      - app
+      - stentio-network
 
   email-service:
     build:
@@ -84,28 +84,27 @@ services:
     depends_on:
       - mongodb
       - rabbitmq
-      - mailhog
     networks:
-      - app
+      - stentio-network
 
   postgres:
-    container_name: postgresdb
-    image: postgres
+    image: postgres:18-trixie
+    container_name: postgresdb-local
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-stentio}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       PGDATA: /data/postgres
     volumes:
-      - postgres:/data/postgres
+      - postgres_data:/data/postgres
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     networks:
-      - app
+      - stentio-network
     restart: unless-stopped
 
   mongodb:
-    image: mongo:7.0
+    image: mongodb/mongodb-community-server:8.0-ubi8-slim
     container_name: mongodb-local
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
@@ -115,11 +114,11 @@ services:
     ports:
       - "${MONGO_PORT:-27017}:27017"
     networks:
-      - app
+      - stentio-network
     restart: unless-stopped
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management
     container_name: rabbitmq-local
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-myuser}
@@ -130,23 +129,27 @@ services:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     networks:
-      - app
+      - stentio-network
     restart: unless-stopped
 
   mailhog:
+    # dependência de desenvolvimento
+    # para subir use: docker compose --profile dev [...]
     image: mailhog/mailhog
     container_name: email-service-mailhog
     networks:
-      - app
+      - stentio-network
+    profiles:
+      - dev
     ports:
       - "${MAILHOG_PORT_SMTP:-1025}:1025"
       - "${MAILHOG_PORT:-8025}:8025"
 
 volumes:
-  postgres:
   mongo_data:
+  postgres_data:
   rabbitmq_data:
 
 networks:
-  app:
+  stentio-network:
     driver: bridge
