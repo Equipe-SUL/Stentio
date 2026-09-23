@@ -1,0 +1,499 @@
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
+import {
+  buscarEmpresa,
+  salvarEmpresa,
+  salvarLogo,
+  type EmpresaRequest,
+  type EmpresaResponse,
+} from '../../../../lib/empresaService';
+import { CORE_API_URL, getApiErrorMessage } from '../../../../lib/api';
+
+// ---------------------------------------------------------------------------
+// Tipos
+// ---------------------------------------------------------------------------
+
+type FormErrors = Partial<Record<keyof EmpresaRequest, string>>;
+
+type Feedback = {
+  tipo: 'sucesso' | 'erro' | null;
+  mensagem: string;
+};
+
+// ---------------------------------------------------------------------------
+// Helpers de validação
+// ---------------------------------------------------------------------------
+
+function validarCnpj(cnpj: string): boolean {
+  // Aceita formato com ou sem máscara: XX.XXX.XXX/XXXX-YY ou 14 dígitos alfanuméricos
+  const limpo = cnpj.replace(/[.\-/\s]/g, '');
+  return limpo.length >= 12 && limpo.length <= 14;
+}
+
+function validarForm(form: EmpresaRequest): FormErrors {
+  const erros: FormErrors = {};
+
+  if (!form.nome.trim()) {
+    erros.nome = 'Nome é obrigatório.';
+  }
+
+  if (!form.cnpj.trim()) {
+    erros.cnpj = 'CNPJ é obrigatório.';
+  } else if (!validarCnpj(form.cnpj.trim())) {
+    erros.cnpj = 'CNPJ inválido. Informe 12 a 14 caracteres.';
+  }
+
+  if (!form.endereco.trim()) {
+    erros.endereco = 'Endereço é obrigatório.';
+  }
+
+  if (form.telefone.trim() && !/^[0-9+()\-\s]{8,20}$/.test(form.telefone.trim())) {
+    erros.telefone = 'Telefone inválido.';
+  }
+
+  return erros;
+}
+
+// ---------------------------------------------------------------------------
+// Componente principal
+// ---------------------------------------------------------------------------
+
+const FORM_VAZIO: EmpresaRequest = {
+  nome: '',
+  cnpj: '',
+  endereco: '',
+  telefone: '',
+};
+
+export default function ConfiguracaoEmpresaScreen() {
+  const router = useRouter();
+
+  // Estados do formulário
+  const [form, setForm] = useState<EmpresaRequest>(FORM_VAZIO);
+  const [errosForm, setErrosForm] = useState<FormErrors>({});
+
+  // Estado dos dados carregados
+  const [dadosEmpresa, setDadosEmpresa] = useState<EmpresaResponse | null>(null);
+
+  // Estados de controle de UI
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [enviandoLogo, setEnviandoLogo] = useState(false);
+
+  // Feedback geral
+  const [feedback, setFeedback] = useState<Feedback>({ tipo: null, mensagem: '' });
+
+  // Chave para forçar re-render da imagem da logo após upload
+  const [logoKey, setLogoKey] = useState(Date.now());
+
+  // ---------------------------------------------------------------------------
+  // Carregamento inicial
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    let ativo = true;
+
+    buscarEmpresa()
+      .then((dados) => {
+        if (!ativo) return;
+        setDadosEmpresa(dados);
+        if (dados) {
+          setForm({
+            nome: dados.nome ?? '',
+            cnpj: dados.cnpj ?? '',
+            endereco: dados.endereco ?? '',
+            telefone: dados.telefone ?? '',
+          });
+        }
+      })
+      .catch(() => {
+        if (ativo) {
+          setFeedback({
+            tipo: 'erro',
+            mensagem: 'Não foi possível carregar os dados da empresa.',
+          });
+        }
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
+
+  function setcampo<K extends keyof EmpresaRequest>(campo: K, valor: string) {
+    setForm((prev) => ({ ...prev, [campo]: valor }));
+    // Limpa o erro do campo ao editar
+    if (errosForm[campo]) {
+      setErrosForm((prev) => ({ ...prev, [campo]: undefined }));
+    }
+  }
+
+  async function handleSalvar() {
+    setFeedback({ tipo: null, mensagem: '' });
+
+    const erros = validarForm(form);
+    setErrosForm(erros);
+    if (Object.keys(erros).length > 0) return;
+
+    setSalvando(true);
+    try {
+      const dados = await salvarEmpresa({
+        nome: form.nome.trim(),
+        cnpj: form.cnpj.trim(),
+        endereco: form.endereco.trim(),
+        telefone: form.telefone.trim(),
+      });
+      setDadosEmpresa(dados);
+      setFeedback({ tipo: 'sucesso', mensagem: 'Configurações salvas com sucesso' });
+    } catch (error) {
+      setFeedback({ tipo: 'erro', mensagem: getApiErrorMessage(error) });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function handleEscolherLogo() {
+    try {
+      const resultado = await DocumentPicker.getDocumentAsync({
+        type: ['image/png', 'image/jpeg', 'image/webp'],
+        copyToCacheDirectory: true,
+      });
+
+      if (resultado.canceled || !resultado.assets?.length) return;
+
+      const arquivo = resultado.assets[0];
+      const tamanhoMaxMb = 2 * 1024 * 1024;
+
+      if (arquivo.size && arquivo.size > tamanhoMaxMb) {
+        setFeedback({ tipo: 'erro', mensagem: 'A logo deve ter no máximo 2 MB.' });
+        return;
+      }
+
+      setEnviandoLogo(true);
+      setFeedback({ tipo: null, mensagem: '' });
+
+      try {
+        const dados = await salvarLogo(
+          arquivo.uri,
+          arquivo.name,
+          arquivo.mimeType ?? 'image/png'
+        );
+        setDadosEmpresa(dados);
+        setLogoKey(Date.now()); // força reload da imagem
+        setFeedback({ tipo: 'sucesso', mensagem: 'Logo atualizada com sucesso.' });
+      } catch (error) {
+        setFeedback({ tipo: 'erro', mensagem: getApiErrorMessage(error) });
+      } finally {
+        setEnviandoLogo(false);
+      }
+    } catch {
+      // Usuário cancelou ou erro de permissão
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render: estado de carregamento inicial
+  // ---------------------------------------------------------------------------
+
+  if (carregando) {
+    return (
+      <View className="flex-1 items-center justify-center bg-zinc-50 p-6">
+        <ActivityIndicator size="large" color="#8c5230" />
+        <Text className="text-zinc-600 font-medium mt-4">Carregando dados da empresa...</Text>
+      </View>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render principal
+  // ---------------------------------------------------------------------------
+
+  const logoUrl = `${CORE_API_URL}/api/v1/empresa/logo?t=${logoKey}`;
+  const temLogo = dadosEmpresa?.logoDisponivel ?? false;
+
+  return (
+    <ScrollView
+      className="flex-1 bg-[#fbfaf8]"
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View className="w-full max-w-5xl mx-auto px-4 py-8 md:px-8">
+
+        {/* Cabeçalho de Navegação e Título */}
+        <View className="flex-row items-center justify-between mb-8 pb-4 border-b border-zinc-200">
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity
+              onPress={() => (router.canGoBack() ? router.back() : router.push('/usuarios'))}
+              className="p-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm active:bg-zinc-100"
+              accessibilityLabel="Voltar"
+            >
+              <Ionicons name="arrow-back" size={20} color="#8c5230" />
+            </TouchableOpacity>
+
+            <View>
+              <View className="flex-row items-center gap-2">
+                <Text className="text-xs font-bold text-[#8c5230] uppercase tracking-wider">
+                  Configurações do Sistema
+                </Text>
+                <Text className="text-xs text-zinc-400">•</Text>
+                <Text className="text-xs text-zinc-500 font-medium">Empresa</Text>
+              </View>
+              <Text className="text-2xl md:text-3xl font-serif font-bold text-zinc-900 mt-1">
+                Dados da Empresa
+              </Text>
+            </View>
+          </View>
+
+          <View className="hidden md:flex flex-row items-center gap-2 bg-[#8c5230]/10 px-3 py-1.5 rounded-full">
+            <Ionicons name="business" size={16} color="#8c5230" />
+            <Text className="text-xs font-semibold text-[#8c5230]">
+              {dadosEmpresa ? 'Cadastro existente' : 'Novo cadastro'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Banner de Feedback */}
+        {feedback.tipo && (
+          <View
+            className={`w-full rounded-2xl p-4 mb-6 flex-row items-center gap-3 border ${
+              feedback.tipo === 'sucesso'
+                ? 'bg-emerald-50 border-emerald-200'
+                : 'bg-red-50 border-red-200'
+            }`}
+          >
+            <Ionicons
+              name={feedback.tipo === 'sucesso' ? 'checkmark-circle' : 'alert-circle'}
+              size={24}
+              color={feedback.tipo === 'sucesso' ? '#059669' : '#dc2626'}
+            />
+            <Text
+              className={`flex-1 text-sm font-medium ${
+                feedback.tipo === 'sucesso' ? 'text-emerald-800' : 'text-red-700'
+              }`}
+            >
+              {feedback.mensagem}
+            </Text>
+            <TouchableOpacity onPress={() => setFeedback({ tipo: null, mensagem: '' })}>
+              <Ionicons name="close" size={18} color="#71717a" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View className="flex-col lg:flex-row gap-8">
+
+          {/* Coluna Principal: Formulário */}
+          <View className="flex-1 bg-white rounded-3xl p-6 md:p-8 border border-zinc-200/80 shadow-sm">
+            <View className="flex-row items-center gap-2.5 mb-6">
+              <View className="w-8 h-8 rounded-lg bg-[#8c5230]/10 items-center justify-center">
+                <Ionicons name="document-text-outline" size={18} color="#8c5230" />
+              </View>
+              <Text className="text-lg font-bold text-zinc-900">Informações da Empresa</Text>
+            </View>
+
+            {/* Nome */}
+            <View className="mb-5">
+              <Text className="text-zinc-700 font-semibold text-sm mb-2">
+                Nome da Empresa *
+              </Text>
+              <TextInput
+                placeholder="Ex: Stentio Traduções Ltda."
+                placeholderTextColor="#a1a1aa"
+                value={form.nome}
+                onChangeText={(v) => setcampo('nome', v)}
+                className={`w-full border rounded-2xl px-4 py-3.5 bg-zinc-50 text-zinc-900 text-base ${
+                  errosForm.nome ? 'border-red-400 bg-red-50/20' : 'border-zinc-200'
+                }`}
+              />
+              {errosForm.nome && (
+                <Text className="text-xs text-red-500 font-medium mt-1">{errosForm.nome}</Text>
+              )}
+            </View>
+
+            {/* CNPJ */}
+            <View className="mb-5">
+              <Text className="text-zinc-700 font-semibold text-sm mb-2">CNPJ *</Text>
+              <TextInput
+                placeholder="Ex: 00.000.000/0001-00"
+                placeholderTextColor="#a1a1aa"
+                value={form.cnpj}
+                onChangeText={(v) => setcampo('cnpj', v)}
+                autoCapitalize="characters"
+                className={`w-full border rounded-2xl px-4 py-3.5 bg-zinc-50 text-zinc-900 text-base ${
+                  errosForm.cnpj ? 'border-red-400 bg-red-50/20' : 'border-zinc-200'
+                }`}
+              />
+              {errosForm.cnpj && (
+                <Text className="text-xs text-red-500 font-medium mt-1">{errosForm.cnpj}</Text>
+              )}
+            </View>
+
+            {/* Endereço */}
+            <View className="mb-5">
+              <Text className="text-zinc-700 font-semibold text-sm mb-2">Endereço *</Text>
+              <TextInput
+                placeholder="Ex: Rua das Flores, 123 – São Paulo/SP"
+                placeholderTextColor="#a1a1aa"
+                value={form.endereco}
+                onChangeText={(v) => setcampo('endereco', v)}
+                multiline
+                numberOfLines={2}
+                className={`w-full border rounded-2xl px-4 py-3.5 bg-zinc-50 text-zinc-900 text-base ${
+                  errosForm.endereco ? 'border-red-400 bg-red-50/20' : 'border-zinc-200'
+                }`}
+              />
+              {errosForm.endereco && (
+                <Text className="text-xs text-red-500 font-medium mt-1">
+                  {errosForm.endereco}
+                </Text>
+              )}
+            </View>
+
+            {/* Telefone */}
+            <View className="mb-6">
+              <Text className="text-zinc-700 font-semibold text-sm mb-2">Telefone</Text>
+              <TextInput
+                placeholder="Ex: +55 (11) 99999-9999"
+                placeholderTextColor="#a1a1aa"
+                value={form.telefone}
+                onChangeText={(v) => setcampo('telefone', v)}
+                keyboardType="phone-pad"
+                className={`w-full border rounded-2xl px-4 py-3.5 bg-zinc-50 text-zinc-900 text-base ${
+                  errosForm.telefone ? 'border-red-400 bg-red-50/20' : 'border-zinc-200'
+                }`}
+              />
+              {errosForm.telefone && (
+                <Text className="text-xs text-red-500 font-medium mt-1">
+                  {errosForm.telefone}
+                </Text>
+              )}
+              <Text className="text-xs text-zinc-400 mt-1.5">
+                Campo opcional. Será exibido nos documentos gerados.
+              </Text>
+            </View>
+
+            {/* Botão Salvar */}
+            <View className="pt-4 border-t border-zinc-100">
+              <TouchableOpacity
+                onPress={handleSalvar}
+                disabled={salvando}
+                className="flex-row items-center justify-center gap-2 bg-[#8c5230] px-6 py-3.5 rounded-2xl shadow-md shadow-orange-900/20 active:opacity-90"
+              >
+                {salvando ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="save-outline" size={18} color="#fff" />
+                    <Text className="text-white font-bold text-base">Salvar Configurações</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Coluna Lateral: Logo */}
+          <View className="w-full lg:w-80 flex-col gap-6">
+            <View className="bg-white rounded-3xl p-6 md:p-8 border border-zinc-200/80 shadow-sm">
+              <View className="flex-row items-center gap-2.5 mb-4">
+                <View className="w-8 h-8 rounded-lg bg-[#8c5230]/10 items-center justify-center">
+                  <Ionicons name="image-outline" size={18} color="#8c5230" />
+                </View>
+                <Text className="text-lg font-bold text-zinc-900">Logo</Text>
+              </View>
+
+              <Text className="text-sm text-zinc-600 leading-relaxed mb-5">
+                A logo será exibida nos documentos e relatórios gerados pelo sistema. Formatos
+                aceitos: PNG, JPEG ou WebP. Tamanho máximo: 2 MB.
+              </Text>
+
+              {/* Preview da logo */}
+              <View className="items-center mb-5">
+                {temLogo ? (
+                  <View className="w-40 h-40 rounded-2xl border border-zinc-200 overflow-hidden bg-zinc-50 items-center justify-center">
+                    <Image
+                      key={logoKey}
+                      source={{
+                        uri: logoUrl,
+                        headers: { Accept: 'image/*' },
+                      }}
+                      style={{ width: 160, height: 160 }}
+                      contentFit="contain"
+                      accessibilityLabel="Logo da empresa"
+                    />
+                  </View>
+                ) : (
+                  <View className="w-40 h-40 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 items-center justify-center gap-2">
+                    <Ionicons name="image-outline" size={36} color="#a1a1aa" />
+                    <Text className="text-xs text-zinc-400 text-center px-2">
+                      Nenhuma logo cadastrada
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Botão de upload */}
+              {dadosEmpresa ? (
+                <TouchableOpacity
+                  onPress={handleEscolherLogo}
+                  disabled={enviandoLogo}
+                  className="w-full flex-row items-center justify-center gap-2 border border-zinc-300 rounded-2xl py-3.5 px-4 active:bg-zinc-50"
+                >
+                  {enviandoLogo ? (
+                    <ActivityIndicator color="#8c5230" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload-outline" size={18} color="#8c5230" />
+                      <Text className="text-sm font-semibold text-zinc-700">
+                        {temLogo ? 'Alterar logo' : 'Enviar logo'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View className="w-full rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="information-circle-outline" size={16} color="#b45309" />
+                    <Text className="text-xs text-amber-800 flex-1">
+                      Salve os dados da empresa antes de enviar a logo.
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Card informativo */}
+            <View className="bg-amber-50/70 border border-amber-200/70 rounded-3xl p-6">
+              <View className="flex-row items-center gap-2 mb-2">
+                <Ionicons name="information-circle-outline" size={20} color="#b45309" />
+                <Text className="font-bold text-amber-900 text-sm">Sobre os dados da empresa</Text>
+              </View>
+              <Text className="text-xs text-amber-800 leading-relaxed">
+                As informações cadastradas aqui serão utilizadas automaticamente nos documentos
+                gerados pelo sistema, como contratos, propostas e e-mails enviados aos clientes.
+              </Text>
+            </View>
+          </View>
+
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
