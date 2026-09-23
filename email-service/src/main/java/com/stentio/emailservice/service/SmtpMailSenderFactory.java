@@ -20,7 +20,7 @@ public class SmtpMailSenderFactory {
         Properties properties = sender.getJavaMailProperties();
         boolean authenticated = config.username() != null && !config.username().isBlank()
                 && config.password() != null && !config.password().isBlank();
-        properties.put("mail.smtp.auth", authenticated);
+        properties.put("mail.smtp.auth", authenticated ? "true" : "false");
         properties.put("mail.smtp.starttls.enable", "TLS".equals(config.encryption()));
         properties.put("mail.smtp.starttls.required", "TLS".equals(config.encryption()));
         properties.put("mail.smtp.ssl.enable", "SSL".equals(config.encryption()));
