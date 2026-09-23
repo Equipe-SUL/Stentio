@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.stentio.core.dto.EmpresaPatchRequest;
 
 @RestController
 @RequestMapping("/api/v1/empresa")
@@ -41,5 +42,15 @@ public class ConfiguracaoEmpresaController {
             @RequestParam("arquivo") MultipartFile arquivo
     ) {
         return ResponseEntity.ok(service.salvarLogo(arquivo));
+    }
+
+    @PatchMapping
+    public ResponseEntity<EmpresaResponse> atualizarParcialmente(
+            @Valid @RequestBody EmpresaPatchRequest request
+    ) {
+
+        return ResponseEntity.ok(
+                service.atualizarParcialmente(request)
+        );
     }
 }

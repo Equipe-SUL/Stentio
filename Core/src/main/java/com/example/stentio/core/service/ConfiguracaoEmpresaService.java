@@ -8,6 +8,7 @@ import com.example.stentio.core.validation.CnpjValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.stentio.core.dto.EmpresaPatchRequest;
 
 import java.io.IOException;
 
@@ -115,5 +116,59 @@ public class ConfiguracaoEmpresaService {
         }
 
         return new EmpresaResponse(repository.save(empresa));
+    }
+
+    @Transactional
+    public EmpresaResponse atualizarParcialmente(
+            EmpresaPatchRequest request
+    ) {
+
+        ConfiguracaoEmpresa empresa = repository
+                .findById(ConfiguracaoEmpresa.ID_UNICO)
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Configuração da empresa ainda não cadastrada"
+                        )
+                );
+
+        boolean possuiAlteracao = false;
+
+        if (request.nome() != null) {
+            empresa.atualizarNome(request.nome());
+            possuiAlteracao = true;
+        }
+
+        if (request.cnpj() != null) {
+
+            if (!CnpjValidator.valido(request.cnpj())) {
+                throw new IllegalArgumentException(
+                        "CNPJ inválido"
+                );
+            }
+
+            empresa.atualizarCnpj(request.cnpj());
+            possuiAlteracao = true;
+        }
+
+        if (request.endereco() != null) {
+            empresa.atualizarEndereco(request.endereco());
+            possuiAlteracao = true;
+        }
+
+        if (request.telefone() != null) {
+            empresa.atualizarTelefone(request.telefone());
+            possuiAlteracao = true;
+        }
+
+        if (!possuiAlteracao) {
+            throw new IllegalArgumentException(
+                    "Nenhum campo foi informado para atualização"
+            );
+        }
+
+        ConfiguracaoEmpresa salva =
+                repository.save(empresa);
+
+        return new EmpresaResponse(salva);
     }
 }

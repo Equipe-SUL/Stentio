@@ -64,6 +64,52 @@ public class ConfiguracaoEmpresa {
                         : telefone.strip();
     }
 
+    public void atualizarNome(String nome) {
+
+        if (nome == null || nome.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Nome não pode ser vazio"
+            );
+        }
+
+        this.nome = nome.strip();
+    }
+
+
+    public void atualizarCnpj(String cnpj) {
+
+        if (cnpj == null || cnpj.isBlank()) {
+            throw new IllegalArgumentException(
+                    "CNPJ não pode ser vazio"
+            );
+        }
+
+        this.cnpj = normalizarCnpj(cnpj);
+    }
+
+
+    public void atualizarEndereco(String endereco) {
+
+        if (endereco == null || endereco.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Endereço não pode ser vazio"
+            );
+        }
+
+        this.endereco = endereco.strip();
+    }
+
+
+    public void atualizarTelefone(String telefone) {
+
+        if (telefone == null || telefone.isBlank()) {
+            this.telefone = null;
+            return;
+        }
+
+        this.telefone = telefone.strip();
+    }
+
     public void atualizarLogo(
             byte[] conteudo,
             String contentType,
