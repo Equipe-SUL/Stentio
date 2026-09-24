@@ -34,6 +34,8 @@ public class SecurityConfig {
     private static final String ROTAS_CATEGORIAS_PROJETO = "/api/v1/categorias-projeto/**";
     private static final String ROTAS_IDIOMAS = "/api/v1/idiomas/**";
     private static final String ROTAS_TIPOS_SERVICO = "/api/v1/tipos-servico/**";
+    private static final String ROTA_EMPRESA = "/api/v1/empresa";
+    private static final String ROTAS_EMPRESA = "/api/v1/empresa/**";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenService tokenService) throws Exception {
@@ -52,13 +54,62 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(rotas -> rotas
                         .requestMatchers("/actuator/health").permitAll()
-                        .requestMatchers(HttpMethod.GET, ROTAS_RECURSOS).authenticated()
-                        .requestMatchers(ROTAS_RECURSOS).hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
-                        .requestMatchers(ROTAS_CATEGORIAS_PROJETO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
-                        .requestMatchers(ROTAS_IDIOMAS).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
-                        .requestMatchers(ROTAS_TIPOS_SERVICO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
+
+                        // Empresa
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                ROTA_EMPRESA,
+                                ROTAS_EMPRESA
+                        ).authenticated()
+
+                        .requestMatchers(
+                                ROTA_EMPRESA,
+                                ROTAS_EMPRESA
+                        ).hasRole(Role.ADMIN.name())
+
+                        // Recursos
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                ROTAS_RECURSOS
+                        ).authenticated()
+
+                        .requestMatchers(
+                                ROTAS_RECURSOS
+                        ).hasAnyRole(
+                                Role.ADMIN.name(),
+                                Role.GESTOR_PROJETO.name()
+                        )
+
+                        // Categorias
+                        .requestMatchers(
+                                ROTAS_CATEGORIAS_PROJETO
+                        ).hasAnyRole(
+                                Role.ADMIN.name(),
+                                Role.FINANCEIRO.name(),
+                                Role.GESTOR_PROJETO.name()
+                        )
+
+                        // Idiomas
+                        .requestMatchers(
+                                ROTAS_IDIOMAS
+                        ).hasAnyRole(
+                                Role.ADMIN.name(),
+                                Role.FINANCEIRO.name(),
+                                Role.GESTOR_PROJETO.name()
+                        )
+
+                        // Tipos de serviço
+                        .requestMatchers(
+                                ROTAS_TIPOS_SERVICO
+                        ).hasAnyRole(
+                                Role.ADMIN.name(),
+                                Role.FINANCEIRO.name(),
+                                Role.GESTOR_PROJETO.name()
+                        )
+
                         .anyRequest().authenticated()
                 )
+
                 .addFilterBefore(new JwtAuthFilter(tokenService), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
