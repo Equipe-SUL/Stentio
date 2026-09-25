@@ -1,4 +1,12 @@
 services:
+  front:
+    build:
+      context: ./frontend
+    container_name: stentio-web
+    env_file:
+      - .env
+    ports:
+      - "8080:80"
   auth:
     build:
       context: ./Auth

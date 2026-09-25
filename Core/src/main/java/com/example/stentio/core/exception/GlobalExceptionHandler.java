@@ -24,6 +24,7 @@ public class GlobalExceptionHandler {
 
     private static final String CONSTRAINT_EMAIL = "uk_recursos_email";
     private static final String CONSTRAINT_PAR_IDIOMA = "uk_recursos_precos_par_unidade";
+    private static final String CONSTRAINT_TABELA_PRECO = "uk_tabelas_preco_combinacao";
 
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     public ResponseEntity<ErroResponse> handleNaoEncontrado(RecursoNaoEncontradoException ex) {
@@ -32,6 +33,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailJaCadastradoException.class)
     public ResponseEntity<ErroResponse> handleEmailJaCadastrado(EmailJaCadastradoException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    // RN.1 da US-05 (Cenário 2): combinação de serviço, idiomas e unidade já cadastrada.
+    @ExceptionHandler(TabelaPrecoDuplicadaException.class)
+    public ResponseEntity<ErroResponse> handleTabelaPrecoDuplicada(TabelaPrecoDuplicadaException ex) {
         return responder(HttpStatus.CONFLICT, ex.getMessage());
     }
 
@@ -75,6 +82,9 @@ public class GlobalExceptionHandler {
         }
         if (causa.contains(CONSTRAINT_PAR_IDIOMA)) {
             return responder(HttpStatus.CONFLICT, "Par de idiomas repetido para a mesma unidade de cobrança");
+        }
+        if (causa.contains(CONSTRAINT_TABELA_PRECO)) {
+            return responder(HttpStatus.CONFLICT, TabelaPrecoDuplicadaException.MENSAGEM);
         }
 
         log.warn("Violação de integridade não mapeada", ex);
