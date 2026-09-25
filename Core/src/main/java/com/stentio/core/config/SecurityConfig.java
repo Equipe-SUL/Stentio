@@ -55,6 +55,12 @@ public class SecurityConfig {
                                 escreverErro(response, HttpStatus.FORBIDDEN, "Perfil sem permissão para esta operação"))
                 )
                 .authorizeHttpRequests(rotas -> rotas
+                        // Liberação das rotas do Swagger / OpenAPI
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         // Regra de clientes: somente a role mais alta (ADMIN) pode excluir clientes
                         .requestMatchers(HttpMethod.DELETE, ROTAS_CLIENTES).hasRole(Role.ADMIN.name())
