@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -12,6 +11,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
+import { getToken } from '../../../../lib/auth';
 import {
   buscarEmpresa,
   salvarEmpresa,
@@ -37,9 +37,25 @@ type Feedback = {
 // ---------------------------------------------------------------------------
 
 function validarCnpj(cnpj: string): boolean {
-  // Aceita formato com ou sem máscara: XX.XXX.XXX/XXXX-YY ou 14 dígitos alfanuméricos
-  const limpo = cnpj.replace(/[.\-/\s]/g, '');
-  return limpo.length >= 12 && limpo.length <= 14;
+  const limpo = cnpj.replace(/\D/g, '');
+  if (limpo.length !== 14 || /^(\d)\1+$/.test(limpo)) return false;
+
+  const calcularDigito = (tamanho: number) => {
+    let soma = 0;
+    let peso = tamanho - 7;
+    for (let indice = 0; indice < tamanho; indice += 1) {
+      soma += Number(limpo[indice]) * peso;
+      peso -= 1;
+      if (peso < 2) peso = 9;
+    }
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+
+  return (
+    calcularDigito(12) === Number(limpo[12]) &&
+    calcularDigito(13) === Number(limpo[13])
+  );
 }
 
 function validarForm(form: EmpresaRequest): FormErrors {
@@ -96,7 +112,8 @@ export default function ConfiguracaoEmpresaScreen() {
   const [feedback, setFeedback] = useState<Feedback>({ tipo: null, mensagem: '' });
 
   // Chave para forçar re-render da imagem da logo após upload
-  const [logoKey, setLogoKey] = useState(Date.now());
+  const [logoKey, setLogoKey] = useState(() => Date.now());
+  const [logoToken, setLogoToken] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Carregamento inicial
@@ -104,6 +121,10 @@ export default function ConfiguracaoEmpresaScreen() {
 
   useEffect(() => {
     let ativo = true;
+
+    getToken().then((token) => {
+      if (ativo) setLogoToken(token);
+    });
 
     buscarEmpresa()
       .then((dados) => {
@@ -432,7 +453,10 @@ export default function ConfiguracaoEmpresaScreen() {
                       key={logoKey}
                       source={{
                         uri: logoUrl,
-                        headers: { Accept: 'image/*' },
+                        headers: {
+                          Accept: 'image/*',
+                          ...(logoToken ? { Authorization: `Bearer ${logoToken}` } : {}),
+                        },
                       }}
                       style={{ width: 160, height: 160 }}
                       contentFit="contain"
