@@ -2,7 +2,6 @@ package com.stentio.core.controller;
 import com.stentio.core.dto.AlteracaoStatusRequest;
 import com.stentio.core.dto.IdiomaRequest;
 import com.stentio.core.dto.IdiomaResponse;
-import com.stentio.core.model.Idioma;
 import com.stentio.core.service.IdiomaService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;

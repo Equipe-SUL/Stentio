@@ -1,7 +1,6 @@
 package com.stentio.core.repository;
 
 import com.stentio.core.model.CategoriaProjeto;
-import com.stentio.core.model.Idioma;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

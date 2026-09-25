@@ -25,14 +25,25 @@ public class GlobalExceptionHandler {
     private static final String CONSTRAINT_EMAIL = "uk_recursos_email";
     private static final String CONSTRAINT_PAR_IDIOMA = "uk_recursos_precos_par_unidade";
     private static final String CONSTRAINT_TABELA_PRECO = "uk_tabelas_preco_combinacao";
+    private static final String CONSTRAINT_CPF_CNPJ = "uk_clientes_cpf_cnpj";
 
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     public ResponseEntity<ErroResponse> handleNaoEncontrado(RecursoNaoEncontradoException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler(ClienteNaoEncontradoException.class)
+    public ResponseEntity<ErroResponse> handleClienteNaoEncontrado(ClienteNaoEncontradoException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
     @ExceptionHandler(EmailJaCadastradoException.class)
     public ResponseEntity<ErroResponse> handleEmailJaCadastrado(EmailJaCadastradoException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(CpfCnpjJaCadastradoException.class)
+    public ResponseEntity<ErroResponse> handleCpfCnpjJaCadastrado(CpfCnpjJaCadastradoException ex) {
         return responder(HttpStatus.CONFLICT, ex.getMessage());
     }
 
@@ -44,6 +55,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RecursoInvalidoException.class)
     public ResponseEntity<ErroResponse> handleRecursoInvalido(RecursoInvalidoException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(ClienteInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleClienteInvalido(ClienteInvalidoException ex) {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
@@ -85,6 +101,9 @@ public class GlobalExceptionHandler {
         }
         if (causa.contains(CONSTRAINT_TABELA_PRECO)) {
             return responder(HttpStatus.CONFLICT, TabelaPrecoDuplicadaException.MENSAGEM);
+        }
+        if (causa.contains(CONSTRAINT_CPF_CNPJ)) {
+            return responder(HttpStatus.CONFLICT, CpfCnpjJaCadastradoException.MENSAGEM);
         }
 
         log.warn("Violação de integridade não mapeada", ex);

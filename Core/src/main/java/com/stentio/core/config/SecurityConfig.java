@@ -10,6 +10,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -28,8 +29,10 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
+    private static final String ROTAS_CLIENTES = "/api/v1/clientes/**";
     private static final String ROTAS_RECURSOS = "/api/v1/recursos/**";
     private static final String ROTAS_CATEGORIAS_PROJETO = "/api/v1/categorias-projeto/**";
     private static final String ROTAS_IDIOMAS = "/api/v1/idiomas/**";
@@ -53,6 +56,10 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(rotas -> rotas
                         .requestMatchers("/actuator/health").permitAll()
+                        // Regra de clientes: somente a role mais alta (ADMIN) pode excluir clientes
+                        .requestMatchers(HttpMethod.DELETE, ROTAS_CLIENTES).hasRole(Role.ADMIN.name())
+                        // Qualquer usuário autenticado pode cadastrar, listar, consultar ou modificar clientes
+                        .requestMatchers(ROTAS_CLIENTES).authenticated()
                         .requestMatchers(HttpMethod.GET, ROTAS_RECURSOS).authenticated()
                         .requestMatchers(ROTAS_RECURSOS).hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
                         .requestMatchers(ROTAS_CATEGORIAS_PROJETO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
