@@ -1,6 +1,6 @@
-package com.example.stentio.core.dto;
+package com.stentio.emailservice.dto;
 
-import com.example.stentio.core.model.ConfiguracaoEmpresa;
+import com.stentio.emailservice.model.ConfiguracaoEmpresaDocument;
 
 public record EmpresaResponse(
 
@@ -12,14 +12,13 @@ public record EmpresaResponse(
 
 ) {
 
-    public EmpresaResponse(ConfiguracaoEmpresa empresa) {
+    public EmpresaResponse(ConfiguracaoEmpresaDocument empresa) {
         this(
                 empresa.getNome(),
                 empresa.getCnpj(),
                 empresa.getEndereco(),
                 empresa.getTelefone(),
-                empresa.getLogo() != null
-                        && empresa.getLogo().length > 0
+                empresa.possuiLogo()
         );
     }
 }

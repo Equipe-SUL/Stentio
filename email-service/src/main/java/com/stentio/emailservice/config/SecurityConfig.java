@@ -1,9 +1,8 @@
-package com.example.stentio.core.config;
+package com.stentio.emailservice.config;
 
-import com.example.stentio.core.model.Role;
-import com.example.stentio.core.service.TokenService;
+import com.stentio.emailservice.model.Role;
+import com.stentio.emailservice.service.TokenService;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -16,24 +15,17 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private static final String ROTAS_RECURSOS = "/api/v1/recursos/**";
-    private static final String ROTAS_CATEGORIAS_PROJETO = "/api/v1/categorias-projeto/**";
-    private static final String ROTAS_IDIOMAS = "/api/v1/idiomas/**";
-    private static final String ROTAS_TIPOS_SERVICO = "/api/v1/tipos-servico/**";
+    private static final String ROTA_EMPRESA = "/api/v1/empresa";
+    private static final String ROTAS_EMPRESA = "/api/v1/empresa/**";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenService tokenService) throws Exception {
@@ -51,62 +43,25 @@ public class SecurityConfig {
                                 escreverErro(response, HttpStatus.FORBIDDEN, "Perfil sem permissão para esta operação"))
                 )
                 .authorizeHttpRequests(rotas -> rotas
-                        .requestMatchers("/actuator/health").permitAll()
-                        .requestMatchers(HttpMethod.GET, ROTAS_RECURSOS).authenticated()
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 
-                        // Recursos
-                        .requestMatchers(
-                                ROTAS_RECURSOS
-                        ).hasAnyRole(
-                                Role.ADMIN.name(),
-                                Role.GESTOR_PROJETO.name()
-                        )
+                        // Empresa: leitura para qualquer usuário autenticado, escrita restrita ao ADMIN.
+                        .requestMatchers(HttpMethod.GET, ROTA_EMPRESA, ROTAS_EMPRESA).authenticated()
+                        .requestMatchers(ROTA_EMPRESA, ROTAS_EMPRESA).hasRole(Role.ADMIN.name())
 
-                        // Categorias
+                        // SMTP e envio de e-mail também exigem sessão; alterar a configuração é do ADMIN.
                         .requestMatchers(
-                                ROTAS_CATEGORIAS_PROJETO
-                        ).hasAnyRole(
-                                Role.ADMIN.name(),
-                                Role.FINANCEIRO.name(),
-                                Role.GESTOR_PROJETO.name()
-                        )
-
-                        // Idiomas
-                        .requestMatchers(
-                                ROTAS_IDIOMAS
-                        ).hasAnyRole(
-                                Role.ADMIN.name(),
-                                Role.FINANCEIRO.name(),
-                                Role.GESTOR_PROJETO.name()
-                        )
-
-                        // Tipos de serviço
-                        .requestMatchers(
-                                ROTAS_TIPOS_SERVICO
-                        ).hasAnyRole(
-                                Role.ADMIN.name(),
-                                Role.FINANCEIRO.name(),
-                                Role.GESTOR_PROJETO.name()
-                        )
+                                HttpMethod.GET,
+                                "/api/v1/smtp",
+                                "/api/v1/smtp/**"
+                        ).authenticated()
+                        .requestMatchers("/api/v1/smtp", "/api/v1/smtp/**").hasRole(Role.ADMIN.name())
 
                         .anyRequest().authenticated()
                 )
 
                 .addFilterBefore(new JwtAuthFilter(tokenService), UsernamePasswordAuthenticationFilter.class)
                 .build();
-    }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource(@Value("${app.cors.allowed-origins}") String origensPermitidas) {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.stream(origensPermitidas.split(",")).map(String::trim).toList());
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        config.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
     }
 
     // Mesmo formato de erro do GlobalExceptionHandler, para o front tratar todas as falhas de um jeito só.

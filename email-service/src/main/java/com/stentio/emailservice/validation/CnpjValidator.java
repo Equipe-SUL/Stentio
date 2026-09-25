@@ -1,4 +1,4 @@
-package com.example.stentio.core.validation;
+package com.stentio.emailservice.validation;
 
 import java.util.Locale;
 
@@ -29,14 +29,9 @@ public final class CnpjValidator {
         }
 
         int primeiroDigito = calcularDigito(base);
+        int segundoDigito = calcularDigito(base + primeiroDigito);
 
-        int segundoDigito = calcularDigito(
-                base + primeiroDigito
-        );
-
-        String dvCalculado =
-                String.valueOf(primeiroDigito)
-                        + segundoDigito;
+        String dvCalculado = String.valueOf(primeiroDigito) + segundoDigito;
 
         return dvCalculado.equals(dvInformado);
     }

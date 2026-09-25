@@ -24,6 +24,12 @@ management:
       exposure:
         include: health,info
 
+api:
+  security:
+    token:
+      # Mesma chave do serviço Auth: o email-service apenas valida o token, não o emite.
+      secret: ${JWT_SECRET:dev-secret}
+
 app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:8080,http://localhost:8081,http://localhost:8082,http://localhost:19006}

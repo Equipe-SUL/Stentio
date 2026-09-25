@@ -11,15 +11,15 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
-import { getToken } from '../../../../lib/auth';
 import {
   buscarEmpresa,
+  buscarLogo,
   salvarEmpresa,
   salvarLogo,
   type EmpresaRequest,
   type EmpresaResponse,
 } from '../../../../lib/empresaService';
-import { CORE_API_URL, getApiErrorMessage } from '../../../../lib/api';
+import { getApiErrorMessage } from '../../../../lib/api';
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -113,7 +113,8 @@ export default function ConfiguracaoEmpresaScreen() {
 
   // Chave para forçar re-render da imagem da logo após upload
   const [logoKey, setLogoKey] = useState(() => Date.now());
-  const [logoToken, setLogoToken] = useState<string | null>(null);
+  // Object URL da logo, já baixada autenticada (ver buscarLogo no service).
+  const [logoUri, setLogoUri] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Carregamento inicial
@@ -122,12 +123,8 @@ export default function ConfiguracaoEmpresaScreen() {
   useEffect(() => {
     let ativo = true;
 
-    getToken().then((token) => {
-      if (ativo) setLogoToken(token);
-    });
-
     buscarEmpresa()
-      .then((dados) => {
+      .then(async (dados) => {
         if (!ativo) return;
         setDadosEmpresa(dados);
         if (dados) {
@@ -137,6 +134,10 @@ export default function ConfiguracaoEmpresaScreen() {
             endereco: dados.endereco ?? '',
             telefone: dados.telefone ?? '',
           });
+          if (dados.logoDisponivel) {
+            const uri = await buscarLogo();
+            if (ativo && uri) setLogoUri(uri);
+          }
         }
       })
       .catch(() => {
@@ -155,6 +156,16 @@ export default function ConfiguracaoEmpresaScreen() {
       ativo = false;
     };
   }, []);
+
+  // Object URLs não são liberados pelo garbage collector. Revogar a anterior a cada
+  // troca e no unmount evita segurar a blob da logo em memória para sempre.
+  useEffect(() => {
+    return () => {
+      if (logoUri) {
+        URL.revokeObjectURL(logoUri);
+      }
+    };
+  }, [logoUri]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -220,6 +231,8 @@ export default function ConfiguracaoEmpresaScreen() {
         );
         setDadosEmpresa(dados);
         setLogoKey(Date.now()); // força reload da imagem
+        const uri = await buscarLogo();
+        if (uri) setLogoUri(uri);
         setFeedback({ tipo: 'sucesso', mensagem: 'Logo atualizada com sucesso.' });
       } catch (error) {
         setFeedback({ tipo: 'erro', mensagem: getApiErrorMessage(error) });
@@ -248,7 +261,6 @@ export default function ConfiguracaoEmpresaScreen() {
   // Render principal
   // ---------------------------------------------------------------------------
 
-  const logoUrl = `${CORE_API_URL}/api/v1/empresa/logo?t=${logoKey}`;
   const temLogo = dadosEmpresa?.logoDisponivel ?? false;
 
   return (
@@ -447,17 +459,11 @@ export default function ConfiguracaoEmpresaScreen() {
 
               {/* Preview da logo */}
               <View className="items-center mb-5">
-                {temLogo ? (
+                {temLogo && logoUri ? (
                   <View className="w-40 h-40 rounded-2xl border border-zinc-200 overflow-hidden bg-zinc-50 items-center justify-center">
                     <Image
                       key={logoKey}
-                      source={{
-                        uri: logoUrl,
-                        headers: {
-                          Accept: 'image/*',
-                          ...(logoToken ? { Authorization: `Bearer ${logoToken}` } : {}),
-                        },
-                      }}
+                      source={{ uri: logoUri }}
                       style={{ width: 160, height: 160 }}
                       contentFit="contain"
                       accessibilityLabel="Logo da empresa"
