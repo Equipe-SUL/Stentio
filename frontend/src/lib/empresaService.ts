@@ -21,17 +21,15 @@ export interface EmpresaRequest {
 
 /**
  * Busca os dados atuais da empresa.
- * Retorna null se a empresa ainda não foi cadastrada (404 / erro de servidor).
+ * Retorna null se a empresa ainda não foi cadastrada (404).
  */
 export async function buscarEmpresa(): Promise<EmpresaResponse | null> {
   try {
     const { data } = await coreApi.get<EmpresaResponse>('/api/v1/empresa');
     return data;
   } catch (error: any) {
-    // 404 ou 500 indica que ainda não existe registro — retorna null para exibir
-    // o formulário vazio ao invés de uma mensagem de erro genérica.
     const status = error?.response?.status;
-    if (status === 404 || status === 500) {
+    if (status === 404) {
       return null;
     }
     throw error;
@@ -60,12 +58,9 @@ export async function salvarLogo(
   const formData = new FormData();
 
   // FormData aceita tanto File (web) quanto o objeto nativo do Expo.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   formData.append('arquivo', { uri, name, type } as any);
 
-  const { data } = await coreApi.put<EmpresaResponse>('/api/v1/empresa/logo', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const { data } = await coreApi.put<EmpresaResponse>('/api/v1/empresa/logo', formData);
   return data;
 }
 
@@ -75,4 +70,3 @@ export async function salvarLogo(
 export function getLogoUrl(coreApiBaseUrl: string): string {
   return `${coreApiBaseUrl}/api/v1/empresa/logo`;
 }
-

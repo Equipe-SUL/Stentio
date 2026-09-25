@@ -68,7 +68,7 @@ function validarForm(form: EmpresaRequest): FormErrors {
   if (!form.cnpj.trim()) {
     erros.cnpj = 'CNPJ é obrigatório.';
   } else if (!validarCnpj(form.cnpj.trim())) {
-    erros.cnpj = 'CNPJ inválido. Informe 12 a 14 caracteres.';
+    erros.cnpj = 'CNPJ inválido. Informe 14 dígitos.';
   }
 
   if (!form.endereco.trim()) {
@@ -226,8 +226,8 @@ export default function ConfiguracaoEmpresaScreen() {
       } finally {
         setEnviandoLogo(false);
       }
-    } catch {
-      // Usuário cancelou ou erro de permissão
+    } catch (error) {
+      setFeedback({ tipo: 'erro', mensagem: getApiErrorMessage(error) });
     }
   }
 
