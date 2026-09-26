@@ -9,6 +9,14 @@ spring:
     mongodb:
       uri: ${SPRING_MONGODB_URI:mongodb://${MONGO_INITDB_ROOT_USERNAME:root}:${MONGO_INITDB_ROOT_PASSWORD:changeme}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/admin?authSource=admin}
 
+  servlet:
+    multipart:
+      # Acima dos 2 MB que o ConfiguracaoEmpresaService valida de propósito: assim
+      # uma logo grande demais é barrada pelo código, com 400 e a mensagem que a
+      # tela já exibe. Se o Tomcat fosse mais justo, o estouro viraria 500 genérico.
+      max-file-size: 3MB
+      max-request-size: 4MB
+
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}

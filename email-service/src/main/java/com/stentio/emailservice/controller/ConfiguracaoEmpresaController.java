@@ -19,8 +19,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.concurrent.TimeUnit;
-
 @RestController
 @RequestMapping("/api/v1/empresa")
 public class ConfiguracaoEmpresaController {
@@ -60,9 +58,13 @@ public class ConfiguracaoEmpresaController {
             throw new LogoNaoEncontradaException();
         }
 
+        // no-store, e não cache de longa duração: a logo muda no PUT /logo. Com
+        // Cache-Control público de 1 hora, um reload da página ou um cache de
+        // imagem do lado do cliente devolvia os bytes antigos — o usuário via a
+        // mensagem "Logo atualizada com sucesso" e continuava vendo a anterior.
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(service.obterContentTypeLogo()))
-                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic())
+                .cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
                 .body(logo);
     }
