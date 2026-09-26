@@ -154,6 +154,11 @@ public class ConfiguracaoEmpresaService {
         boolean possuiAlteracao = false;
 
         if (request.nome() != null) {
+
+            if (request.nome().isBlank()) {
+                throw new RequisicaoInvalidaException("Nome não pode ser vazio");
+            }
+
             empresa.atualizarNome(request.nome());
             possuiAlteracao = true;
         }
@@ -169,6 +174,11 @@ public class ConfiguracaoEmpresaService {
         }
 
         if (request.endereco() != null) {
+
+            if (request.endereco().isBlank()) {
+                throw new RequisicaoInvalidaException("Endereço não pode ser vazio");
+            }
+
             empresa.atualizarEndereco(request.endereco());
             possuiAlteracao = true;
         }
