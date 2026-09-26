@@ -63,3 +63,9 @@ api:
 app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:8080,http://localhost:8081,http://localhost:19006}
+
+springdoc:
+  api-docs:
+    enabled: ${ENABLE_DOCS:true}
+  swagger-ui:
+    enabled: ${ENABLE_DOCS:true}

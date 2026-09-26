@@ -49,6 +49,8 @@ services:
       context: ./Core
     container_name: stentio-core
     environment:
+      ENABLE_DOCS: ${ENABLE_DOCS:-false}
+
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
