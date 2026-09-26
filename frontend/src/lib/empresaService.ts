@@ -4,6 +4,21 @@ import { getToken } from './auth';
 
 // --- Tipos -------------------------------------------------------------------
 
+/**
+ * Origem remota da logo para o <Image> do expo-image: ele aceita headers, o
+ * que resolve a autenticação sem passar por blob/object URL.
+ */
+export interface LogoSource {
+  uri: string;
+  /**
+   * Opcional de propósito: quando a sessão está no cookie jar nativo (login sem
+   * "lembrar sessão", ou app reaberto) não existe token em storage, e a
+   * requisição é autenticada pelo cookie que o client já tem. Exigir o header
+   * aqui fazia a prévia falhar mesmo com a empresa e a logo existindo.
+   */
+  headers?: Record<string, string>;
+}
+
 export interface EmpresaResponse {
   nome: string;
   cnpj: string;
@@ -25,7 +40,7 @@ const DEFAULT_EMPRESA_API_URL =
   Platform.OS === 'android' ? 'http://10.0.2.2:8083' : 'http://localhost:8083';
 
 function resolveApiUrl(): string {
-  const configured = process.env.EXPO_PUBLIC_EMPRESA_API_URL ?? DEFAULT_EMPRESA_API_URL;
+  const configured = process.env.EXPO_PUBLIC_EMAIL_API_URL ?? DEFAULT_EMPRESA_API_URL;
 
   // No web o cookie de sessão é SameSite=Lax: página e API precisam estar no
   // mesmo host. Alinha a URL da API ao host atual da página, mantendo a porta.
@@ -131,23 +146,52 @@ async function arquivoComoBlob(uri: string, type: string): Promise<Blob> {
 }
 
 /**
- * Retorna a URL da rota da logo, para uso direto em <Image>.
- * Só funciona se o servidor aceitar a requisição sem o header Authorization
- * (ex.: imagem pública) — prefira buscarLogo().
+ * Retorna a URL crua da rota da logo.
+ * Só serve se a requisição puder autenticada sozinha (cookie no web) — no
+ * nativo não há cookie, então use carregarLogo().
  */
 export function getLogoUrl(): string {
   return `${EMPRESA_API_URL}/api/v1/empresa/logo`;
 }
 
 /**
- * Baixa a logo já autenticada e devolve uma URI utilizável em <Image>.
+ * Retorna a origem da logo para o <Image> do expo-image.
  *
- * Não dá para apontar o <Image> direto para a rota: no web ele vira um <img>,
- * que não aceita header Authorization, e o cookie SameSite=Lax não é enviado em
- * requisição cross-site. Buscar via axios (que carrega o token) e entregar um
- * object URL resolve os dois casos.
+ * No nativo não dá para usar blob nem object URL: URL.createObjectURL é API de
+ * browser e não existe no React Native, e o responseType 'blob' do axios segue
+ * a mesma especificação. O expo-image aceita headers no source, então ele mesmo
+ * faz a requisição — sem download, sem memória retida e sem passar pela
+ * validação de tamanho do container.
  *
- * Retorna null quando ainda não há logo.
+ * Sem token, segue com a URL pura: o Android tem cookie jar nativo e a sessão
+ * pode estar nele (é o caso quando o login foi feito sem "lembrar sessão", ou
+ * depois de um reload, em que o SecureStore não tem o token). Exigir o Bearer
+ * aqui transformava "sessão via cookie" em "logo não existe".
+ */
+export async function getLogoSource(versao?: number): Promise<LogoSource> {
+  const token = await getToken();
+
+  // A query de versão existe por causa de dois caches independentes:
+  //   1. o do expo-image, em memória, chaveado pela URL e que ignora o
+  //      Cache-Control do servidor;
+  //   2. o HTTP do navegador, que só é neutralizado pelo no-store do backend.
+  // Sem ela, trocar a logo continua mostrando a anterior.
+  const cacheBuster = versao === undefined ? '' : `?v=${versao}`;
+  const uri = `${getLogoUrl()}${cacheBuster}`;
+
+  if (!token) {
+    logFalhaPreview(
+      'getLogoSource',
+      'sem token em storage; seguindo com a URL pura para o cookie jar autenticar',
+    );
+    return { uri };
+  }
+
+  return { uri, headers: { Authorization: `Bearer ${token}` } };
+}
+
+/**
+ * Baixa a logo e devolve um object URL utilizável em <Image>. Só web.
  */
 export async function buscarLogo(): Promise<string | null> {
   try {
@@ -156,10 +200,32 @@ export async function buscarLogo(): Promise<string | null> {
     });
 
     return URL.createObjectURL(data);
-  } catch {
-    // 404 = empresa sem logo ainda. 401/403 = sessão sem permissão.
-    // Nos demais casos também devolvemos null para não derrubar a tela por
-    // causa da prévia, que é apenas decorativa.
+  } catch (error) {
+    logFalhaPreview('buscarLogo', describeErro(error));
     return null;
   }
+}
+
+/**
+ * Entrega a origem da logo pronta para o <Image>, escolhida por plataforma.
+ *
+ * Retorna:
+ * - null: falha na autenticação ou erro inesperado (não confirma a ausência da logo).
+ * - string: object URL (Web).
+ * - LogoSource: { uri, headers } (Native).
+ */
+export function carregarLogo(versao?: number): Promise<LogoSource | string | null> {
+  return Platform.OS === 'web' ? buscarLogo() : getLogoSource(versao);
+}
+
+function logFalhaPreview(etapa: string, detalhe: string): void {
+  if (__DEV__) {
+    console.warn(`[empresa/logo] ${etapa} falhou: ${detalhe}`);
+  }
+}
+
+function describeErro(error: unknown): string {
+  const axiosError = error as { response?: { status?: number }; message?: string };
+  const status = axiosError?.response?.status;
+  return status ? `HTTP ${status}` : (axiosError?.message ?? 'erro desconhecido');
 }

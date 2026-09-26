@@ -6,6 +6,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,11 +15,12 @@ import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import {
   buscarEmpresa,
-  buscarLogo,
+  carregarLogo,
   salvarEmpresa,
   salvarLogo,
   type EmpresaRequest,
   type EmpresaResponse,
+  type LogoSource,
 } from '../../../../lib/empresaService';
 import { getApiErrorMessage } from '../../../../lib/api';
 
@@ -96,6 +99,16 @@ const FORM_VAZIO: EmpresaRequest = {
 export default function ConfiguracaoEmpresaScreen() {
   const router = useRouter();
 
+  // Regra de layout decided em JS, e não por lg:/md:.
+  //
+  // No web o uniwind compila para CSS real e o breakpoint funciona. No nativo
+  // ele resolve o breakpoint em runtime, e na prática o lg: está vencendo em
+  // celular Android em retrato — daí as duas colunas lado a lado. Como o layout
+  // mobile é requisito (não preferência), a gente deixa de depender do
+  // breakpoint no nativo: duas colunas só no web, e acima de 1024px.
+  const { width } = useWindowDimensions();
+  const duasColunas = Platform.OS === 'web' && width >= 1024;
+
   // Estados do formulário
   const [form, setForm] = useState<EmpresaRequest>(FORM_VAZIO);
   const [errosForm, setErrosForm] = useState<FormErrors>({});
@@ -107,14 +120,21 @@ export default function ConfiguracaoEmpresaScreen() {
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [enviandoLogo, setEnviandoLogo] = useState(false);
+  // A prévia tem ciclo próprio: só vale mostrar "carregando" enquanto a
+  // requisição está em voo. Sem separar, uma falha de rede deixava o spinner
+  // girando para sempre, já que o <Image> resolve a carga por conta própria e
+  // nunca rejecta a promise do carregarLogo().
+  const [carregandoLogo, setCarregandoLogo] = useState(false);
+  const [falhaLogo, setFalhaLogo] = useState(false);
 
   // Feedback geral
   const [feedback, setFeedback] = useState<Feedback>({ tipo: null, mensagem: '' });
 
   // Chave para forçar re-render da imagem da logo após upload
   const [logoKey, setLogoKey] = useState(() => Date.now());
-  // Object URL da logo, já baixada autenticada (ver buscarLogo no service).
-  const [logoUri, setLogoUri] = useState<string | null>(null);
+  // Origem da logo já autenticada. No web é um object URL (string), no nativo é
+  // { uri, headers } para o expo-image buscar com o token — ver carregarLogo.
+  const [logo, setLogo] = useState<LogoSource | string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Carregamento inicial
@@ -135,8 +155,17 @@ export default function ConfiguracaoEmpresaScreen() {
             telefone: dados.telefone ?? '',
           });
           if (dados.logoDisponivel) {
-            const uri = await buscarLogo();
-            if (ativo && uri) setLogoUri(uri);
+            // Versão também na carga inicial, não só depois de upload.
+            //
+            // O expo-image tem cache próprio em memória, chaveado pela URL, e
+            // ele ignora o Cache-Control do servidor. Sem a query de versão, sair
+            // e voltar para a tela redisplay da URL /api/v1/empresa/logo e ele
+            // devolve a imagem antiga sem consultar a rede.
+            if (ativo) setCarregandoLogo(true);
+            const origem = await carregarLogo(Date.now());
+            if (!ativo) return;
+            setFalhaLogo(origem === null);
+            if (origem) setLogo(origem);
           }
         }
       })
@@ -149,7 +178,10 @@ export default function ConfiguracaoEmpresaScreen() {
         }
       })
       .finally(() => {
-        if (ativo) setCarregando(false);
+        if (ativo) {
+          setCarregando(false);
+          setCarregandoLogo(false);
+        }
       });
 
     return () => {
@@ -159,13 +191,14 @@ export default function ConfiguracaoEmpresaScreen() {
 
   // Object URLs não são liberados pelo garbage collector. Revogar a anterior a cada
   // troca e no unmount evita segurar a blob da logo em memória para sempre.
+  // Só existe no web: no nativo a origem é { uri, headers } e não há blob.
   useEffect(() => {
     return () => {
-      if (logoUri) {
-        URL.revokeObjectURL(logoUri);
+      if (Platform.OS === 'web' && typeof logo === 'string') {
+        URL.revokeObjectURL(logo);
       }
     };
-  }, [logoUri]);
+  }, [logo]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -231,8 +264,10 @@ export default function ConfiguracaoEmpresaScreen() {
         );
         setDadosEmpresa(dados);
         setLogoKey(Date.now()); // força reload da imagem
-        const uri = await buscarLogo();
-        if (uri) setLogoUri(uri);
+        setFalhaLogo(false);
+        const origem = await carregarLogo(Date.now());
+        setFalhaLogo(origem === null);
+        if (origem) setLogo(origem);
         setFeedback({ tipo: 'sucesso', mensagem: 'Logo atualizada com sucesso.' });
       } catch (error) {
         setFeedback({ tipo: 'erro', mensagem: getApiErrorMessage(error) });
@@ -273,7 +308,10 @@ export default function ConfiguracaoEmpresaScreen() {
 
         {/* Cabeçalho de Navegação e Título */}
         <View className="flex-row items-center justify-between mb-8 pb-4 border-b border-zinc-200">
-          <View className="flex-row items-center gap-3">
+          {/* flex-1 + min-w-0: no React Native o flexShrink padrão é 0, diferente do
+              CSS, então sem isto o bloco de título não encolhe e estoura a largura
+              do celular. min-w-0 é o que permite o texto quebrar. */}
+          <View className="flex-1 min-w-0 flex-row items-center gap-3">
             <TouchableOpacity
               onPress={() => (router.canGoBack() ? router.back() : router.push('/usuarios'))}
               className="p-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm active:bg-zinc-100"
@@ -282,8 +320,8 @@ export default function ConfiguracaoEmpresaScreen() {
               <Ionicons name="arrow-back" size={20} color="#8c5230" />
             </TouchableOpacity>
 
-            <View>
-              <View className="flex-row items-center gap-2">
+            <View className="flex-1 min-w-0">
+              <View className="flex-row items-center gap-2 flex-wrap">
                 <Text className="text-xs font-bold text-[#8c5230] uppercase tracking-wider">
                   Configurações do Sistema
                 </Text>
@@ -296,12 +334,17 @@ export default function ConfiguracaoEmpresaScreen() {
             </View>
           </View>
 
-          <View className="hidden md:flex flex-row items-center gap-2 bg-[#8c5230]/10 px-3 py-1.5 rounded-full">
-            <Ionicons name="business" size={16} color="#8c5230" />
-            <Text className="text-xs font-semibold text-[#8c5230]">
-              {dadosEmpresa ? 'Cadastro existente' : 'Novo cadastro'}
-            </Text>
-          </View>
+          {/* Só no web: no celular essa badge competia com o título por espaço e
+              era o que estourava o cabeçalho. hidden md:flex dependia do mesmo
+              breakpoint que falhava no nativo. */}
+          {duasColunas && (
+            <View className="flex-row items-center gap-2 bg-[#8c5230]/10 px-3 py-1.5 rounded-full">
+              <Ionicons name="business" size={16} color="#8c5230" />
+              <Text className="text-xs font-semibold text-[#8c5230]">
+                {dadosEmpresa ? 'Cadastro existente' : 'Novo cadastro'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Banner de Feedback */}
@@ -331,10 +374,20 @@ export default function ConfiguracaoEmpresaScreen() {
           </View>
         )}
 
-        <View className="flex-col lg:flex-row gap-8">
+        {/* Duas colunas só no web, e acima de 1024px.
+            No nativo a sidebar SEMPRE desce abaixo do formulário, decidido em JS
+            (ver `duasColunas`): o uniwind não Apply lg:/md: de forma confiável
+            no Android, e o layout mobile tem que ser uma coluna só. */}
+        <View className={duasColunas ? 'flex-row gap-8' : 'flex-col gap-6'}>
 
           {/* Coluna Principal: Formulário */}
-          <View className="flex-1 bg-white rounded-3xl p-6 md:p-8 border border-zinc-200/80 shadow-sm">
+          <View
+            className={
+              duasColunas
+                ? 'flex-1 min-w-0 bg-white rounded-3xl p-6 md:p-8 border border-zinc-200/80 shadow-sm'
+                : 'w-full bg-white rounded-3xl p-5 border border-zinc-200/80 shadow-sm'
+            }
+          >
             <View className="flex-row items-center gap-2.5 mb-6">
               <View className="w-8 h-8 rounded-lg bg-[#8c5230]/10 items-center justify-center">
                 <Ionicons name="document-text-outline" size={18} color="#8c5230" />
@@ -443,7 +496,7 @@ export default function ConfiguracaoEmpresaScreen() {
           </View>
 
           {/* Coluna Lateral: Logo */}
-          <View className="w-full lg:w-80 flex-col gap-6">
+          <View className={duasColunas ? 'w-80 flex-col gap-6' : 'w-full flex-col gap-6'}>
             <View className="bg-white rounded-3xl p-6 md:p-8 border border-zinc-200/80 shadow-sm">
               <View className="flex-row items-center gap-2.5 mb-4">
                 <View className="w-8 h-8 rounded-lg bg-[#8c5230]/10 items-center justify-center">
@@ -457,27 +510,41 @@ export default function ConfiguracaoEmpresaScreen() {
                 aceitos: PNG, JPEG ou WebP. Tamanho máximo: 2 MB.
               </Text>
 
-              {/* Preview da logo */}
-              <View className="items-center mb-5">
-                {temLogo && logoUri ? (
-                  <View className="w-40 h-40 rounded-2xl border border-zinc-200 overflow-hidden bg-zinc-50 items-center justify-center">
-                    <Image
-                      key={logoKey}
-                      source={{ uri: logoUri }}
-                      style={{ width: 160, height: 160 }}
-                      contentFit="contain"
-                      accessibilityLabel="Logo da empresa"
-                    />
-                  </View>
-                ) : (
-                  <View className="w-40 h-40 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 items-center justify-center gap-2">
-                    <Ionicons name="image-outline" size={36} color="#a1a1aa" />
-                    <Text className="text-xs text-zinc-400 text-center px-2">
-                      Nenhuma logo cadastrada
-                    </Text>
-                  </View>
-                )}
-              </View>
+                {/* Preview da logo */}
+                <View className="items-center mb-5">
+                  {temLogo && logo && !falhaLogo ? (
+                    <View className="w-40 h-40 rounded-2xl border border-zinc-200 overflow-hidden bg-zinc-50 items-center justify-center">
+                      <Image
+                        key={logoKey}
+                        source={logo}
+                        style={{ width: 160, height: 160 }}
+                        contentFit="contain"
+                        accessibilityLabel="Logo da empresa"
+                      />
+                    </View>
+                  ) : temLogo && carregandoLogo ? (
+                    <View className="w-40 h-40 rounded-2xl border border-zinc-200 bg-zinc-100 items-center justify-center gap-2">
+                      <ActivityIndicator color="#a1a1aa" size="small" />
+                      <Text className="text-xs text-zinc-400 text-center px-2">
+                        Carregando logo...
+                      </Text>
+                    </View>
+                  ) : temLogo && falhaLogo ? (
+                    <View className="w-40 h-40 rounded-2xl border border-amber-200 bg-amber-50 items-center justify-center gap-2 px-3">
+                      <Ionicons name="alert-circle-outline" size={30} color="#b45309" />
+                      <Text className="text-xs text-amber-800 text-center">
+                        Não foi possível carregar a logo
+                      </Text>
+                    </View>
+                  ) : (
+                    <View className="w-40 h-40 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 items-center justify-center gap-2">
+                      <Ionicons name="image-outline" size={36} color="#a1a1aa" />
+                      <Text className="text-xs text-zinc-400 text-center px-2">
+                        Nenhuma logo cadastrada
+                      </Text>
+                    </View>
+                  )}
+                </View>
 
               {/* Botão de upload */}
               {dadosEmpresa ? (

@@ -31,7 +31,7 @@ const DEFAULT_API_URL =
   Platform.OS === 'android' ? 'http://10.0.2.2:8083' : 'http://localhost:8083';
 
 function resolveApiUrl(): string {
-  const configured = process.env.EXPO_PUBLIC_SMTP_API_URL ?? DEFAULT_API_URL;
+  const configured = process.env.EXPO_PUBLIC_EMAIL_API_URL ?? DEFAULT_API_URL;
 
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     try {
