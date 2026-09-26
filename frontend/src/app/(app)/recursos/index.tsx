@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, View, Text, Pressable, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { DataTable } from "../../../components/usuarios/DataTable";
 import { RowActions } from "../../../components/usuarios/RowActions";
 import { StatusBadge } from "../../../components/usuarios/Badge";
 import { RecursoFormModal, RecursoFormValues } from "../../../components/usuarios/RecursoFormModal";
-import { useBuscaDebounce } from "../../../components/usuarios/useBuscaDebounce";
 import { coreApi, getApiErrorMessage } from "../../../lib/api";
 import type { ColumnDef, FiltroStatus } from "../../../components/usuarios/types";
 
@@ -61,18 +60,19 @@ function ativoDeFiltro(status: FiltroStatus): boolean | undefined {
   return undefined;
 }
 
-// Ajuste os nomes de query param se RecursoFiltro.java tiver campos diferentes.
-function montarQueryRecurso(nome: string, ativo?: boolean): string {
+// RecursoFiltro.java só aceita tipoServicoId, idiomaOrigemId, idiomaDestinoId e ativo.
+// Mandar ?nome= não filtra nada (o Spring descarta o parâmetro), então a busca por nome
+// é feita no cliente, sobre os recursos que a listagem devolve.
+function montarQueryRecurso(ativo?: boolean): string {
   const params = new URLSearchParams();
-  if (nome.trim()) params.set("nome", nome.trim());
   if (ativo !== undefined) params.set("ativo", String(ativo));
   params.set("size", "100");
   return params.toString();
 }
 
-async function listarRecursos(nome: string, ativo?: boolean): Promise<Recurso[]> {
+async function listarRecursos(ativo?: boolean): Promise<Recurso[]> {
   const { data } = await coreApi.get<{ content: Recurso[] }>(
-    `/api/v1/recursos?${montarQueryRecurso(nome, ativo)}`
+    `/api/v1/recursos?${montarQueryRecurso(ativo)}`
   );
   return data.content ?? [];
 }
@@ -129,7 +129,7 @@ const VALORES_INICIAIS_VAZIOS: RecursoFormValues = {
 };
 
 export default function RecursosPage() {
-  const busca = useBuscaDebounce();
+  const [termo, setTermo] = useState("");
   const [status, setStatus] = useState<FiltroStatus>("todos");
 
   const [recursos, setRecursos] = useState<Recurso[]>([]);
@@ -148,11 +148,18 @@ export default function RecursosPage() {
   const recarregar = useCallback(() => {
     setCarregando(true);
     setErroLista("");
-    return listarRecursos(busca.debounced, ativoDeFiltro(status))
+    return listarRecursos(ativoDeFiltro(status))
       .then(setRecursos)
       .catch((error) => setErroLista(getApiErrorMessage(error)))
       .finally(() => setCarregando(false));
-  }, [busca.debounced, status]);
+  }, [status]);
+
+  // Digitação não vai mais no ar: filtra o que já veio da listagem, sem novo fetch.
+  const recursosFiltrados = useMemo(() => {
+    const alvo = termo.trim().toLowerCase();
+    if (!alvo) return recursos;
+    return recursos.filter((recurso) => recurso.nome.toLowerCase().includes(alvo));
+  }, [recursos, termo]);
 
   useEffect(() => {
     recarregar();
@@ -299,8 +306,8 @@ export default function RecursosPage() {
           <View className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2">
             <Ionicons name="search" size={16} color="#a3a3a3" />
             <TextInput
-              value={busca.valor}
-              onChangeText={busca.setValor}
+              value={termo}
+              onChangeText={setTermo}
               placeholder="Buscar por nome..."
               placeholderTextColor="#a3a3a3"
               className="flex-1 py-0 text-sm text-neutral-800"
@@ -347,10 +354,10 @@ export default function RecursosPage() {
             </View>
           ) : (
             <DataTable
-              data={recursos}
+              data={recursosFiltrados}
               columns={columns}
               keyExtractor={(recurso) => recurso.id}
-              emptyMessage="Nenhum recurso cadastrado"
+              emptyMessage={termo.trim() ? "Nenhum recurso encontrado" : "Nenhum recurso cadastrado"}
               scrollEnabled={false}
               mobileBreakpoint={480}
             />
