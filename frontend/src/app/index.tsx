@@ -1,487 +1,360 @@
-import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, View, Text, Pressable, TextInput } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { DataTable } from "../components/usuarios/DataTable";
-import { RowActions } from "../components/usuarios/RowActions";
-import { StatusBadge } from "../components/usuarios/Badge";
-import { RecursoFormModal, RecursoFormValues } from "../components/usuarios/RecursoFormModal";
-import { useBuscaDebounce } from "../components/usuarios/useBuscaDebounce";
-import type { ColumnDef, FiltroStatus } from "../components/usuarios/types";
+import { useEffect, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import Svg, { Defs, Pattern, Rect, Circle, G } from 'react-native-svg';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
+import { Redirect, router } from 'expo-router';
+import { getApiErrorMessage } from '../lib/api';
+import { useSession } from '../lib/session';
 
-// ---------------------------------------------------------------------
-// MOCK MODE — sem backend, sem autenticação. Tudo em memória (useState).
-// Troque as funções da seção "camada de dados" de volta para coreApi
-// quando o backend estiver disponível novamente.
-// ---------------------------------------------------------------------
+const languagesListA = [
+  "Hallo, Willkommen", "مرحبا بك", "你好，歡迎", "안녕하세요, 환영합니다",
+  "Zdravo, dobrodošli", "Hej, velkommen", "Hola, bienvenido", "Bonjour, bienvenue",
+  "Γεια, καλώς ήρθατε", "שלום, ברוך הבא", "नमस्ते, स्वागत है", "Hallo, welkom",
+  "Szia, üdvözlünk", "Hello, Welcome", "Ciao, benvenuto", "こんにちは、ようこそ"
+];
 
-type UnidadeCobranca = "POR_PALAVRA" | "POR_HORA" | "POR_PAGINA" | "POR_PROJETO";
+const languagesListB = [
+  "Salve, grata", "Сайн байна уу, тавтай морил", "Hei, velkommen", "سلام، خوش آمدید",
+  "Cześć, witaj", "Здравствуйте, добро пожаловать", "Здраво, добродошли",
+  "Salaam, soo dhawow", "Hej, välkommen", "สวัสดี ยินดีต้อนรับ", "Ahoj, vítejte",
+  "Merhaba, hoş geldiniz", "Привіт, ласкаво просимо", "Kalunga, ondonge", "Xin chào, chào mừng", "你好，欢迎"
+];
 
-const UNIDADES_LABEL: Record<UnidadeCobranca, string> = {
-  POR_PALAVRA: "Por palavra",
-  POR_HORA: "Por hora",
-  POR_PAGINA: "Por página",
-  POR_PROJETO: "Por projeto",
+const generateCycle = (langArray: string[]) => {
+  const words = [];
+  let langIdx = 0;
+  for (let i = 0; i < 30; i++) {
+    if (i % 4 === 0) {
+      words.push("Olá, Bem-vindo"); 
+    } else {
+      words.push(langArray[langIdx % langArray.length]);
+      langIdx++;
+    }
+  }
+  return words;
 };
 
-interface TipoServicoResumo {
-  id: string;
-  nome: string;
-}
+const spiralWordsA = generateCycle(languagesListA);
+const spiralWordsB = generateCycle(languagesListB);
 
-interface IdiomaResumo {
-  id: string;
-  nome: string;
-  codigoIso: string;
-}
+const INTERVAL = 1800; 
+const VISIBLE_LIFESPAN = 9000; 
+const TOTAL_CYCLE = spiralWordsA.length * INTERVAL; 
+const VISIBLE_FRACTION = VISIBLE_LIFESPAN / TOTAL_CYCLE; 
 
-interface PrecoRecurso {
-  id?: string;
-  idiomaOrigem: IdiomaResumo;
-  idiomaDestino: IdiomaResumo;
-  unidade: UnidadeCobranca;
-  valor: number;
-}
-
-interface Recurso {
-  id: string;
-  nome: string;
-  email: string;
-  telefone: string;
-  ativo: boolean;
-  tiposServico: TipoServicoResumo[];
-  precos: PrecoRecurso[];
-}
-
-// --- Dados fixos de apoio (viriam de /tipos-servico e /idiomas) --------
-
-const TIPOS_SERVICO_MOCK: TipoServicoResumo[] = [
-  { id: "ts-1", nome: "Tradução Técnica" },
-  { id: "ts-2", nome: "Legendagem" },
-  { id: "ts-3", nome: "Revisão" },
-  { id: "ts-4", nome: "Interpretação Simultânea" },
-];
-
-const IDIOMAS_MOCK: IdiomaResumo[] = [
-  { id: "id-1", nome: "Português", codigoIso: "pt" },
-  { id: "id-2", nome: "Inglês", codigoIso: "en" },
-  { id: "id-3", nome: "Espanhol", codigoIso: "es" },
-  { id: "id-4", nome: "Francês", codigoIso: "fr" },
-];
-
-// --- Dados de exemplo já cadastrados -----------------------------------
-
-const RECURSOS_INICIAIS: Recurso[] = [
-  {
-    id: "r-1",
-    nome: "Ana Beatriz Ferreira",
-    email: "ana.ferreira@email.com",
-    telefone: "(11) 91234-5678",
-    ativo: true,
-    tiposServico: [TIPOS_SERVICO_MOCK[0], TIPOS_SERVICO_MOCK[2]],
-    precos: [
-      {
-        id: "p-1",
-        idiomaOrigem: IDIOMAS_MOCK[1],
-        idiomaDestino: IDIOMAS_MOCK[0],
-        unidade: "POR_PALAVRA",
-        valor: 0.35,
-      },
-      {
-        id: "p-2",
-        idiomaOrigem: IDIOMAS_MOCK[0],
-        idiomaDestino: IDIOMAS_MOCK[1],
-        unidade: "POR_PALAVRA",
-        valor: 0.4,
-      },
-    ],
-  },
-  {
-    id: "r-2",
-    nome: "Carlos Eduardo Lima",
-    email: "carlos.lima@email.com",
-    telefone: "(21) 99876-5432",
-    ativo: true,
-    tiposServico: [TIPOS_SERVICO_MOCK[1]],
-    precos: [
-      {
-        id: "p-3",
-        idiomaOrigem: IDIOMAS_MOCK[1],
-        idiomaDestino: IDIOMAS_MOCK[0],
-        unidade: "POR_HORA",
-        valor: 85,
-      },
-    ],
-  },
-  {
-    id: "r-3",
-    nome: "Marina Costa Souza",
-    email: "marina.souza@email.com",
-    telefone: "(31) 98765-4321",
-    ativo: false,
-    tiposServico: [TIPOS_SERVICO_MOCK[3], TIPOS_SERVICO_MOCK[0]],
-    precos: [
-      {
-        id: "p-4",
-        idiomaOrigem: IDIOMAS_MOCK[2],
-        idiomaDestino: IDIOMAS_MOCK[0],
-        unidade: "POR_PROJETO",
-        valor: 450,
-      },
-    ],
-  },
-];
-
-function ativoDeFiltro(status: FiltroStatus): boolean | undefined {
-  if (status === "ativos") return true;
-  if (status === "inativos") return false;
-  return undefined;
-}
-
-function delay<T>(valor: T, ms = 300): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(valor), ms));
-}
-
-function novoId(prefixo: string): string {
-  return `${prefixo}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-}
-
-function paraFormValues(recurso: Recurso): RecursoFormValues {
-  return {
-    nome: recurso.nome,
-    email: recurso.email,
-    telefone: recurso.telefone,
-    tiposServicoIds: recurso.tiposServico.map((t) => t.id),
-    precos: recurso.precos.map((preco) => ({
-      idiomaOrigemId: preco.idiomaOrigem.id,
-      idiomaDestinoId: preco.idiomaDestino.id,
-      unidade: preco.unidade,
-      valor: String(preco.valor),
-    })),
-  };
-}
-
-const VALORES_INICIAIS_VAZIOS: RecursoFormValues = {
-  nome: "",
-  email: "",
-  telefone: "",
-  tiposServicoIds: [],
-  precos: [],
-};
-
-export default function RecursosPage() {
-  const busca = useBuscaDebounce();
-  const [status, setStatus] = useState<FiltroStatus>("todos");
-
-  // "Banco de dados" em memória — some ao recarregar a página.
-  const [banco, setBanco] = useState<Recurso[]>(RECURSOS_INICIAIS);
-
-  const [recursos, setRecursos] = useState<Recurso[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erroLista, setErroLista] = useState("");
-
-  const [mostrarCriar, setMostrarCriar] = useState(false);
-  const [recursoEmEdicao, setRecursoEmEdicao] = useState<Recurso | null>(null);
-  const [erroCriacao, setErroCriacao] = useState("");
-  const [erroEdicao, setErroEdicao] = useState("");
-  const [erroAcao, setErroAcao] = useState("");
-
-  // ---------------------------------------------------------------
-  // Camada de dados (MOCK). Troque cada função por chamadas coreApi
-  // quando o backend voltar — as assinaturas já batem com o que a
-  // versão real usa.
-  // ---------------------------------------------------------------
-
-  const listarRecursos = useCallback(
-    (nome: string, ativo?: boolean) => {
-      const filtrados = banco.filter((r) => {
-        const bateNome = nome.trim() ? r.nome.toLowerCase().includes(nome.trim().toLowerCase()) : true;
-        const bateStatus = ativo === undefined ? true : r.ativo === ativo;
-        return bateNome && bateStatus;
-      });
-      return delay(filtrados);
-    },
-    [banco]
-  );
-
-  const criarRecurso = useCallback((values: RecursoFormValues) => {
-    const novo: Recurso = {
-      id: novoId("r"),
-      nome: values.nome,
-      email: values.email,
-      telefone: values.telefone,
-      ativo: true,
-      tiposServico: TIPOS_SERVICO_MOCK.filter((t) => values.tiposServicoIds.includes(t.id)),
-      precos: values.precos.map((preco) => ({
-        id: novoId("p"),
-        idiomaOrigem: IDIOMAS_MOCK.find((i) => i.id === preco.idiomaOrigemId)!,
-        idiomaDestino: IDIOMAS_MOCK.find((i) => i.id === preco.idiomaDestinoId)!,
-        unidade: preco.unidade,
-        valor: Number(preco.valor.replace(",", ".")),
-      })),
-    };
-    setBanco((atual) => [...atual, novo]);
-    return delay(novo);
-  }, []);
-
-  const editarRecurso = useCallback((id: string, values: RecursoFormValues) => {
-    setBanco((atual) =>
-      atual.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              nome: values.nome,
-              email: values.email,
-              telefone: values.telefone,
-              tiposServico: TIPOS_SERVICO_MOCK.filter((t) => values.tiposServicoIds.includes(t.id)),
-              precos: values.precos.map((preco) => ({
-                id: novoId("p"),
-                idiomaOrigem: IDIOMAS_MOCK.find((i) => i.id === preco.idiomaOrigemId)!,
-                idiomaDestino: IDIOMAS_MOCK.find((i) => i.id === preco.idiomaDestinoId)!,
-                unidade: preco.unidade,
-                valor: Number(preco.valor.replace(",", ".")),
-              })),
-            }
-          : r
-      )
-    );
-    return delay(undefined);
-  }, []);
-
-  const alterarStatusRecurso = useCallback((id: string, ativo: boolean) => {
-    setBanco((atual) => atual.map((r) => (r.id === id ? { ...r, ativo } : r)));
-    return delay(undefined);
-  }, []);
-
-  // ---------------------------------------------------------------
-  // Orquestração (idêntica à versão com backend)
-  // ---------------------------------------------------------------
-
-  const recarregar = useCallback(() => {
-    setCarregando(true);
-    setErroLista("");
-    return listarRecursos(busca.debounced, ativoDeFiltro(status))
-      .then(setRecursos)
-      .catch(() => setErroLista("Não foi possível carregar os recursos."))
-      .finally(() => setCarregando(false));
-  }, [listarRecursos, busca.debounced, status]);
+const AnimatedSpiralWord = ({ word, index, angleOffset, cycleLength }: { word: string, index: number, angleOffset: number, cycleLength: number }) => {
+  const progress = useSharedValue(0);
 
   useEffect(() => {
-    recarregar();
-  }, [recarregar]);
+    const randomOffset = (index * 41) % 400; 
+    const delay = (index * INTERVAL) + randomOffset;
+    const currentTotalCycle = cycleLength * INTERVAL;
 
-  async function handleCreate(values: RecursoFormValues): Promise<boolean> {
-    setErroCriacao("");
-    try {
-      await criarRecurso(values);
-      setMostrarCriar(false);
-      await recarregar();
-      return true;
-    } catch {
-      setErroCriacao("Não foi possível cadastrar o recurso.");
-      return false;
+    progress.value = withDelay(
+      delay,
+      withRepeat(withTiming(1, { duration: currentTotalCycle, easing: Easing.linear }), -1, false)
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    if (progress.value === 0 || progress.value > VISIBLE_FRACTION) {
+      return { opacity: 0, position: 'absolute' };
     }
-  }
 
-  async function handleUpdate(values: RecursoFormValues): Promise<boolean> {
-    if (!recursoEmEdicao) return false;
+    const p = progress.value / VISIBLE_FRACTION; 
+    const radius = 380 * p; 
+    const angle = (p * Math.PI * 3.5) + (index * 1.8) + angleOffset;
+    
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
 
-    setErroEdicao("");
-    try {
-      await editarRecurso(recursoEmEdicao.id, values);
-      setRecursoEmEdicao(null);
-      await recarregar();
-      return true;
-    } catch {
-      setErroEdicao("Não foi possível salvar as alterações.");
-      return false;
-    }
-  }
+    const maxScale = index % 4 === 0 ? 2.8 : index % 4 === 1 ? 2.0 : index % 4 === 2 ? 1.5 : 1.1;
+    const currentScale = maxScale * (0.4 + (p * 0.6));
 
-  function handleToggleStatus(recurso: Recurso) {
-    setErroAcao("");
-    alterarStatusRecurso(recurso.id, !recurso.ativo)
-      .then(recarregar)
-      .catch(() => setErroAcao("Não foi possível alterar o status."));
-  }
+    let opacityMultiplier = 0;
+    if (p < 0.15) opacityMultiplier = p / 0.15; 
+    else if (p > 0.8) opacityMultiplier = (1 - p) / 0.2; 
+    else opacityMultiplier = 1; 
 
-  function handleToggleStatusNoForm() {
-    if (!recursoEmEdicao) return;
-    setErroEdicao("");
-    alterarStatusRecurso(recursoEmEdicao.id, !recursoEmEdicao.ativo)
-      .then(() => {
-        setRecursoEmEdicao(null);
-        return recarregar();
-      })
-      .catch(() => setErroEdicao("Não foi possível alterar o status."));
-  }
-
-  const columns: ColumnDef<Recurso>[] = [
-    { key: "nome", header: "Nome" },
-    { key: "email", header: "Email", hideOnMobile: true },
-    { key: "telefone", header: "Telefone", hideOnMobile: true },
-    {
-      key: "ativo",
-      header: "Status",
-      render: (recurso) => <StatusBadge status={recurso.ativo ? "Ativo" : "Inativo"} />,
-    },
-    {
-      key: "tiposServico",
-      header: "Tipos de serviço",
-      render: (recurso) => (
-        <Text className="text-sm text-neutral-700" numberOfLines={1}>
-          {recurso.tiposServico.map((t) => t.nome).join(", ") || "—"}
-        </Text>
-      ),
-    },
-    {
-      key: "precos",
-      header: "Preços",
-      width: 110,
-      render: (recurso) => (
-        <Text className="text-sm text-neutral-700">
-          {recurso.precos.length} {recurso.precos.length === 1 ? "preço" : "preços"}
-        </Text>
-      ),
-    },
-    {
-      key: "id",
-      header: "",
-      width: 92,
-      align: "right",
-      render: (recurso) => (
-        <RowActions
-          onEdit={() => {
-            setErroEdicao("");
-            setRecursoEmEdicao(recurso);
-          }}
-          onToggle={() => handleToggleStatus(recurso)}
-          toggleLabel={recurso.ativo ? "Desativar" : "Ativar"}
-        />
-      ),
-    },
-  ];
+    return {
+      position: 'absolute',
+      transform: [{ translateX: x }, { translateY: y }, { scale: currentScale }],
+      opacity: opacityMultiplier * 0.75, 
+    };
+  });
 
   return (
-    <ScrollView
-      className="flex-1 bg-neutral-50"
-      contentContainerClassName="gap-6 p-6 web:px-24 web:py-12 web:items-center"
-      keyboardShouldPersistTaps="handled"
+    <Animated.Text 
+      style={[animatedStyle, { color: 'rgba(255, 255, 255, 0.55)' }]} 
+      className="font-serif font-medium whitespace-nowrap"
     >
-      <View className="w-full web:max-w-6xl gap-6">
-        <View className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2">
-          <Text className="text-xs font-medium text-amber-700">
-            Modo demonstração: dados fictícios em memória, sem conexão com o backend.
-          </Text>
-        </View>
+      {word}
+    </Animated.Text>
+  );
+};
 
-        <View className="flex-row flex-wrap items-center justify-between gap-3">
-          <View className="shrink">
-            <Text className="text-2xl font-bold text-neutral-900">Recursos</Text>
-            <Text className="text-sm text-neutral-500">
-              Profissionais freelancers cadastrados, seus serviços e preços
-            </Text>
-          </View>
+const BrandingCarousel = ({ textColor = "text-white", dotActiveColor = "#ffffff", dotInactiveColor = "rgba(255,255,255,0.4)" }: { textColor?: string, dotActiveColor?: string, dotInactiveColor?: string }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const slides = [
+    "Traduza com precisão,\ncontrole com clareza.",
+    "Cada palavra no\nlugar certo.",
+    "60 idiomas,\num único painel."
+  ];
 
-          <Pressable
-            onPress={() => {
-              setErroCriacao("");
-              setMostrarCriar(true);
-            }}
-            className="flex-row items-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3"
-          >
-            <Ionicons name="add" size={18} color="#ffffff" />
-            <Text className="font-medium text-white">Novo recurso</Text>
-          </Pressable>
-        </View>
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [currentIndex]);
 
-        <View className="gap-2">
-          <View className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2">
-            <Ionicons name="search" size={16} color="#a3a3a3" />
-            <TextInput
-              value={busca.valor}
-              onChangeText={busca.setValor}
-              placeholder="Buscar por nome..."
-              placeholderTextColor="#a3a3a3"
-              className="flex-1 py-0 text-sm text-neutral-800"
-              clearButtonMode="while-editing"
-            />
-          </View>
+  return (
+    <View className="z-10 w-full">
+      <View className="h-[90px] justify-end mb-5 relative">
+        {slides.map((slide, index) => {
+          const isActive = index === currentIndex;
+          const opacity = useSharedValue(isActive ? 1 : 0);
+          const translateY = useSharedValue(isActive ? 0 : 10);
 
-          <View className="flex-row gap-1 self-start rounded-lg bg-neutral-100 p-1">
-            {(["todos", "ativos", "inativos"] as FiltroStatus[]).map((opcao) => {
-              const selecionado = status === opcao;
-              return (
-                <Pressable
-                  key={opcao}
-                  onPress={() => setStatus(opcao)}
-                  className={`items-center rounded-md px-3 py-1.5 ${selecionado ? "bg-white shadow-sm" : ""}`}
-                >
-                  <Text className={`text-xs font-medium ${selecionado ? "text-neutral-900" : "text-neutral-500"}`}>
-                    {opcao === "todos" ? "Todos" : opcao === "ativos" ? "Ativos" : "Inativos"}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+          useEffect(() => {
+            opacity.value = withTiming(isActive ? 1 : 0, { duration: 600 });
+            translateY.value = withTiming(isActive ? 0 : 10, { duration: 600 });
+          }, [isActive]);
 
-        {erroAcao ? (
-          <View className="rounded-lg border border-red-200 bg-red-50 p-3">
-            <Text className="text-sm font-medium text-red-600">{erroAcao}</Text>
-          </View>
-        ) : null}
+          const style = useAnimatedStyle(() => ({
+            opacity: opacity.value,
+            transform: [{ translateY: translateY.value }],
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+          }));
 
-        <View className="shadow-lg">
-          {carregando ? (
-            <View className="items-center justify-center gap-3 rounded-2xl bg-white p-10">
-              <ActivityIndicator color="#6f4f28" />
-              <Text className="text-sm text-neutral-500">Carregando recursos...</Text>
-            </View>
-          ) : erroLista ? (
-            <View className="items-center justify-center gap-3 rounded-2xl bg-white p-10">
-              <Text className="text-center text-sm text-red-600">{erroLista}</Text>
-              <Pressable onPress={recarregar} className="rounded-lg border border-neutral-300 px-5 py-3">
-                <Text className="font-medium text-neutral-700">Tentar de novo</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <DataTable
-              data={recursos}
-              columns={columns}
-              keyExtractor={(recurso) => recurso.id}
-              emptyMessage="Nenhum recurso cadastrado"
-              scrollEnabled={false}
-              mobileBreakpoint={480}
-            />
-          )}
-        </View>
+          return (
+            <Animated.Text 
+              key={index} 
+              style={style} 
+              className={`${textColor} text-3xl md:text-4xl font-serif font-bold leading-tight`}
+            >
+              {slide}
+            </Animated.Text>
+          );
+        })}
       </View>
 
-      <RecursoFormModal
-        visible={mostrarCriar}
-        title="Novo recurso"
-        initialValues={VALORES_INICIAIS_VAZIOS}
-        tiposServicoDisponiveis={TIPOS_SERVICO_MOCK}
-        idiomasDisponiveis={IDIOMAS_MOCK}
-        onSubmit={handleCreate}
-        onCancel={() => setMostrarCriar(false)}
-        submitLabel="Cadastrar"
-        erro={erroCriacao}
-      />
+      <View className="flex-row gap-3 items-center h-4">
+        {slides.map((_, index) => {
+          const isActive = index === currentIndex;
+          const width = useSharedValue(isActive ? 32 : 10);
+          const opacity = useSharedValue(isActive ? 1 : 0.4);
 
-      <RecursoFormModal
-        visible={recursoEmEdicao !== null}
-        title="Editar recurso"
-        initialValues={recursoEmEdicao ? paraFormValues(recursoEmEdicao) : VALORES_INICIAIS_VAZIOS}
-        tiposServicoDisponiveis={TIPOS_SERVICO_MOCK}
-        idiomasDisponiveis={IDIOMAS_MOCK}
-        onSubmit={handleUpdate}
-        onCancel={() => setRecursoEmEdicao(null)}
-        onToggleStatus={handleToggleStatusNoForm}
-        toggleStatusLabel={recursoEmEdicao?.ativo ? "Desativar" : "Ativar"}
-        submitLabel="Salvar"
-        erro={erroEdicao}
-      />
-    </ScrollView>
+          useEffect(() => {
+            width.value = withTiming(isActive ? 32 : 10, { duration: 400 });
+            opacity.value = withTiming(isActive ? 1 : 0.4, { duration: 400 });
+          }, [isActive]);
+
+          const dotStyle = useAnimatedStyle(() => ({
+            width: width.value,
+            opacity: opacity.value,
+            height: 10,
+            borderRadius: 9999,
+          }));
+
+          return (
+            <TouchableOpacity 
+              key={index}
+              onPress={() => setCurrentIndex(index)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.8}
+            >
+              <Animated.View style={[dotStyle, { backgroundColor: isActive ? dotActiveColor : dotInactiveColor }]} />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const LeftArtPanel = () => {
+  return (
+    <View className="flex-1 bg-[#8c5230] overflow-hidden justify-between p-12">
+      <View className="absolute inset-0 items-center justify-center pointer-events-none">
+        <Svg height="100%" width="100%" style={{ position: 'absolute' }}>
+          <Defs>
+            <Pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <Rect width="40" height="40" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+            </Pattern>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#grid)" />
+          
+          <G stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none">
+            <Circle cx="50%" cy="50%" r="120" />
+            <Circle cx="50%" cy="50%" r="200" />
+          </G>
+        </Svg>
+
+        {spiralWordsA.map((word, index) => (
+          <AnimatedSpiralWord 
+            key={`a-${index}`} 
+            word={word} 
+            index={index} 
+            angleOffset={0} 
+            cycleLength={spiralWordsA.length}
+          />
+        ))}
+
+        {spiralWordsB.map((word, index) => (
+          <AnimatedSpiralWord 
+            key={`b-${index}`} 
+            word={word} 
+            index={index} 
+            angleOffset={2.1} 
+            cycleLength={spiralWordsB.length}
+          />
+        ))}
+      </View>
+
+      <View className="flex-row justify-between items-center w-full z-10">
+        <Text className="text-white font-bold text-2xl tracking-widest">STENTIO</Text>
+      </View>
+
+      <BrandingCarousel textColor="text-white" dotActiveColor="#ffffff" dotInactiveColor="rgba(255,255,255,0.4)" />
+    </View>
+  );
+};
+
+export default function LoginScreen() {
+  const { usuario, carregando, entrar } = useSession();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberSession, setRememberSession] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setErrorMessage('');
+    if (!email || !password) {
+      setErrorMessage('Por favor, preencha o e-mail e a senha.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await entrar(email, password, rememberSession);
+      router.replace('/usuarios');
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!carregando && usuario?.role === 'ADMIN') {
+    return <Redirect href="/usuarios" />;
+  }
+
+  return (
+    <View className="flex-1 bg-white">
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="flex-1">
+        <View className="flex-1 flex-col md:flex-row w-full min-h-screen">
+          
+          <View className="hidden md:flex flex-1">
+            <LeftArtPanel />
+          </View>
+
+          <View className="flex-1 items-center justify-center p-6 md:p-12 w-full z-10 bg-white">
+            <View className="w-full max-w-md">
+              
+              <View className="md:hidden items-center mb-6">
+                <Text className="text-[#8c5230] font-bold text-3xl tracking-widest">STENTIO</Text>
+              </View>
+
+              <Text className="text-3xl md:text-4xl font-serif font-bold text-zinc-900 mb-6">
+                Entrar na conta
+              </Text>
+
+              {errorMessage ? (
+                <View className="w-full bg-red-50 border border-red-200 rounded-xl p-3 mb-5">
+                  <Text className="text-red-600 text-sm font-medium text-center">{errorMessage}</Text>
+                </View>
+              ) : null}
+
+              <Text className="text-zinc-700 font-semibold mb-2 ml-1">E-mail</Text>
+              <TextInput 
+                placeholder="voce@empresa.com"
+                placeholderTextColor="#a1a1aa"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+                className="w-full border border-zinc-200 rounded-2xl px-5 py-4 bg-zinc-50 text-zinc-900 text-base mb-5"
+              />
+
+              <View className="flex-row justify-between items-center mb-2 ml-1">
+                <Text className="text-zinc-700 font-semibold">Senha</Text>
+              </View>
+
+              <View className="w-full flex-row items-center border border-zinc-200 rounded-2xl bg-zinc-50 px-5 mb-6">
+                <TextInput 
+                  placeholder="••••••••"
+                  placeholderTextColor="#a1a1aa"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  className="flex-1 py-4 text-zinc-900 text-base"
+                />
+                <TouchableOpacity 
+                  onPress={() => setShowPassword(!showPassword)}
+                  className="p-2"
+                >
+                  <Ionicons 
+                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                    size={22} 
+                    color="#8c5230" 
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <Pressable 
+                onPress={() => setRememberSession(!rememberSession)}
+                className="flex-row items-center mb-8"
+              >
+                <View className={`w-5 h-5 border-2 rounded-md mr-3 items-center justify-center ${rememberSession ? 'bg-[#8c5230] border-[#8c5230]' : 'border-zinc-300 bg-white'}`}>
+                  {rememberSession && <Ionicons name="checkmark" size={14} color="white" />}
+                </View>
+                <Text className="text-zinc-600 text-sm font-medium">Salvar sessão</Text>
+              </Pressable>
+
+              <TouchableOpacity 
+                onPress={handleLogin}
+                disabled={isLoading}
+                className="w-full bg-[#8c5230] py-4 rounded-2xl items-center shadow-md shadow-orange-900/20 active:opacity-80"
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-white font-bold text-lg tracking-wide">Entrar</Text>
+                )}
+              </TouchableOpacity>
+
+            </View>
+
+            <View className="md:hidden w-full bg-white px-6 pt-12 pb-8 mt-12 border-t border-zinc-100 items-center">
+              <View className="w-full max-w-md">
+                <BrandingCarousel 
+                  textColor="text-[#8c5230]" 
+                  dotActiveColor="#8c5230" 
+                  dotInactiveColor="#d1b2a3" 
+                />
+              </View>
+            </View>
+
+          </View>
+
+        </View>
+      </ScrollView>
+    </View>
   );
 }
