@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { getToken } from './auth';
+import { instrumentarHttp } from './httpDebug';
 
 export type EncryptionType = 'TLS' | 'SSL' | 'NONE';
 
@@ -50,12 +51,15 @@ function resolveApiUrl(): string {
 
 export const API_URL = resolveApiUrl();
 
-export const api = axios.create({
-  baseURL: API_URL,
-  timeout: 15000,
-  // O email-service passou a exigir sessão: sem o cookie/JWT, /api/v1/smtp responde 401.
-  withCredentials: true,
-});
+export const api = instrumentarHttp(
+  axios.create({
+    baseURL: API_URL,
+    timeout: 15000,
+    // O email-service passou a exigir sessão: sem o cookie/JWT, /api/v1/smtp responde 401.
+    withCredentials: true,
+  }),
+  'smtp',
+);
 
 api.interceptors.request.use(async (config) => {
   const token = await getToken();

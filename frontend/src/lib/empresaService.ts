@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { getToken } from './auth';
+import { instrumentarHttp } from './httpDebug';
 
 // --- Tipos -------------------------------------------------------------------
 
@@ -61,11 +62,14 @@ function resolveApiUrl(): string {
 
 export const EMPRESA_API_URL = resolveApiUrl();
 
-const api = axios.create({
-  baseURL: EMPRESA_API_URL,
-  timeout: 15000,
-  withCredentials: true,
-});
+const api = instrumentarHttp(
+  axios.create({
+    baseURL: EMPRESA_API_URL,
+    timeout: 15000,
+    withCredentials: true,
+  }),
+  'empresa',
+);
 
 api.interceptors.request.use(async (config) => {
   const token = await getToken();

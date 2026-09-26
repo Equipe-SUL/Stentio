@@ -1,6 +1,7 @@
 import axios from "axios";
 import { Platform } from "react-native";
 import { getToken } from "./auth";
+import { instrumentarHttp } from "./httpDebug";
 
 const DEFAULT_API_URL =
   Platform.OS === "android" ? "http://10.0.2.2:8081" : "http://localhost:8081";
@@ -27,12 +28,15 @@ function resolveApiUrl(): string {
 
 export const API_URL = resolveApiUrl();
 
-export const api = axios.create({
-  baseURL: API_URL,
-  timeout: 15000,
-  // Necessário no web para o browser guardar/enviar o cookie HttpOnly (cross-origin).
-  withCredentials: true,
-});
+export const api = instrumentarHttp(
+  axios.create({
+    baseURL: API_URL,
+    timeout: 15000,
+    // Necessário no web para o browser guardar/enviar o cookie HttpOnly (cross-origin).
+    withCredentials: true,
+  }),
+  'auth',
+);
 
 api.interceptors.request.use(async (config) => {
   const token = await getToken();
@@ -57,6 +61,10 @@ export function getApiErrorMessage(error: unknown): string {
         case 400:
           return "Dados inválidos. Verifique os campos e tente de novo.";
         case 401:
+          // Deixado como está de propósito: o mesmo 401 significa "senha errada"
+          // na tela de login e "sessão expirada" nas demais. Arremessar um texto
+          // único aqui quebraria o aviso do login. Quem precisa distinguir é o
+          // log de rede (ver httpDebug), que traz método, url e status.
           return "E-mail ou senha inválidos.";
         case 403:
           return "Você não tem permissão para essa ação.";
@@ -108,11 +116,14 @@ function resolveCoreApiUrl(): string {
 
 export const CORE_API_URL = resolveCoreApiUrl();
 
-export const coreApi = axios.create({
-  baseURL: CORE_API_URL,
-  timeout: 15000,
-  withCredentials: true,
-});
+export const coreApi = instrumentarHttp(
+  axios.create({
+    baseURL: CORE_API_URL,
+    timeout: 15000,
+    withCredentials: true,
+  }),
+  'core',
+);
 
 coreApi.interceptors.request.use(async (config) => {
   const token = await getToken();

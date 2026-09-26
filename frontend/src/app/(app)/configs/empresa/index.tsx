@@ -23,6 +23,7 @@ import {
   type LogoSource,
 } from '../../../../lib/empresaService';
 import { getApiErrorMessage } from '../../../../lib/api';
+import { registrarLog } from '../../../../lib/httpDebug';
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -520,6 +521,15 @@ export default function ConfiguracaoEmpresaScreen() {
                         style={{ width: 160, height: 160 }}
                         contentFit="contain"
                         accessibilityLabel="Logo da empresa"
+                        onLoad={() => registrarLog('logo', 'imagem carregada')}
+                        onError={(erro) => {
+                          registrarLog(
+                            'logo',
+                            `falha ao carregar a imagem (${erro.error ?? 'erro desconhecido'})`,
+                            'erro',
+                          );
+                          setFalhaLogo(true);
+                        }}
                       />
                     </View>
                   ) : temLogo && carregandoLogo ? (
