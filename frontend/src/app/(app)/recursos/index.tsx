@@ -1,27 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, View, Text, Pressable, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { DataTable } from "../components/usuarios/DataTable";
-import { RowActions } from "../components/usuarios/RowActions";
-import { StatusBadge } from "../components/usuarios/Badge";
-import { RecursoFormModal, RecursoFormValues } from "../components/usuarios/RecursoFormModal";
-import { useBuscaDebounce } from "../components/usuarios/useBuscaDebounce";
-import type { ColumnDef, FiltroStatus } from "../components/usuarios/types";
-
-// ---------------------------------------------------------------------
-// MOCK MODE — sem backend, sem autenticação. Tudo em memória (useState).
-// Troque as funções da seção "camada de dados" de volta para coreApi
-// quando o backend estiver disponível novamente.
-// ---------------------------------------------------------------------
+import { DataTable } from "../../../components/usuarios/DataTable";
+import { RowActions } from "../../../components/usuarios/RowActions";
+import { StatusBadge } from "../../../components/usuarios/Badge";
+import { RecursoFormModal, RecursoFormValues } from "../../../components/usuarios/RecursoFormModal";
+import { useBuscaDebounce } from "../../../components/usuarios/useBuscaDebounce";
+import { coreApi, getApiErrorMessage } from "../../../lib/api";
+import type { ColumnDef, FiltroStatus } from "../../../components/usuarios/types";
 
 type UnidadeCobranca = "POR_PALAVRA" | "POR_HORA" | "POR_PAGINA" | "POR_PROJETO";
-
-const UNIDADES_LABEL: Record<UnidadeCobranca, string> = {
-  POR_PALAVRA: "Por palavra",
-  POR_HORA: "Por hora",
-  POR_PAGINA: "Por página",
-  POR_PROJETO: "Por projeto",
-};
 
 interface TipoServicoResumo {
   id: string;
@@ -52,84 +40,20 @@ interface Recurso {
   precos: PrecoRecurso[];
 }
 
-// --- Dados fixos de apoio (viriam de /tipos-servico e /idiomas) --------
+interface PrecoPayload {
+  idiomaOrigemId: string;
+  idiomaDestinoId: string;
+  unidade: UnidadeCobranca;
+  valor: number;
+}
 
-const TIPOS_SERVICO_MOCK: TipoServicoResumo[] = [
-  { id: "ts-1", nome: "Tradução Técnica" },
-  { id: "ts-2", nome: "Legendagem" },
-  { id: "ts-3", nome: "Revisão" },
-  { id: "ts-4", nome: "Interpretação Simultânea" },
-];
-
-const IDIOMAS_MOCK: IdiomaResumo[] = [
-  { id: "id-1", nome: "Português", codigoIso: "pt" },
-  { id: "id-2", nome: "Inglês", codigoIso: "en" },
-  { id: "id-3", nome: "Espanhol", codigoIso: "es" },
-  { id: "id-4", nome: "Francês", codigoIso: "fr" },
-];
-
-// --- Dados de exemplo já cadastrados -----------------------------------
-
-const RECURSOS_INICIAIS: Recurso[] = [
-  {
-    id: "r-1",
-    nome: "Ana Beatriz Ferreira",
-    email: "ana.ferreira@email.com",
-    telefone: "(11) 91234-5678",
-    ativo: true,
-    tiposServico: [TIPOS_SERVICO_MOCK[0], TIPOS_SERVICO_MOCK[2]],
-    precos: [
-      {
-        id: "p-1",
-        idiomaOrigem: IDIOMAS_MOCK[1],
-        idiomaDestino: IDIOMAS_MOCK[0],
-        unidade: "POR_PALAVRA",
-        valor: 0.35,
-      },
-      {
-        id: "p-2",
-        idiomaOrigem: IDIOMAS_MOCK[0],
-        idiomaDestino: IDIOMAS_MOCK[1],
-        unidade: "POR_PALAVRA",
-        valor: 0.4,
-      },
-    ],
-  },
-  {
-    id: "r-2",
-    nome: "Carlos Eduardo Lima",
-    email: "carlos.lima@email.com",
-    telefone: "(21) 99876-5432",
-    ativo: true,
-    tiposServico: [TIPOS_SERVICO_MOCK[1]],
-    precos: [
-      {
-        id: "p-3",
-        idiomaOrigem: IDIOMAS_MOCK[1],
-        idiomaDestino: IDIOMAS_MOCK[0],
-        unidade: "POR_HORA",
-        valor: 85,
-      },
-    ],
-  },
-  {
-    id: "r-3",
-    nome: "Marina Costa Souza",
-    email: "marina.souza@email.com",
-    telefone: "(31) 98765-4321",
-    ativo: false,
-    tiposServico: [TIPOS_SERVICO_MOCK[3], TIPOS_SERVICO_MOCK[0]],
-    precos: [
-      {
-        id: "p-4",
-        idiomaOrigem: IDIOMAS_MOCK[2],
-        idiomaDestino: IDIOMAS_MOCK[0],
-        unidade: "POR_PROJETO",
-        valor: 450,
-      },
-    ],
-  },
-];
+interface RecursoPayload {
+  nome: string;
+  email: string;
+  telefone: string;
+  tiposServicoIds: string[];
+  precos: PrecoPayload[];
+}
 
 function ativoDeFiltro(status: FiltroStatus): boolean | undefined {
   if (status === "ativos") return true;
@@ -137,12 +61,48 @@ function ativoDeFiltro(status: FiltroStatus): boolean | undefined {
   return undefined;
 }
 
-function delay<T>(valor: T, ms = 300): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(valor), ms));
+// Ajuste os nomes de query param se RecursoFiltro.java tiver campos diferentes.
+function montarQueryRecurso(nome: string, ativo?: boolean): string {
+  const params = new URLSearchParams();
+  if (nome.trim()) params.set("nome", nome.trim());
+  if (ativo !== undefined) params.set("ativo", String(ativo));
+  params.set("size", "100");
+  return params.toString();
 }
 
-function novoId(prefixo: string): string {
-  return `${prefixo}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+async function listarRecursos(nome: string, ativo?: boolean): Promise<Recurso[]> {
+  const { data } = await coreApi.get<{ content: Recurso[] }>(
+    `/api/v1/recursos?${montarQueryRecurso(nome, ativo)}`
+  );
+  return data.content ?? [];
+}
+
+// Endpoints reaproveitados da tela de Catálogo, só para popular os seletores do formulário
+async function listarTiposServicoAtivos(): Promise<TipoServicoResumo[]> {
+  const { data } = await coreApi.get<{ content: TipoServicoResumo[] }>(
+    "/api/v1/tipos-servico?ativo=true&size=100"
+  );
+  return data.content ?? [];
+}
+
+async function listarIdiomasAtivos(): Promise<IdiomaResumo[]> {
+  const { data } = await coreApi.get<{ content: IdiomaResumo[] }>("/api/v1/idiomas?ativo=true&size=100");
+  return data.content ?? [];
+}
+
+function paraPayload(values: RecursoFormValues): RecursoPayload {
+  return {
+    nome: values.nome,
+    email: values.email,
+    telefone: values.telefone,
+    tiposServicoIds: values.tiposServicoIds,
+    precos: values.precos.map((preco) => ({
+      idiomaOrigemId: preco.idiomaOrigemId,
+      idiomaDestinoId: preco.idiomaDestinoId,
+      unidade: preco.unidade,
+      valor: Number(preco.valor.replace(",", ".")),
+    })),
+  };
 }
 
 function paraFormValues(recurso: Recurso): RecursoFormValues {
@@ -172,12 +132,12 @@ export default function RecursosPage() {
   const busca = useBuscaDebounce();
   const [status, setStatus] = useState<FiltroStatus>("todos");
 
-  // "Banco de dados" em memória — some ao recarregar a página.
-  const [banco, setBanco] = useState<Recurso[]>(RECURSOS_INICIAIS);
-
   const [recursos, setRecursos] = useState<Recurso[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erroLista, setErroLista] = useState("");
+
+  const [tiposServico, setTiposServico] = useState<TipoServicoResumo[]>([]);
+  const [idiomas, setIdiomas] = useState<IdiomaResumo[]>([]);
 
   const [mostrarCriar, setMostrarCriar] = useState(false);
   const [recursoEmEdicao, setRecursoEmEdicao] = useState<Recurso | null>(null);
@@ -185,99 +145,41 @@ export default function RecursosPage() {
   const [erroEdicao, setErroEdicao] = useState("");
   const [erroAcao, setErroAcao] = useState("");
 
-  // ---------------------------------------------------------------
-  // Camada de dados (MOCK). Troque cada função por chamadas coreApi
-  // quando o backend voltar — as assinaturas já batem com o que a
-  // versão real usa.
-  // ---------------------------------------------------------------
-
-  const listarRecursos = useCallback(
-    (nome: string, ativo?: boolean) => {
-      const filtrados = banco.filter((r) => {
-        const bateNome = nome.trim() ? r.nome.toLowerCase().includes(nome.trim().toLowerCase()) : true;
-        const bateStatus = ativo === undefined ? true : r.ativo === ativo;
-        return bateNome && bateStatus;
-      });
-      return delay(filtrados);
-    },
-    [banco]
-  );
-
-  const criarRecurso = useCallback((values: RecursoFormValues) => {
-    const novo: Recurso = {
-      id: novoId("r"),
-      nome: values.nome,
-      email: values.email,
-      telefone: values.telefone,
-      ativo: true,
-      tiposServico: TIPOS_SERVICO_MOCK.filter((t) => values.tiposServicoIds.includes(t.id)),
-      precos: values.precos.map((preco) => ({
-        id: novoId("p"),
-        idiomaOrigem: IDIOMAS_MOCK.find((i) => i.id === preco.idiomaOrigemId)!,
-        idiomaDestino: IDIOMAS_MOCK.find((i) => i.id === preco.idiomaDestinoId)!,
-        unidade: preco.unidade,
-        valor: Number(preco.valor.replace(",", ".")),
-      })),
-    };
-    setBanco((atual) => [...atual, novo]);
-    return delay(novo);
-  }, []);
-
-  const editarRecurso = useCallback((id: string, values: RecursoFormValues) => {
-    setBanco((atual) =>
-      atual.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              nome: values.nome,
-              email: values.email,
-              telefone: values.telefone,
-              tiposServico: TIPOS_SERVICO_MOCK.filter((t) => values.tiposServicoIds.includes(t.id)),
-              precos: values.precos.map((preco) => ({
-                id: novoId("p"),
-                idiomaOrigem: IDIOMAS_MOCK.find((i) => i.id === preco.idiomaOrigemId)!,
-                idiomaDestino: IDIOMAS_MOCK.find((i) => i.id === preco.idiomaDestinoId)!,
-                unidade: preco.unidade,
-                valor: Number(preco.valor.replace(",", ".")),
-              })),
-            }
-          : r
-      )
-    );
-    return delay(undefined);
-  }, []);
-
-  const alterarStatusRecurso = useCallback((id: string, ativo: boolean) => {
-    setBanco((atual) => atual.map((r) => (r.id === id ? { ...r, ativo } : r)));
-    return delay(undefined);
-  }, []);
-
-  // ---------------------------------------------------------------
-  // Orquestração (idêntica à versão com backend)
-  // ---------------------------------------------------------------
-
   const recarregar = useCallback(() => {
     setCarregando(true);
     setErroLista("");
     return listarRecursos(busca.debounced, ativoDeFiltro(status))
       .then(setRecursos)
-      .catch(() => setErroLista("Não foi possível carregar os recursos."))
+      .catch((error) => setErroLista(getApiErrorMessage(error)))
       .finally(() => setCarregando(false));
-  }, [listarRecursos, busca.debounced, status]);
+  }, [busca.debounced, status]);
 
   useEffect(() => {
     recarregar();
   }, [recarregar]);
 
+  useEffect(() => {
+    Promise.all([listarTiposServicoAtivos(), listarIdiomasAtivos()])
+      .then(([tipos, idiomasCarregados]) => {
+        setTiposServico(tipos);
+        setIdiomas(idiomasCarregados);
+      })
+      .catch((error) => setErroAcao(getApiErrorMessage(error)));
+  }, []);
+
   async function handleCreate(values: RecursoFormValues): Promise<boolean> {
     setErroCriacao("");
     try {
-      await criarRecurso(values);
+      // criar() no backend devolve { mensagem, recurso } — desembrulha aqui.
+      await coreApi.post<{ mensagem: string; recurso: Recurso }>(
+        "/api/v1/recursos",
+        paraPayload(values)
+      );
       setMostrarCriar(false);
       await recarregar();
       return true;
-    } catch {
-      setErroCriacao("Não foi possível cadastrar o recurso.");
+    } catch (error) {
+      setErroCriacao(getApiErrorMessage(error));
       return false;
     }
   }
@@ -287,32 +189,37 @@ export default function RecursosPage() {
 
     setErroEdicao("");
     try {
-      await editarRecurso(recursoEmEdicao.id, values);
+      await coreApi.put(`/api/v1/recursos/${recursoEmEdicao.id}`, paraPayload(values));
       setRecursoEmEdicao(null);
       await recarregar();
       return true;
-    } catch {
-      setErroEdicao("Não foi possível salvar as alterações.");
+    } catch (error) {
+      setErroEdicao(getApiErrorMessage(error));
       return false;
     }
   }
 
+  // PATCH de status aqui é em /{id}, sem sufixo /status — diferente de TipoServico/Idioma.
+  async function alterarStatus(id: string, ativo: boolean) {
+    await coreApi.patch(`/api/v1/recursos/${id}`, { ativo });
+  }
+
   function handleToggleStatus(recurso: Recurso) {
     setErroAcao("");
-    alterarStatusRecurso(recurso.id, !recurso.ativo)
+    alterarStatus(recurso.id, !recurso.ativo)
       .then(recarregar)
-      .catch(() => setErroAcao("Não foi possível alterar o status."));
+      .catch((error) => setErroAcao(getApiErrorMessage(error)));
   }
 
   function handleToggleStatusNoForm() {
     if (!recursoEmEdicao) return;
     setErroEdicao("");
-    alterarStatusRecurso(recursoEmEdicao.id, !recursoEmEdicao.ativo)
+    alterarStatus(recursoEmEdicao.id, !recursoEmEdicao.ativo)
       .then(() => {
         setRecursoEmEdicao(null);
         return recarregar();
       })
-      .catch(() => setErroEdicao("Não foi possível alterar o status."));
+      .catch((error) => setErroEdicao(getApiErrorMessage(error)));
   }
 
   const columns: ColumnDef<Recurso>[] = [
@@ -368,12 +275,6 @@ export default function RecursosPage() {
       keyboardShouldPersistTaps="handled"
     >
       <View className="w-full web:max-w-6xl gap-6">
-        <View className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2">
-          <Text className="text-xs font-medium text-amber-700">
-            Modo demonstração: dados fictícios em memória, sem conexão com o backend.
-          </Text>
-        </View>
-
         <View className="flex-row flex-wrap items-center justify-between gap-3">
           <View className="shrink">
             <Text className="text-2xl font-bold text-neutral-900">Recursos</Text>
@@ -461,8 +362,8 @@ export default function RecursosPage() {
         visible={mostrarCriar}
         title="Novo recurso"
         initialValues={VALORES_INICIAIS_VAZIOS}
-        tiposServicoDisponiveis={TIPOS_SERVICO_MOCK}
-        idiomasDisponiveis={IDIOMAS_MOCK}
+        tiposServicoDisponiveis={tiposServico}
+        idiomasDisponiveis={idiomas}
         onSubmit={handleCreate}
         onCancel={() => setMostrarCriar(false)}
         submitLabel="Cadastrar"
@@ -473,8 +374,8 @@ export default function RecursosPage() {
         visible={recursoEmEdicao !== null}
         title="Editar recurso"
         initialValues={recursoEmEdicao ? paraFormValues(recursoEmEdicao) : VALORES_INICIAIS_VAZIOS}
-        tiposServicoDisponiveis={TIPOS_SERVICO_MOCK}
-        idiomasDisponiveis={IDIOMAS_MOCK}
+        tiposServicoDisponiveis={tiposServico}
+        idiomasDisponiveis={idiomas}
         onSubmit={handleUpdate}
         onCancel={() => setRecursoEmEdicao(null)}
         onToggleStatus={handleToggleStatusNoForm}
