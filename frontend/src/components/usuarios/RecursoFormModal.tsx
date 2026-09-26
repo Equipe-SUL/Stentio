@@ -3,13 +3,12 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, View, Text, TextInput, Pressable, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-type UnidadeCobranca = "POR_PALAVRA" | "POR_HORA" | "POR_PAGINA" | "POR_PROJETO";
+// Os valores espelham o enum UnidadeCobranca do Core; o label é só exibição.
+export type UnidadeCobranca = "PALAVRA" | "HORA";
 
-const UNIDADES: { value: UnidadeCobranca; label: string }[] = [
-  { value: "POR_PALAVRA", label: "Por palavra" },
-  { value: "POR_HORA", label: "Por hora" },
-  { value: "POR_PAGINA", label: "Por página" },
-  { value: "POR_PROJETO", label: "Por projeto" },
+export const UNIDADES: { value: UnidadeCobranca; label: string }[] = [
+  { value: "PALAVRA", label: "Por palavra" },
+  { value: "HORA", label: "Por hora" },
 ];
 
 interface TipoServicoResumo {
@@ -55,7 +54,7 @@ interface RecursoFormModalProps {
 const PRECO_VAZIO: PrecoForm = {
   idiomaOrigemId: "",
   idiomaDestinoId: "",
-  unidade: "POR_PALAVRA",
+  unidade: "PALAVRA",
   valor: "",
 };
 

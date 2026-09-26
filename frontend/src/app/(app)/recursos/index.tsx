@@ -4,11 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { DataTable } from "../../../components/usuarios/DataTable";
 import { RowActions } from "../../../components/usuarios/RowActions";
 import { StatusBadge } from "../../../components/usuarios/Badge";
-import { RecursoFormModal, RecursoFormValues } from "../../../components/usuarios/RecursoFormModal";
+import { RecursoFormModal, RecursoFormValues, UnidadeCobranca } from "../../../components/usuarios/RecursoFormModal";
 import { coreApi, getApiErrorMessage } from "../../../lib/api";
 import type { ColumnDef, FiltroStatus } from "../../../components/usuarios/types";
-
-type UnidadeCobranca = "POR_PALAVRA" | "POR_HORA" | "POR_PAGINA" | "POR_PROJETO";
 
 interface TipoServicoResumo {
   id: string;
