@@ -231,25 +231,6 @@ return (
         </View>
 
         <View className="flex-row items-center gap-3">
-          {/* TEMP (gambiarra): atalho temporário para o Catálogo de Referenciais,
-              acessível no Expo Go sem a navegação real pronta.
-              REMOVER quando existir menu lateral de verdade. */}
-          <Pressable
-            onPress={() => router.push("/configs/sistema/catalogo")}
-            className="flex-row items-center gap-2 rounded-lg border border-dashed border-[#6f4f28] bg-[#6f4f28]/5 px-5 py-3"
-          >
-            <Ionicons name="book-outline" size={18} color="#6f4f28" />
-            <Text className="font-medium text-[#6f4f28]">Catálogo</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push("/configs/empresa")}
-            className="flex-row items-center gap-2 rounded-lg border border-dashed border-[#6f4f28] bg-[#6f4f28]/5 px-5 py-3"
-          >
-            <Ionicons name="business-outline" size={18} color="#6f4f28" />
-            <Text className="font-medium text-[#6f4f28]">Empresa</Text>
-          </Pressable>
-
           <Pressable
             onPress={() => sair()}
             className="flex-row items-center gap-2 rounded-lg border border-neutral-300 px-5 py-3"
@@ -305,6 +286,34 @@ return (
             scrollEnabled={false}
           />
         )}
+      </View>
+
+      {/* Atalhos de navegação entre as telas do painel. Provisório: assim que existir
+          menu lateral de verdade, este bloco deve sair e os links passam a viver nele. */}
+      <View className="flex-row flex-wrap items-center gap-3">
+        <Pressable
+          onPress={() => router.push("/configs/sistema/catalogo")}
+          className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-3"
+        >
+          <Ionicons name="book-outline" size={18} color="#6f4f28" />
+          <Text className="font-medium text-neutral-700">Catálogo</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push("/configs/empresa")}
+          className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-3"
+        >
+          <Ionicons name="business-outline" size={18} color="#6f4f28" />
+          <Text className="font-medium text-neutral-700">Empresa</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push("/recursos")}
+          className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-3"
+        >
+          <Ionicons name="people-outline" size={18} color="#6f4f28" />
+          <Text className="font-medium text-neutral-700">Recursos</Text>
+        </Pressable>
       </View>
     </View>
 
