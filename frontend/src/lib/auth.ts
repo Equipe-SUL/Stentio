@@ -9,7 +9,13 @@ export async function getToken(): Promise<string | null> {
   // Web autentica pelo cookie HttpOnly (enviado pelo browser via withCredentials).
   if (isWeb) return null;
   if (memoryToken) return memoryToken;
-  return storage.getItem(storage.TOKEN_KEY);
+
+  // Garante que o token seja recuperado do storage se a memória estiver vazia.
+  const storedToken = await storage.getItem(storage.TOKEN_KEY);
+  if (storedToken) {
+    memoryToken = storedToken;
+  }
+  return memoryToken;
 }
 
 export async function setToken(token: string, persist = false): Promise<void> {

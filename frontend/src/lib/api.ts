@@ -1,6 +1,7 @@
 import axios from "axios";
 import { Platform } from "react-native";
 import { getToken } from "./auth";
+import { instrumentarHttp } from "./httpDebug";
 
 const DEFAULT_API_URL =
   Platform.OS === "android" ? "http://10.0.2.2:8081" : "http://localhost:8081";
@@ -27,12 +28,15 @@ function resolveApiUrl(): string {
 
 export const API_URL = resolveApiUrl();
 
-export const api = axios.create({
-  baseURL: API_URL,
-  timeout: 15000,
-  // Necessário no web para o browser guardar/enviar o cookie HttpOnly (cross-origin).
-  withCredentials: true,
-});
+export const api = instrumentarHttp(
+  axios.create({
+    baseURL: API_URL,
+    timeout: 15000,
+    // Necessário no web para o browser guardar/enviar o cookie HttpOnly (cross-origin).
+    withCredentials: true,
+  }),
+  'auth',
+);
 
 api.interceptors.request.use(async (config) => {
   const token = await getToken();
@@ -57,6 +61,10 @@ export function getApiErrorMessage(error: unknown): string {
         case 400:
           return "Dados inválidos. Verifique os campos e tente de novo.";
         case 401:
+          // Deixado como está de propósito: o mesmo 401 significa "senha errada"
+          // na tela de login e "sessão expirada" nas demais. Arremessar um texto
+          // único aqui quebraria o aviso do login. Quem precisa distinguir é o
+          // log de rede (ver httpDebug), que traz método, url e status.
           return "E-mail ou senha inválidos.";
         case 403:
           return "Você não tem permissão para essa ação.";
@@ -77,21 +85,50 @@ export function getApiErrorMessage(error: unknown): string {
   return "Erro inesperado. Tente novamente.";
 }
 
-    const DEFAULT_CORE_API_URL =
-      Platform.OS === "android" ? "http://10.0.2.2:8082" : "http://localhost:8082";
-    
-    export const CORE_API_URL = process.env.EXPO_PUBLIC_CORE_API_URL ?? DEFAULT_CORE_API_URL;
-    
-    export const coreApi = axios.create({
-      baseURL: CORE_API_URL,
-      timeout: 15000,
-      withCredentials: true,
-    });
-    
-    coreApi.interceptors.request.use(async (config) => {
-      const token = await getToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+const DEFAULT_CORE_API_URL =
+  Platform.OS === "android" ? "http://10.0.2.2:8082" : "http://localhost:8082";
+
+/**
+ * Mesma regra do client de auth, e pelo mesmo motivo: no web a sessão vive em
+ * cookie HttpOnly, e o cookie só é enviado para o host que o emitiu.
+ *
+ * Sem isso o Core ficava no host do .env (ex.: 10.0.0.138) enquanto o cookie
+ * nascia no host da página (ex.: localhost) — o browser não mandava o cookie e
+ * toda rota protegida do Core voltava 401, mesmo com login válido.
+ */
+function resolveCoreApiUrl(): string {
+  const configured = process.env.EXPO_PUBLIC_CORE_API_URL ?? DEFAULT_CORE_API_URL;
+
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    try {
+      const url = new URL(configured);
+      if (url.hostname !== window.location.hostname) {
+        url.hostname = window.location.hostname;
+        return url.toString().replace(/\/$/, "");
       }
-      return config;
-    });
+    } catch {
+      // URL inválida: usa como configurada.
+    }
+  }
+
+  return configured;
+}
+
+export const CORE_API_URL = resolveCoreApiUrl();
+
+export const coreApi = instrumentarHttp(
+  axios.create({
+    baseURL: CORE_API_URL,
+    timeout: 15000,
+    withCredentials: true,
+  }),
+  'core',
+);
+
+coreApi.interceptors.request.use(async (config) => {
+  const token = await getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});

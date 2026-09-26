@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,6 +22,12 @@ import {
 
 export default function SmtpConfigScreen() {
   const router = useRouter();
+
+  // Mesma regra da tela de empresa: no nativo é uma coluna só, decidida em JS.
+  // O lg:/md: do uniwind não é confiável no Android, e o layout mobile é
+  // requisito — não vale depender do breakpoint para isso.
+  const { width } = useWindowDimensions();
+  const duasColunas = Platform.OS === 'web' && width >= 1024;
 
   // Estados dos parâmetros SMTP
   const [host, setHost] = useState(DEFAULT_SMTP_CONFIG.host);
@@ -231,7 +239,10 @@ export default function SmtpConfigScreen() {
       <View className="w-full max-w-5xl mx-auto px-4 py-8 md:px-8">
         {/* Cabeçalho de Navegação e Título */}
         <View className="flex-row items-center justify-between mb-8 pb-4 border-b border-zinc-200">
-          <View className="flex-row items-center gap-3">
+          {/* flex-1 + min-w-0: no React Native o flexShrink padrão é 0, diferente do
+              CSS, então sem isto o bloco de título não encolhe e estoura a largura
+              do celular. min-w-0 é o que permite o texto quebrar. */}
+          <View className="flex-1 min-w-0 flex-row items-center gap-3">
             <TouchableOpacity
               onPress={() => router.canGoBack() ? router.back() : router.push('/')}
               className="p-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm active:bg-zinc-100"
@@ -239,8 +250,8 @@ export default function SmtpConfigScreen() {
             >
               <Ionicons name="arrow-back" size={20} color="#8c5230" />
             </TouchableOpacity>
-            <View>
-              <View className="flex-row items-center gap-2">
+            <View className="flex-1 min-w-0">
+              <View className="flex-row items-center gap-2 flex-wrap">
                 <Text className="text-xs font-bold text-[#8c5230] uppercase tracking-wider">
                   Configurações do Sistema
                 </Text>
@@ -253,10 +264,14 @@ export default function SmtpConfigScreen() {
             </View>
           </View>
 
-          <View className="hidden md:flex flex-row items-center gap-2 bg-[#8c5230]/10 px-3 py-1.5 rounded-full">
-            <Ionicons name="mail" size={16} color="#8c5230" />
-            <Text className="text-xs font-semibold text-[#8c5230]">Microserviço Ativo</Text>
-          </View>
+          {/* Só no web: no celular a badge competia com o título por espaço, e
+              hidden md:flex dependia do breakpoint que não funciona no nativo. */}
+          {duasColunas && (
+            <View className="flex-row items-center gap-2 bg-[#8c5230]/10 px-3 py-1.5 rounded-full">
+              <Ionicons name="mail" size={16} color="#8c5230" />
+              <Text className="text-xs font-semibold text-[#8c5230]">Microserviço Ativo</Text>
+            </View>
+          )}
         </View>
 
         {/* Banner de Feedback de Salvamento */}
@@ -286,9 +301,15 @@ export default function SmtpConfigScreen() {
           </View>
         )}
 
-        <View className="flex-col lg:flex-row gap-8">
+        <View className={duasColunas ? 'flex-row gap-8' : 'flex-col gap-6'}>
           {/* Coluna Principal: Formulário de Configuração */}
-          <View className="flex-1 bg-white rounded-3xl p-6 md:p-8 border border-zinc-200/80 shadow-sm">
+          <View
+            className={
+              duasColunas
+                ? 'flex-1 bg-white rounded-3xl p-6 md:p-8 border border-zinc-200/80 shadow-sm'
+                : 'w-full bg-white rounded-3xl p-5 border border-zinc-200/80 shadow-sm'
+            }
+          >
             <View className="flex-row items-center gap-2.5 mb-6">
               <View className="w-8 h-8 rounded-lg bg-[#8c5230]/10 items-center justify-center">
                 <Ionicons name="server-outline" size={18} color="#8c5230" />
@@ -296,9 +317,10 @@ export default function SmtpConfigScreen() {
               <Text className="text-lg font-bold text-zinc-900">Credenciais e Conexão</Text>
             </View>
 
-            {/* Host e Porta */}
-            <View className="flex-col md:flex-row gap-4 mb-5">
-              <View className="flex-[3]">
+            {/* Host e Porta: lado a lado só no web. No celular empilham, senão
+                os dois campos disputam a mesma faixa de largura. */}
+            <View className={duasColunas ? 'flex-row gap-4 mb-5' : 'flex-col gap-4 mb-5'}>
+              <View className={duasColunas ? 'flex-[3]' : 'w-full'}>
                 <Text className="text-zinc-700 font-semibold text-sm mb-2">Servidor SMTP (Host) *</Text>
                 <TextInput
                   placeholder="ex: smtp.gmail.com"
@@ -315,7 +337,7 @@ export default function SmtpConfigScreen() {
                 )}
               </View>
 
-              <View className="flex-[1] min-w-[120px]">
+              <View className={duasColunas ? 'flex-[1] min-w-[120px]' : 'w-full'}>
                 <Text className="text-zinc-700 font-semibold text-sm mb-2">Porta *</Text>
                 <TextInput
                   placeholder="587"
@@ -468,8 +490,8 @@ export default function SmtpConfigScreen() {
               <Text className="text-lg font-bold text-zinc-900">Remetente Padrão</Text>
             </View>
 
-            <View className="flex-col md:flex-row gap-4 mb-6">
-              <View className="flex-1">
+            <View className={duasColunas ? 'flex-row gap-4 mb-6' : 'flex-col gap-4 mb-6'}>
+              <View className={duasColunas ? 'flex-1' : 'w-full'}>
                 <Text className="text-zinc-700 font-semibold text-sm mb-2">E-mail do Remetente (From)</Text>
                 <TextInput
                   placeholder="notificacoes@stentio.com.br"
@@ -487,7 +509,7 @@ export default function SmtpConfigScreen() {
                 )}
               </View>
 
-              <View className="flex-1">
+              <View className={duasColunas ? 'flex-1' : 'w-full'}>
                 <Text className="text-zinc-700 font-semibold text-sm mb-2">Nome de Exibição</Text>
                 <TextInput
                   placeholder="Stentio Notificações"
@@ -500,7 +522,9 @@ export default function SmtpConfigScreen() {
             </View>
 
             {/* Ações Inferiores */}
-            <View className="flex-row items-center justify-between pt-4 border-t border-zinc-100 gap-3">
+            {/* flex-wrap: os dois botões somam mais que a largura do celular e,
+                sem quebrar, o RN empurrava o segundo para fora da tela. */}
+            <View className="flex-row flex-wrap items-center justify-between pt-4 border-t border-zinc-100 gap-3">
               <TouchableOpacity
                 onPress={handleResetDefaults}
                 className="px-4 py-3.5 rounded-2xl border border-zinc-300 active:bg-zinc-100"
@@ -511,7 +535,7 @@ export default function SmtpConfigScreen() {
               <TouchableOpacity
                 onPress={handleSave}
                 disabled={isSaving}
-                className="flex-row items-center gap-2 bg-[#8c5230] px-6 py-3.5 rounded-2xl shadow-md shadow-orange-900/20 active:opacity-90"
+                className="flex-1 min-w-[160px] flex-row items-center justify-center gap-2 bg-[#8c5230] px-6 py-3.5 rounded-2xl shadow-md shadow-orange-900/20 active:opacity-90"
               >
                 {isSaving ? (
                   <ActivityIndicator color="#fff" size="small" />
@@ -526,7 +550,7 @@ export default function SmtpConfigScreen() {
           </View>
 
           {/* Coluna Lateral: Teste de Conexão SMTP */}
-          <View className="w-full lg:w-96 flex-col gap-6">
+          <View className={duasColunas ? 'w-96 flex-col gap-6' : 'w-full flex-col gap-6'}>
             <View className="bg-white rounded-3xl p-6 md:p-8 border border-zinc-200/80 shadow-sm">
               <View className="flex-row items-center gap-2.5 mb-4">
                 <View className="w-8 h-8 rounded-lg bg-[#8c5230]/10 items-center justify-center">
