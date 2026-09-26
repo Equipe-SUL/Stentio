@@ -1,6 +1,8 @@
 /* eslint-disable import/no-named-as-default-member */
 import axios from 'axios';
 import { Platform } from 'react-native';
+import { getToken } from './auth';
+import { instrumentarHttp } from './httpDebug';
 
 export type EncryptionType = 'TLS' | 'SSL' | 'NONE';
 
@@ -30,7 +32,7 @@ const DEFAULT_API_URL =
   Platform.OS === 'android' ? 'http://10.0.2.2:8083' : 'http://localhost:8083';
 
 function resolveApiUrl(): string {
-  const configured = process.env.EXPO_PUBLIC_SMTP_API_URL ?? DEFAULT_API_URL;
+  const configured = process.env.EXPO_PUBLIC_EMAIL_API_URL ?? DEFAULT_API_URL;
 
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     try {
@@ -49,10 +51,22 @@ function resolveApiUrl(): string {
 
 export const API_URL = resolveApiUrl();
 
-export const api = axios.create({
-  baseURL: API_URL,
-  timeout: 15000,
-  withCredentials: false,
+export const api = instrumentarHttp(
+  axios.create({
+    baseURL: API_URL,
+    timeout: 15000,
+    // O email-service passou a exigir sessão: sem o cookie/JWT, /api/v1/smtp responde 401.
+    withCredentials: true,
+  }),
+  'smtp',
+);
+
+api.interceptors.request.use(async (config) => {
+  const token = await getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 // Configuração padrão inicial caso ainda não haja dados no banco
@@ -76,10 +90,23 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
     if (response.data) {
       return response.data;
     }
-  } catch (error) {
-    // Se a rota ainda não existir ou o backend estiver inicializando,
-    // retorna a configuração inicial sem quebrar a tela.
-    console.warn('[smtpService] Falha ao obter configuração do backend. Usando padrões.', error);
+  } catch (error: any) {
+    // 401/403 significa sessão inválida/expirada, e não "rota inexistente":
+    // avisar separadamente evita mascarar o problema com a configuração padrão.
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
+      console.warn(
+        '[smtpService] Sessão inválida ao obter configuração. Faça login novamente.',
+        error,
+      );
+    } else {
+      // Se a rota ainda não existir ou o backend estiver inicializando,
+      // retorna a configuração inicial sem quebrar a tela.
+      console.warn(
+        '[smtpService] Falha ao obter configuração do backend. Usando padrões.',
+        error,
+      );
+    }
   }
 
   return DEFAULT_SMTP_CONFIG;
@@ -99,9 +126,12 @@ export async function saveSmtpConfig(config: SmtpConfig): Promise<SmtpResponse> 
   } catch (error: any) {
     // Caso o endpoint do backend principal ainda não esteja implementado,
     // garantimos uma experiência funcional com persistência simulada.
+    const status = error?.response?.status;
     const message =
       error?.response?.data?.message ||
-      error?.message ||
+      (status === 401 || status === 403
+        ? 'Sua sessão expirou. Faça login novamente para salvar as configurações.'
+        : error?.message) ||
       'Não foi possível conectar ao servidor. Verifique se o backend está em execução.';
 
     return {

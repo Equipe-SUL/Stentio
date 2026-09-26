@@ -75,6 +75,7 @@ public class SecurityConfig {
                         .requestMatchers(ROTAS_TABELAS_PRECO).hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
                         .anyRequest().authenticated()
                 )
+
                 .addFilterBefore(new JwtAuthFilter(tokenService), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
