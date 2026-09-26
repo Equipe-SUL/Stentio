@@ -243,6 +243,14 @@ return (
           </Pressable>
 
           <Pressable
+            onPress={() => router.push("/configs/empresa")}
+            className="flex-row items-center gap-2 rounded-lg border border-dashed border-[#6f4f28] bg-[#6f4f28]/5 px-5 py-3"
+          >
+            <Ionicons name="business-outline" size={18} color="#6f4f28" />
+            <Text className="font-medium text-[#6f4f28]">Empresa</Text>
+          </Pressable>
+
+          <Pressable
             onPress={() => sair()}
             className="flex-row items-center gap-2 rounded-lg border border-neutral-300 px-5 py-3"
           >
