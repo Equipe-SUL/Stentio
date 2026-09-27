@@ -243,7 +243,8 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       await entrar(email, password, rememberSession);
-      router.replace('/usuarios');
+      // Redireciona para o Layout Admin após o login
+      router.replace('/(admin)');
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error));
     } finally {
@@ -251,8 +252,9 @@ export default function LoginScreen() {
     }
   };
 
-  if (!carregando && usuario?.role === 'ADMIN') {
-    return <Redirect href="/usuarios" />;
+  // Se o utilizador já estiver logado, redireciona-o diretamente para o admin
+  if (!carregando && usuario) {
+    return <Redirect href="/(admin)" />;
   }
 
   return (
