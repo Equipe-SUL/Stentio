@@ -9,7 +9,6 @@ import type { ColumnDef } from "../../../../components/usuarios/types";
 import { FormularioUsuario, NovoUsuario } from "../../../../components/usuarios/CreateUser";
 import { FormularioEdicaoUsuario, UsuarioAtualizado } from "../../../../components/usuarios/EditUser";
 import { ConfirmDialog } from "../../../../components/usuarios/ConfirmDialog";
-import { useSession } from "../../../../lib/session";
 import { api, getApiErrorMessage } from "../../../../lib/api";
 
 type Cargo = "Gestor_Projeto" | "Atendente" | "Admin" | "Financeiro";
@@ -64,7 +63,6 @@ async function buscarUsuarios(): Promise<Usuario[]> {
 }
 
 export default function TabelaUsuarios() {
-  const { sair } = useSession();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | null>(null);
   const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<Usuario | null>(null);
@@ -227,26 +225,16 @@ return (
         secao="Central do sistema"
         titulo="Usuários"
         acoes={
-          <View className="flex-row items-center gap-3">
-            <Pressable
-              onPress={() => sair()}
-              className="flex-row items-center gap-2 rounded-lg border border-neutral-300 px-5 py-3"
-            >
-              <Ionicons name="log-out-outline" size={18} color="#404040" />
-              <Text className="font-medium text-neutral-700">Sair</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => {
-                setErroCriacao("");
-                setMostrarFormulario(true);
-              }}
-              className="flex-row items-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3"
-            >
-              <Ionicons name="add" size={18} color="#ffffff" />
-              <Text className="font-medium text-white">Novo usuário</Text>
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={() => {
+              setErroCriacao("");
+              setMostrarFormulario(true);
+            }}
+            className="flex-row items-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3"
+          >
+            <Ionicons name="add" size={18} color="#ffffff" />
+            <Text className="font-medium text-white">Novo usuário</Text>
+          </Pressable>
         }
       />
 
