@@ -9,15 +9,27 @@ const ITENS: HubItem[] = [
   },
   {
     nome: "Configuração SMTP",
-    descricao: "Servidor de envio dos e-mails transacionais do sistema.",
+    descricao: "Servidor de envio dos e-mails do sistema.",
     icon: "mail-outline",
     route: "/configs/smtp",
   },
   {
-    nome: "Catálogo",
-    descricao: "Tipos de serviço, categorias de projeto e idiomas disponíveis.",
-    icon: "book-outline",
-    route: "/configs/sistema/catalogo",
+    nome: "Idiomas",
+    descricao: "Idiomas disponíveis para tradução e precificação por par.",
+    icon: "language-outline",
+    route: "/configs/sistema/catalogo/idiomas",
+  },
+  {
+    nome: "Tipos de Serviço",
+    descricao: "Serviços que podem ser orçados e executados pelos recursos.",
+    icon: "construct-outline",
+    route: "/configs/sistema/catalogo/tipos",
+  },
+  {
+    nome: "Categorias de Projeto",
+    descricao: "Agrupamentos usados para classificar e filtrar projetos.",
+    icon: "folder-outline",
+    route: "/configs/sistema/catalogo/categorias",
   },
   {
     nome: "Tabela de Preços",

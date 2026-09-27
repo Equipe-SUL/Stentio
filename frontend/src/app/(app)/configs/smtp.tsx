@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { CabecalhoTela } from '../../../components/navegacao/CabecalhoTela';
 import {
   SmtpConfig,
   EncryptionType,
@@ -21,7 +21,6 @@ import {
 } from '../../../lib/smtpService';
 
 export default function SmtpConfigScreen() {
-  const router = useRouter();
 
   // Mesma regra da tela de empresa: no nativo é uma coluna só, decidida em JS.
   // O lg:/md: do uniwind não é confiável no Android, e o layout mobile é
@@ -237,42 +236,22 @@ export default function SmtpConfigScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View className="w-full max-w-5xl mx-auto px-4 py-8 md:px-8">
-        {/* Cabeçalho de Navegação e Título */}
-        <View className="flex-row items-center justify-between mb-8 pb-4 border-b border-zinc-200">
-          {/* flex-1 + min-w-0: no React Native o flexShrink padrão é 0, diferente do
-              CSS, então sem isto o bloco de título não encolhe e estoura a largura
-              do celular. min-w-0 é o que permite o texto quebrar. */}
-          <View className="flex-1 min-w-0 flex-row items-center gap-3">
-            <TouchableOpacity
-              onPress={() => router.canGoBack() ? router.back() : router.push('/')}
-              className="p-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm active:bg-zinc-100"
-              accessibilityLabel="Voltar"
-            >
-              <Ionicons name="arrow-back" size={20} color="#8c5230" />
-            </TouchableOpacity>
-            <View className="flex-1 min-w-0">
-              <View className="flex-row items-center gap-2 flex-wrap">
-                <Text className="text-xs font-bold text-[#8c5230] uppercase tracking-wider">
-                  Configurações do Sistema
-                </Text>
-                <Text className="text-xs text-zinc-400">•</Text>
-                <Text className="text-xs text-zinc-500 font-medium">Serviço de E-mail</Text>
+        <CabecalhoTela
+          contexto="Configurações do Sistema"
+          secao="Serviço de E-mail"
+          titulo="Servidor SMTP"
+          rotaFallback="/configs"
+          acoes={
+            /* Só no web: no celular a badge competia com o título por espaço, e
+               hidden md:flex dependia do breakpoint que não funciona no nativo. */
+            duasColunas ? (
+              <View className="flex-row items-center gap-2 bg-[#8c5230]/10 px-3 py-1.5 rounded-full">
+                <Ionicons name="mail" size={16} color="#8c5230" />
+                <Text className="text-xs font-semibold text-[#8c5230]">Microserviço Ativo</Text>
               </View>
-              <Text className="text-2xl md:text-3xl font-serif font-bold text-zinc-900 mt-1">
-                Servidor SMTP
-              </Text>
-            </View>
-          </View>
-
-          {/* Só no web: no celular a badge competia com o título por espaço, e
-              hidden md:flex dependia do breakpoint que não funciona no nativo. */}
-          {duasColunas && (
-            <View className="flex-row items-center gap-2 bg-[#8c5230]/10 px-3 py-1.5 rounded-full">
-              <Ionicons name="mail" size={16} color="#8c5230" />
-              <Text className="text-xs font-semibold text-[#8c5230]">Microserviço Ativo</Text>
-            </View>
-          )}
-        </View>
+            ) : null
+          }
+        />
 
         {/* Banner de Feedback de Salvamento */}
         {saveFeedback.type && (
@@ -390,23 +369,6 @@ export default function SmtpConfigScreen() {
                     }`}
                   >
                     465 (SSL)
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => handleSetPortPreset('1025', 'NONE')}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold ${
-                    port === '1025'
-                      ? 'bg-[#8c5230] border-[#8c5230]'
-                      : 'bg-zinc-100 border-zinc-200'
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-medium ${
-                      port === '1025' ? 'text-white' : 'text-zinc-700'
-                    }`}
-                  >
-                    1025 (Mailhog Local)
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -632,20 +594,6 @@ export default function SmtpConfigScreen() {
                   </View>
                 </View>
               )}
-            </View>
-
-            {/* Card Informativo / Boas Práticas */}
-            <View className="bg-amber-50/70 border border-amber-200/70 rounded-3xl p-6">
-              <View className="flex-row items-center gap-2 mb-2">
-                <Ionicons name="information-circle-outline" size={20} color="#b45309" />
-                <Text className="font-bold text-amber-900 text-sm">Ambiente de Desenvolvimento</Text>
-              </View>
-              <Text className="text-xs text-amber-800 leading-relaxed">
-                Durante os testes locais com o Docker Compose, utilize o <Text className="font-bold">Mailhog</Text>{' '}
-                definindo o host como <Text className="font-mono font-semibold">localhost</Text> ou{' '}
-                <Text className="font-mono font-semibold">mailhog</Text> na porta{' '}
-                <Text className="font-mono font-semibold">1025</Text> sem autenticação.
-              </Text>
             </View>
           </View>
         </View>

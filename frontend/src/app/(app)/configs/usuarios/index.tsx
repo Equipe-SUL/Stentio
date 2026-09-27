@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { CabecalhoTela } from "../../../../components/navegacao/CabecalhoTela";
 import { DataTable } from "../../../../components/usuarios/DataTable";
 import { RoleBadge, StatusBadge } from "../../../../components/usuarios/Badge";
 import { RowActions } from "../../../../components/usuarios/RowActions";
@@ -216,40 +217,38 @@ export default function TabelaUsuarios() {
 
 return (
   <ScrollView
-    className="flex-1 bg-neutral-50"
-    contentContainerClassName="gap-6 p-6 web:px-24 web:py-12 web:items-center"
+    className="flex-1 bg-[#fbfaf8]"
+    contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
     keyboardShouldPersistTaps="handled"
   >
-    <View className="w-full web:max-w-6xl gap-6">
-      <View className="flex-row flex-wrap items-center justify-between gap-3">
-        <View className="shrink">
-          <Text className="text-2xl font-bold text-neutral-900">Usuários</Text>
-          <Text className="text-sm text-neutral-500">
-            Gerenciamento de usuários do sistema
-          </Text>
-        </View>
+    <View className="w-full max-w-5xl mx-auto px-4 py-8 md:px-8 gap-6">
+      <CabecalhoTela
+        contexto="Sistema"
+        secao="Central do sistema"
+        titulo="Usuários"
+        acoes={
+          <View className="flex-row items-center gap-3">
+            <Pressable
+              onPress={() => sair()}
+              className="flex-row items-center gap-2 rounded-lg border border-neutral-300 px-5 py-3"
+            >
+              <Ionicons name="log-out-outline" size={18} color="#404040" />
+              <Text className="font-medium text-neutral-700">Sair</Text>
+            </Pressable>
 
-        <View className="flex-row items-center gap-3">
-          <Pressable
-            onPress={() => sair()}
-            className="flex-row items-center gap-2 rounded-lg border border-neutral-300 px-5 py-3"
-          >
-            <Ionicons name="log-out-outline" size={18} color="#404040" />
-            <Text className="font-medium text-neutral-700">Sair</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              setErroCriacao("");
-              setMostrarFormulario(true);
-            }}
-            className="flex-row items-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3"
-          >
-            <Ionicons name="add" size={18} color="#ffffff" />
-            <Text className="font-medium text-white">Novo usuário</Text>
-          </Pressable>
-        </View>
-      </View>
+            <Pressable
+              onPress={() => {
+                setErroCriacao("");
+                setMostrarFormulario(true);
+              }}
+              className="flex-row items-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3"
+            >
+              <Ionicons name="add" size={18} color="#ffffff" />
+              <Text className="font-medium text-white">Novo usuário</Text>
+            </Pressable>
+          </View>
+        }
+      />
 
       {erroAcao ? (
         <View className="rounded-lg border border-red-200 bg-red-50 p-3">

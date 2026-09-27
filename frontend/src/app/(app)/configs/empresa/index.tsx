@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { CabecalhoTela } from '../../../../components/navegacao/CabecalhoTela';
 import * as DocumentPicker from 'expo-document-picker';
 import {
   buscarEmpresa,
@@ -98,7 +98,6 @@ const FORM_VAZIO: EmpresaRequest = {
 };
 
 export default function ConfiguracaoEmpresaScreen() {
-  const router = useRouter();
 
   // Regra de layout decided em JS, e não por lg:/md:.
   //
@@ -307,46 +306,26 @@ export default function ConfiguracaoEmpresaScreen() {
     >
       <View className="w-full max-w-5xl mx-auto px-4 py-8 md:px-8">
 
-        {/* Cabeçalho de Navegação e Título */}
-        <View className="flex-row items-center justify-between mb-8 pb-4 border-b border-zinc-200">
-          {/* flex-1 + min-w-0: no React Native o flexShrink padrão é 0, diferente do
-              CSS, então sem isto o bloco de título não encolhe e estoura a largura
-              do celular. min-w-0 é o que permite o texto quebrar. */}
-          <View className="flex-1 min-w-0 flex-row items-center gap-3">
-            <TouchableOpacity
-              onPress={() => (router.canGoBack() ? router.back() : router.push('/admin'))}
-              className="p-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm active:bg-zinc-100"
-              accessibilityLabel="Voltar"
-            >
-              <Ionicons name="arrow-back" size={20} color="#8c5230" />
-            </TouchableOpacity>
-
-            <View className="flex-1 min-w-0">
-              <View className="flex-row items-center gap-2 flex-wrap">
-                <Text className="text-xs font-bold text-[#8c5230] uppercase tracking-wider">
-                  Configurações do Sistema
+        <CabecalhoTela
+          contexto="Configurações do Sistema"
+          secao="Empresa"
+          titulo="Dados da Empresa"
+          descricao="As informações cadastradas aqui serão utilizadas automaticamente nos documentos gerados pelo sistema, como contratos, propostas e e-mails enviados aos clientes."
+          rotaFallback="/configs"
+          acoes={
+            /* Só no web: no celular essa badge competia com o título por espaço e
+               era o que estourava o cabeçalho. hidden md:flex dependia do mesmo
+               breakpoint que falhava no nativo. */
+            duasColunas ? (
+              <View className="flex-row items-center gap-2 bg-[#8c5230]/10 px-3 py-1.5 rounded-full">
+                <Ionicons name="business" size={16} color="#8c5230" />
+                <Text className="text-xs font-semibold text-[#8c5230]">
+                  {dadosEmpresa ? 'Cadastro existente' : 'Novo cadastro'}
                 </Text>
-                <Text className="text-xs text-zinc-400">•</Text>
-                <Text className="text-xs text-zinc-500 font-medium">Empresa</Text>
               </View>
-              <Text className="text-2xl md:text-3xl font-serif font-bold text-zinc-900 mt-1">
-                Dados da Empresa
-              </Text>
-            </View>
-          </View>
-
-          {/* Só no web: no celular essa badge competia com o título por espaço e
-              era o que estourava o cabeçalho. hidden md:flex dependia do mesmo
-              breakpoint que falhava no nativo. */}
-          {duasColunas && (
-            <View className="flex-row items-center gap-2 bg-[#8c5230]/10 px-3 py-1.5 rounded-full">
-              <Ionicons name="business" size={16} color="#8c5230" />
-              <Text className="text-xs font-semibold text-[#8c5230]">
-                {dadosEmpresa ? 'Cadastro existente' : 'Novo cadastro'}
-              </Text>
-            </View>
-          )}
-        </View>
+            ) : null
+          }
+        />
 
         {/* Banner de Feedback */}
         {feedback.tipo && (
@@ -584,18 +563,6 @@ export default function ConfiguracaoEmpresaScreen() {
                   </View>
                 </View>
               )}
-            </View>
-
-            {/* Card informativo */}
-            <View className="bg-amber-50/70 border border-amber-200/70 rounded-3xl p-6">
-              <View className="flex-row items-center gap-2 mb-2">
-                <Ionicons name="information-circle-outline" size={20} color="#b45309" />
-                <Text className="font-bold text-amber-900 text-sm">Sobre os dados da empresa</Text>
-              </View>
-              <Text className="text-xs text-amber-800 leading-relaxed">
-                As informações cadastradas aqui serão utilizadas automaticamente nos documentos
-                gerados pelo sistema, como contratos, propostas e e-mails enviados aos clientes.
-              </Text>
             </View>
           </View>
 

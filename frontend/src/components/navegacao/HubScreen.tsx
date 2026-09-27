@@ -72,7 +72,7 @@ export function HubScreen({
                 accessibilityState={{ disabled: !disponivel }}
                 disabled={!disponivel}
                 onPress={() => item.route && router.push(item.route)}
-                className={`w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.6667rem)] rounded-2xl bg-white border border-zinc-200 p-5 active:bg-zinc-100 ${
+                className={`w-full sm:flex-1 sm:min-w-[46%] lg:min-w-[31%] rounded-2xl bg-white border border-zinc-200 p-5 active:bg-zinc-100 ${
                   disponivel ? "shadow-sm" : "opacity-45"
                 }`}
               >
