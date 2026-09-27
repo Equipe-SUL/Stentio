@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { router } from "expo-router";
 import { ActivityIndicator, ScrollView, View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { DataTable } from "../../../components/usuarios/DataTable";
-import { RoleBadge, StatusBadge } from "../../../components/usuarios/Badge";
-import { RowActions } from "../../../components/usuarios/RowActions";
-import type { ColumnDef } from "../../../components/usuarios/types";
-import { FormularioUsuario, NovoUsuario } from "../../../components/usuarios/CreateUser";
-import { FormularioEdicaoUsuario, UsuarioAtualizado } from "../../../components/usuarios/EditUser";
-import { ConfirmDialog } from "../../../components/usuarios/ConfirmDialog";
-import { useSession } from "../../../lib/session";
-import { api, getApiErrorMessage } from "../../../lib/api";
+import { DataTable } from "../../../../components/usuarios/DataTable";
+import { RoleBadge, StatusBadge } from "../../../../components/usuarios/Badge";
+import { RowActions } from "../../../../components/usuarios/RowActions";
+import type { ColumnDef } from "../../../../components/usuarios/types";
+import { FormularioUsuario, NovoUsuario } from "../../../../components/usuarios/CreateUser";
+import { FormularioEdicaoUsuario, UsuarioAtualizado } from "../../../../components/usuarios/EditUser";
+import { ConfirmDialog } from "../../../../components/usuarios/ConfirmDialog";
+import { useSession } from "../../../../lib/session";
+import { api, getApiErrorMessage } from "../../../../lib/api";
 
 type Cargo = "Gestor_Projeto" | "Atendente" | "Admin" | "Financeiro";
 type Status = "Ativo" | "Inativo";
@@ -286,34 +285,6 @@ return (
             scrollEnabled={false}
           />
         )}
-      </View>
-
-      {/* Atalhos de navegação entre as telas do painel. Provisório: assim que existir
-          menu lateral de verdade, este bloco deve sair e os links passam a viver nele. */}
-      <View className="flex-row flex-wrap items-center gap-3">
-        <Pressable
-          onPress={() => router.push("/configs/sistema/catalogo")}
-          className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-3"
-        >
-          <Ionicons name="book-outline" size={18} color="#6f4f28" />
-          <Text className="font-medium text-neutral-700">Catálogo</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push("/configs/empresa")}
-          className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-3"
-        >
-          <Ionicons name="business-outline" size={18} color="#6f4f28" />
-          <Text className="font-medium text-neutral-700">Empresa</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push("/recursos")}
-          className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-3"
-        >
-          <Ionicons name="people-outline" size={18} color="#6f4f28" />
-          <Text className="font-medium text-neutral-700">Recursos</Text>
-        </Pressable>
       </View>
     </View>
 

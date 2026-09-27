@@ -6,34 +6,27 @@ import { AppShell, type MenuGroup } from "../../components/navegacao/AppShell";
 const MENU_CONFIG: MenuGroup[] = [
   {
     title: "PAINEL",
-    icon: "shield-checkmark-outline",
-    items: [{ name: "Usuários", icon: "people-outline", route: "/usuarios" }],
+    icon: "grid-outline",
+    items: [{ name: "Dashboard", icon: "grid-outline" }],
   },
   {
-    title: "CADASTROS",
-    icon: "create-outline",
+    title: "OPERACIONAL",
+    icon: "construct-outline",
     items: [
+      { name: "Clientes", icon: "people-outline" },
+      { name: "Solicitações", icon: "document-text-outline" },
+      { name: "Ordens de Serviço", icon: "clipboard-outline" },
       { name: "Recursos", icon: "person-outline", route: "/recursos" },
-      {
-        name: "Catálogo",
-        icon: "book-outline",
-        route: "/configs/sistema/catalogo",
-      },
     ],
   },
   {
-    title: "CONFIGURAÇÕES",
-    icon: "settings-outline",
+    title: "SISTEMA",
+    icon: "shield-checkmark-outline",
     items: [
       {
-        name: "Dados da Empresa",
-        icon: "business-outline",
-        route: "/configs/empresa",
-      },
-      {
-        name: "Configuração SMTP",
-        icon: "mail-outline",
-        route: "/smtp",
+        name: "Central do sistema",
+        icon: "settings-outline",
+        route: "/admin",
       },
     ],
   },
@@ -72,7 +65,7 @@ export default function AppLayout() {
     <AppShell
       groups={MENU_CONFIG}
       usuario={usuario}
-      homeRoute="/usuarios"
+      homeRoute="/admin"
       onSair={sair}
     >
       <Slot />

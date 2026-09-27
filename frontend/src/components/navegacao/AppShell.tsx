@@ -21,7 +21,7 @@ export type IconName = React.ComponentProps<typeof Ionicons>["name"];
 export interface MenuItem {
   name: string;
   icon: IconName;
-  route: Href;
+  route?: Href;
 }
 
 export interface MenuGroup {
@@ -67,8 +67,10 @@ export function AppShell({
   const [grupoAberto, setGrupoAberto] = useState<GrupoAberto | null>(null);
   const iniciais = iniciaisDoNome(usuario.nome);
 
-  const isRouteActive = (route: Href) =>
-    pathname === route || pathname.startsWith(`${route}/`);
+  const isRouteActive = (route?: Href) => {
+    if (!route) return false;
+    return pathname === route || pathname.startsWith(`${route}/`);
+  };
 
   const activeMobileGroup =
     grupoAberto &&
@@ -107,7 +109,8 @@ export function AppShell({
     return () => subscription.remove();
   }, [activeMobileGroup, isMobile]);
 
-  const handleNavigate = (route: Href) => {
+  const handleNavigate = (route?: Href) => {
+    if (!route) return;
     router.navigate(route);
     setGrupoAberto(null);
   };
@@ -150,11 +153,18 @@ export function AppShell({
                     <Text className="text-xs font-bold text-[#a1a1aa] mb-2 tracking-wider">
                       {group.title}
                     </Text>
-                    {group.items.map((item, i) => {
+                    {group.items.map((item) => {
+                      const disponivel = item.route !== undefined;
                       const isActive = isRouteActive(item.route);
                       return (
                         <TouchableOpacity
-                          key={i}
+                          key={item.name}
+                          accessibilityRole="button"
+                          accessibilityState={{
+                            selected: isActive,
+                            disabled: !disponivel,
+                          }}
+                          disabled={!disponivel}
                           onPress={() => handleNavigate(item.route)}
                           className={`flex-row items-center px-3 py-2.5 rounded-lg mb-1 transition-colors ${isActive ? "bg-[#8c5230]" : "hover:bg-white/5"}`}
                         >
@@ -165,7 +175,7 @@ export function AppShell({
                             style={{ marginRight: 12 }}
                           />
                           <Text
-                            className={`text-sm ${isActive ? "text-white font-semibold" : "text-zinc-300"}`}
+                            className={`text-sm ${isActive ? "text-white font-semibold" : disponivel ? "text-zinc-300" : "text-zinc-500"}`}
                           >
                             {item.name}
                           </Text>
@@ -274,27 +284,34 @@ export function AppShell({
                     {groups
                       .find((group) => group.title === activeMobileGroup)
                       ?.items.map((item) => {
+                        const disponivel = item.route !== undefined;
                         const active = isRouteActive(item.route);
                         return (
                           <TouchableOpacity
-                            key={String(item.route)}
+                            key={item.name}
                             accessibilityRole="button"
-                            accessibilityState={{ selected: active }}
+                            accessibilityState={{
+                              selected: active,
+                              disabled: !disponivel,
+                            }}
+                            disabled={!disponivel}
                             onPress={() => handleNavigate(item.route)}
                             style={[
                               styles.menuItem,
                               active && styles.menuItemActive,
+                              !disponivel && styles.menuItemDisabled,
                             ]}
                           >
                             <Ionicons
                               name={item.icon}
                               size={22}
-                              color="#8c5230"
+                              color={disponivel ? "#8c5230" : "#a1a1aa"}
                             />
                             <Text
                               style={[
                                 styles.menuText,
                                 active && styles.menuTextActive,
+                                !disponivel && styles.menuTextDisabled,
                               ]}
                             >
                               {item.name}
@@ -322,20 +339,33 @@ export function AppShell({
             >
               <View style={styles.dock}>
                 {groups.map((group) => {
+                  const unico = group.items.length === 1 ? group.items[0] : null;
+                  const rotaDireta = unico?.route;
                   const active = activeMobileGroup
                     ? activeMobileGroup === group.title
-                    : group.items.some((item) => isRouteActive(item.route));
+                    : group.items.some(
+                        (item) => item.route && isRouteActive(item.route),
+                      );
                   return (
                     <TouchableOpacity
                       key={group.title}
                       accessibilityRole="button"
                       accessibilityLabel={group.title}
-                      accessibilityHint="Abre as opções deste grupo"
+                      accessibilityHint={
+                        rotaDireta
+                          ? "Abre esta seção"
+                          : "Abre as opções deste grupo"
+                      }
                       accessibilityState={{
                         expanded: activeMobileGroup === group.title,
                         selected: active,
                       }}
-                      onPress={() =>
+                      onPress={() => {
+                        if (rotaDireta) {
+                          setGrupoAberto(null);
+                          router.navigate(rotaDireta);
+                          return;
+                        }
                         setGrupoAberto((current) =>
                           current?.titulo === group.title
                             ? null
@@ -344,8 +374,8 @@ export function AppShell({
                                 rota: pathname,
                                 mobile: isMobile,
                               },
-                        )
-                      }
+                        );
+                      }}
                       style={[
                         styles.dockButton,
                         active && styles.dockButtonActive,
@@ -479,6 +509,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   menuItemActive: { backgroundColor: "#f5ede7" },
+  menuItemDisabled: { opacity: 0.45 },
   menuText: { flex: 1, marginHorizontal: 12, color: "#3f3f46", fontSize: 15 },
   menuTextActive: { color: "#8c5230", fontWeight: "700" },
+  menuTextDisabled: { color: "#a1a1aa" },
 });

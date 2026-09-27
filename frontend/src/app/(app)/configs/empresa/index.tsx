@@ -314,7 +314,7 @@ export default function ConfiguracaoEmpresaScreen() {
               do celular. min-w-0 é o que permite o texto quebrar. */}
           <View className="flex-1 min-w-0 flex-row items-center gap-3">
             <TouchableOpacity
-              onPress={() => (router.canGoBack() ? router.back() : router.push('/usuarios'))}
+              onPress={() => (router.canGoBack() ? router.back() : router.push('/admin'))}
               className="p-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm active:bg-zinc-100"
               accessibilityLabel="Voltar"
             >

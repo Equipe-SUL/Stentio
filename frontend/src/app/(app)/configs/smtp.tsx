@@ -18,7 +18,7 @@ import {
   getSmtpConfig,
   saveSmtpConfig,
   testSmtpConnection,
-} from '../../lib/smtpService';
+} from '../../../lib/smtpService';
 
 export default function SmtpConfigScreen() {
   const router = useRouter();
