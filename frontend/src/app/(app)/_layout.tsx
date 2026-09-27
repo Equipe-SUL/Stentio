@@ -1,6 +1,43 @@
 import { Redirect, Slot } from "expo-router";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useSession } from "../../lib/session";
+import { AppShell, type MenuGroup } from "../../components/navegacao/AppShell";
+
+const MENU_CONFIG: MenuGroup[] = [
+  {
+    title: "PAINEL",
+    icon: "shield-checkmark-outline",
+    items: [{ name: "Usuários", icon: "people-outline", route: "/usuarios" }],
+  },
+  {
+    title: "CADASTROS",
+    icon: "create-outline",
+    items: [
+      { name: "Recursos", icon: "person-outline", route: "/recursos" },
+      {
+        name: "Catálogo",
+        icon: "book-outline",
+        route: "/configs/sistema/catalogo",
+      },
+    ],
+  },
+  {
+    title: "CONFIGURAÇÕES",
+    icon: "settings-outline",
+    items: [
+      {
+        name: "Dados da Empresa",
+        icon: "business-outline",
+        route: "/configs/empresa",
+      },
+      {
+        name: "Configuração SMTP",
+        icon: "mail-outline",
+        route: "/smtp",
+      },
+    ],
+  },
+];
 
 export default function AppLayout() {
   const { usuario, carregando, sair } = useSession();
@@ -31,5 +68,14 @@ export default function AppLayout() {
     );
   }
 
-  return <Slot />;
+  return (
+    <AppShell
+      groups={MENU_CONFIG}
+      usuario={usuario}
+      homeRoute="/usuarios"
+      onSair={sair}
+    >
+      <Slot />
+    </AppShell>
+  );
 }
