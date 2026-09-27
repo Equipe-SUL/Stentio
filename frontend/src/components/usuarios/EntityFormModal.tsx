@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, View, Text, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
 import type { FieldDef } from "./types";
 
 interface EntityFormModalProps<T> {
@@ -43,8 +44,10 @@ export function EntityFormModal<T extends Record<string, any>>({
     return fields.every((field) => {
       if (field.type === "boolean") return true;
       const valor = String(values[field.key] ?? "").trim();
+      const obrigatorio = field.required ?? true;
+      if (valor.length === 0) return !obrigatorio;
       if (field.type === "iso") return /^[a-z]{2,3}(-[a-zA-Z]{2,4})?$/.test(valor);
-      return valor.length > 0;
+      return true;
     });
   }
 
@@ -71,9 +74,11 @@ export function EntityFormModal<T extends Record<string, any>>({
             </View>
           ) : null}
 
-          {fields.map((field) => (
+          {fields.map((field) => {
+            const rotulo = field.label + ((field.required ?? true) ? "" : " (opcional)");
+            return (
             <View key={String(field.key)} className="gap-2">
-              <Text className="text-sm font-medium text-neutral-700">{field.label}</Text>
+              <Text className="text-sm font-medium text-neutral-700">{rotulo}</Text>
 
               {field.type === "boolean" ? (
                 <View className="flex-row gap-2">
@@ -97,6 +102,22 @@ export function EntityFormModal<T extends Record<string, any>>({
                     </Pressable>
                   ))}
                 </View>
+              ) : field.type === "select" ? (
+                <View className="overflow-hidden rounded-lg border border-neutral-300">
+                  <Picker
+                    selectedValue={String(values[field.key] ?? "")}
+                    onValueChange={(escolha) =>
+                      setField(field.key, escolha as T[typeof field.key])
+                    }
+                    dropdownIconColor="#737373"
+                    style={{ color: "#171717" }}
+                  >
+                    <Picker.Item label="Selecione..." value="" />
+                    {(field.options ?? []).map((opcao) => (
+                      <Picker.Item key={opcao.value} label={opcao.label} value={opcao.value} />
+                    ))}
+                  </Picker>
+                </View>
               ) : (
                 <TextInput
                   value={String(values[field.key] ?? "")}
@@ -110,11 +131,15 @@ export function EntityFormModal<T extends Record<string, any>>({
                   }
                   placeholder={field.placeholder ?? field.label}
                   autoCapitalize={field.type === "iso" ? "none" : "sentences"}
+                  multiline={field.type === "textarea"}
+                  numberOfLines={field.type === "textarea" ? (field.linhas ?? 4) : 1}
+                  textAlignVertical={field.type === "textarea" ? "top" : "center"}
                   className="rounded-lg border border-neutral-300 px-4 py-3 text-neutral-900"
                 />
               )}
             </View>
-          ))}
+            );
+          })}
 
           <View className="flex-row items-center justify-between pt-2">
             {onDelete ? (
