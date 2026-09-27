@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 import java.util.List;
 
@@ -77,10 +79,49 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ErroResponse.deValidacao(mensagem, erros));
     }
 
-    // JSON malformado, UUID inválido ou unidade fora do enum. Os detalhes do parser não são expostos.
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErroResponse> handleCorpoIlegivel(HttpMessageNotReadableException ex) {
-        return responder(HttpStatus.BAD_REQUEST, "Corpo da requisição inválido ou com valores em formato incorreto");
+        InvalidFormatException falha = causaDeConversao(ex);
+
+        // JSON quebrado ou tipo sem conversão.
+        if (falha == null) {
+            return responder(HttpStatus.BAD_REQUEST, "Corpo da requisição inválido ou com valores em formato incorreto");
+        }
+
+        CampoErro erro = new CampoErro(caminhoDoCampo(falha), "Valor inválido: \"" + valorRecebido(falha) + "\"");
+        return ResponseEntity.badRequest().body(ErroResponse.deValidacao(erro.mensagem(), List.of(erro)));
+    }
+
+    private static InvalidFormatException causaDeConversao(Throwable erro) {
+        for (Throwable atual = erro; atual != null; atual = atual.getCause()) {
+            if (atual instanceof InvalidFormatException falha) {
+                return falha;
+            }
+        }
+        return null;
+    }
+
+    private static String caminhoDoCampo(InvalidFormatException falha) {
+        String caminho = "";
+
+        for (JacksonException.Reference referencia : falha.getPath()) {
+            if (referencia.getIndex() >= 0) {
+                caminho = caminho.isEmpty()
+                        ? "[" + referencia.getIndex() + "]"
+                        : caminho + "." + referencia.getIndex();
+            } else if (referencia.getPropertyName() != null) {
+                caminho = caminho.isEmpty()
+                        ? referencia.getPropertyName()
+                        : caminho + "." + referencia.getPropertyName();
+            }
+        }
+
+        return caminho.isEmpty() ? "(corpo)" : caminho;
+    }
+
+    private static String valorRecebido(InvalidFormatException falha) {
+        String valor = String.valueOf(falha.getValue());
+        return valor.length() > 60 ? valor.substring(0, 60) + "..." : valor;
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
