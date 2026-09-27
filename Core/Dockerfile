@@ -8,11 +8,13 @@ COPY gradle ./gradle
 
 RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
 
-RUN ./gradlew dependencies --no-daemon
+RUN --mount=type=cache,target=/root/.gradle,id=stentio-gradle-core \
+    ./gradlew dependencies --no-daemon
 
 COPY src ./src
 
-RUN ./gradlew bootJar --no-daemon && \
+RUN --mount=type=cache,target=/root/.gradle,id=stentio-gradle-core \
+    ./gradlew bootJar --no-daemon && \
     find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -exec cp {} /workspace/app.jar \;
 
 FROM eclipse-temurin:25-jre AS runner
