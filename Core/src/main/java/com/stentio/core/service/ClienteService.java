@@ -8,6 +8,7 @@ import com.stentio.core.exception.ClienteNaoEncontradoException;
 import com.stentio.core.exception.CpfCnpjJaCadastradoException;
 import com.stentio.core.mapper.ClienteMapper;
 import com.stentio.core.model.Cliente;
+import com.stentio.core.model.EmpresaOperadora;
 import com.stentio.core.repository.ClienteRepository;
 import com.stentio.core.repository.ClienteSpecifications;
 import com.stentio.core.validation.CpfCnpjUtils;
@@ -43,7 +44,7 @@ public class ClienteService {
                 request.nomeRepresentante(),
                 request.emailRepresentante(),
                 request.telefone(),
-                request.empresaId(),
+                EmpresaOperadora.ID,
                 cpfCnpjLimpo
         );
 
@@ -64,7 +65,7 @@ public class ClienteService {
                 request.nomeRepresentante(),
                 request.emailRepresentante(),
                 request.telefone(),
-                request.empresaId(),
+                EmpresaOperadora.ID,
                 cpfCnpjLimpo
         );
         clienteRepository.flush();

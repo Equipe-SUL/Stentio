@@ -61,7 +61,6 @@ class ClienteControllerTest {
                 "Wesley Xavier",
                 "wesley@stentio.com",
                 "11987654321",
-                empresaId,
                 "52998224725"
         );
 
@@ -101,7 +100,6 @@ class ClienteControllerTest {
                 "Wesley Xavier",
                 "email_invalido_sem_arroba",
                 "11987654321",
-                empresaId,
                 "52998224725"
         );
 
@@ -123,7 +121,6 @@ class ClienteControllerTest {
                 "Wesley Xavier",
                 "wesley@stentio.com",
                 "11987654321",
-                empresaId,
                 "11111111111" // dígitos repetidos
         );
 
@@ -145,7 +142,6 @@ class ClienteControllerTest {
                 "Wesley Xavier",
                 "wesley@stentio.com",
                 "11987654321",
-                empresaId,
                 "52998224725"
         );
 
@@ -265,7 +261,6 @@ class ClienteControllerTest {
                 "Wesley Xavier Modificado",
                 "wesley.novo@stentio.com",
                 "11911112222",
-                empresaId,
                 "52998224725"
         );
 
