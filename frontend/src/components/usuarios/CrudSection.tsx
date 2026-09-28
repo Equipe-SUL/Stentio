@@ -7,6 +7,7 @@ import { RowActions } from "./RowActions";
 import { EntityFormModal } from "./EntityFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { StatusBadge } from "./Badge";
+import { getApiErrorMessage } from "../../lib/api";
 import type { ColumnDef, FieldDef, FiltroStatus } from "./types";
 
 interface EntityBase {
@@ -42,16 +43,20 @@ interface CrudSectionProps<T extends EntityBase> {
   permitirExclusao?: boolean;
 }
 
-function getApiErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Ocorreu um erro inesperado. Tente novamente.";
-}
-
 function renderFieldValue<T>(item: T, field: FieldDef<T>) {
   const valor = item[field.key];
 
   if (field.type === "boolean") {
     return <StatusBadge status={valor ? "Ativo" : "Inativo"} />;
+  }
+
+  // Campo opcional e vazio não deve virar a palavra "null" na tabela.
+  if (valor === null || valor === undefined || valor === "") {
+    return (
+      <Text className="text-sm text-neutral-400" numberOfLines={1}>
+        —
+      </Text>
+    );
   }
 
   if (field.type === "iso") {

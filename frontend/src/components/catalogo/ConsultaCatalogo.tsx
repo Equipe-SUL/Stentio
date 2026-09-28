@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ScrollView, View } from "react-native";
+import type { Href } from "expo-router";
 import { CabecalhoTela } from "../navegacao/CabecalhoTela";
 
 interface ConsultaCatalogoProps {
@@ -7,6 +8,9 @@ interface ConsultaCatalogoProps {
   secao: string;
   titulo: string;
   descricao?: string;
+  // Para onde o botão voltar leva quando a tela foi aberta direto pela URL,
+  // sem histórico de navegação. Telas fora do catálogo precisam sobrescrever.
+  rotaFallback?: Href;
   children: ReactNode;
 }
 
@@ -15,6 +19,7 @@ export function ConsultaCatalogo({
   secao,
   titulo,
   descricao,
+  rotaFallback = "/configs",
   children,
 }: ConsultaCatalogoProps) {
   return (
@@ -29,7 +34,7 @@ export function ConsultaCatalogo({
           secao={secao}
           titulo={titulo}
           descricao={descricao}
-          rotaFallback="/configs"
+          rotaFallback={rotaFallback}
         />
 
         {children}

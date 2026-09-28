@@ -13,7 +13,7 @@ const MENU_CONFIG: MenuGroup[] = [
     title: "OPERACIONAL",
     icon: "construct-outline",
     items: [
-      { name: "Clientes", icon: "people-outline" },
+      { name: "Clientes", icon: "people-outline", route: "/clientes" },
       { name: "Solicitações", icon: "document-text-outline" },
       { name: "Ordens de Serviço", icon: "clipboard-outline" },
       { name: "Recursos", icon: "person-outline", route: "/recursos" },
