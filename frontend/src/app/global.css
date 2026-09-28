@@ -1,0 +1,3 @@
+@source '../**/*.{ts,tsx}';
+@import 'tailwindcss';
+@import 'uniwind';
