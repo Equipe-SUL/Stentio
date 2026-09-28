@@ -36,7 +36,7 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
 ## 💻 Tecnologias <a id="tecnologias"></a>
 <h4 align="center">
       <img title="Java" alt="Java" src="https://skillicons.dev/icons?i=java" />
-      <img title="Spring Boot" alt="Spring Boot" src="https://skillicons.dev/icons?i=springboot" />
+      <img title="Spring" alt="Spring" src="https://skillicons.dev/icons?i=spring" />
       <img title="Gradle" alt="Gradle" src="https://skillicons.dev/icons?i=gradle" />
       <img title="PostgreSQL" alt="PostgreSQL" src="https://skillicons.dev/icons?i=postgresql" />
       <img title="MongoDB" alt="MongoDB" src="https://skillicons.dev/icons?i=mongodb" />
@@ -44,15 +44,14 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
       <img src="https://skillicons.dev/icons?i=null">
       <img title="React" alt="React" src="https://skillicons.dev/icons?i=react" />
       <img title="TypeScript" alt="TypeScript" src="https://skillicons.dev/icons?i=typescript" />
-      <img title="Expo" alt="Expo" src="https://skillicons.dev/icons?i=expo" />
+      <img title="Expo" alt="Expo" src="https://go-skill-icons.vercel.app/api/icons?i=expo" />
       <img title="Tailwind CSS" alt="Tailwind CSS" src="https://skillicons.dev/icons?i=tailwind" />
       <img src="https://skillicons.dev/icons?i=null">
       <img title="Docker" alt="Docker" src="https://skillicons.dev/icons?i=docker" />
       <img title="Git" alt="Git" src="https://skillicons.dev/icons?i=git" />
       <img title="GitHub" alt="GitHub" src="https://skillicons.dev/icons?i=github" />
-      <img title="Jira" alt="Jira" src="https://skillicons.dev/icons?i=jira" />
       <img title="VS Code" alt="VS Code" src="https://skillicons.dev/icons?i=vscode" />
-      <img title="IntelliJ IDEA" alt="IntelliJ IDEA" src="https://skillicons.dev/icons?i=intellij" />
+      <img title="IntelliJ IDEA" alt="IntelliJ IDEA" src="https://skillicons.dev/icons?i=idea" />
 </h4>
 
 ---
@@ -81,13 +80,13 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 
 | # | US | Prioridade | User Story | Story Points | Épico | Sprint | Status |
 | :--: | :--------- | :--------: | :--------- | :----------: | :---: | :----: | :----: |
-| 1 | US-001 | 🔴 ALTA | Como Administrador, quero que cada funcionário acesse o sistema com login e senha e tenha permissões baseadas em seu perfil, para proteger os dados e delimitar as ações disponíveis a cada papel. | 8 | E6 | 1 | 🔲 Não iniciada |
-| 2 | US-002 | 🔴 ALTA | Como Administrador, quero cadastrar os dados da empresa e configurar o servidor SMTP de envio de e-mails, para que as informações apareçam nos documentos gerados e os disparos de e-mail funcionem desde o início do fluxo. | 5 | E6 | 1 | 🔲 Não iniciada |
-| 3 | US-003 | 🔴 ALTA | Como Administrador, quero cadastrar tipos de serviço, categorias de projeto e idiomas disponíveis, para que sirvam de base nos orçamentos, ordens de serviço e cadastros de recursos em todo o sistema. | 5 | E6 | 1 | 🔲 Não iniciada |
-| 4 | US-004 | 🔴 ALTA | Como Administrador, quero cadastrar recursos associando seus pares de idiomas e valores individuais, para viabilizar a alocação e o cálculo de custo nas ordens de serviço. | 5 | E6 | 1 | 🔲 Não iniciada |
-| 5 | US-005 | 🟠 MÉDIA | Como Administrador, quero cadastrar tabelas de preço associando tipo de serviço, par de idiomas e valor unitário, para que o sistema sugira automaticamente os valores ao montar um orçamento. | 8 | E6 | 1 | 🔲 Não iniciada |
+| 1 | US-001 | 🔴 ALTA | Como Administrador, quero que cada funcionário acesse o sistema com login e senha e tenha permissões baseadas em seu perfil, para proteger os dados e delimitar as ações disponíveis a cada papel. | 8 | E6 | 1 | ✔️ |
+| 2 | US-002 | 🔴 ALTA | Como Administrador, quero cadastrar os dados da empresa e configurar o servidor SMTP de envio de e-mails, para que as informações apareçam nos documentos gerados e os disparos de e-mail funcionem desde o início do fluxo. | 5 | E6 | 1 | ✔️ |
+| 3 | US-003 | 🔴 ALTA | Como Administrador, quero cadastrar tipos de serviço, categorias de projeto e idiomas disponíveis, para que sirvam de base nos orçamentos, ordens de serviço e cadastros de recursos em todo o sistema. | 5 | E6 | 1 | ✔️ |
+| 4 | US-004 | 🔴 ALTA | Como Administrador, quero cadastrar recursos associando seus pares de idiomas e valores individuais, para viabilizar a alocação e o cálculo de custo nas ordens de serviço. | 5 | E6 | 1 | ✔️ |
+| 5 | US-005 | 🟠 MÉDIA | Como Administrador, quero cadastrar tabelas de preço associando tipo de serviço, par de idiomas e valor unitário, para que o sistema sugira automaticamente os valores ao montar um orçamento. | 8 | E6 | 1 | 🛠️ |
 | 6 | US-006 | 🟠 MÉDIA | Como Administrador, quero cadastrar e gerenciar templates de e-mail com placeholders dinâmicos, para padronizar e automatizar as comunicações com clientes e recursos sem depender de alterações de código. | 3 | E6 | 1 | 🔲 Não iniciada |
-| 7 | US-007 | 🔴 ALTA | Como Atendente, quero cadastrar manualmente uma solicitação de tradução vinculando um cliente (novo ou existente), para registrar demandas que chegam por e-mail, telefone ou outros canais de forma estruturada no sistema. | 8 | E2 · E6 | 1 | 🔲 Não iniciada |
+| 7 | US-007 | 🔴 ALTA | Como Atendente, quero cadastrar manualmente uma solicitação de tradução vinculando um cliente (novo ou existente), para registrar demandas que chegam por e-mail, telefone ou outros canais de forma estruturada no sistema. | 8 | E2 · E6 | 1 | ⚒️ |
 | 8 | US-008 | 🔴 ALTA | Como Atendente, quero elaborar um orçamento com os itens de serviço necessários e enviá-lo por e-mail ao cliente com um link de aprovação, para que o cliente possa aprovar ou recusar de forma autônoma. | 8 | E2 | 1 | 🔲 Não iniciada |
 | 9 | US-009 | 🟠 MÉDIA | Como Atendente, quero editar um orçamento recusado pelo cliente e reenviar para aprovação, para viabilizar negociações sem precisar criar um novo orçamento do zero. | 0 | E2 | 2 | 🔲 Não iniciada |
 | 10 | US-010 | 🔴 ALTA | Como Gestor de Projetos, quero criar, editar e reutilizar modelos de workflow, para agilizar a definição de etapas ao abrir novas ordens de serviço. | 0 | E6 | 2 | 🔲 Não iniciada |
