@@ -27,7 +27,6 @@ import java.util.UUID;
                 @UniqueConstraint(name = "uk_clientes_cpf_cnpj", columnNames = "cpf_cnpj")
         },
         indexes = {
-                @Index(name = "idx_clientes_empresa_id", columnList = "empresa_id"),
                 @Index(name = "idx_clientes_cpf_cnpj", columnList = "cpf_cnpj")
         }
 )
@@ -38,9 +37,6 @@ public class Cliente {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
-    @Column(name = "empresa_id", nullable = false)
-    private UUID empresaId;
 
     @Column(name = "nome_empresa", nullable = false, length = 150)
     private String nomeEmpresa;
@@ -67,22 +63,19 @@ public class Cliente {
                    String nomeRepresentante,
                    String emailRepresentante,
                    String telefone,
-                   UUID empresaId,
                    String cpfCnpj) {
-        atualizarDados(nomeEmpresa, nomeRepresentante, emailRepresentante, telefone, empresaId, cpfCnpj);
+        atualizarDados(nomeEmpresa, nomeRepresentante, emailRepresentante, telefone, cpfCnpj);
     }
 
     public void atualizarDados(String nomeEmpresa,
                                String nomeRepresentante,
                                String emailRepresentante,
                                String telefone,
-                               UUID empresaId,
                                String cpfCnpj) {
         this.nomeEmpresa = Objects.requireNonNull(nomeEmpresa, "Nome da empresa é obrigatório").trim();
         this.nomeRepresentante = Objects.requireNonNull(nomeRepresentante, "Nome do representante é obrigatório").trim();
         this.emailRepresentante = normalizarEmail(Objects.requireNonNull(emailRepresentante, "E-mail do representante é obrigatório"));
         this.telefone = telefone == null || telefone.isBlank() ? null : telefone.trim();
-        this.empresaId = Objects.requireNonNull(empresaId, "ID da empresa é obrigatório");
         this.cpfCnpj = normalizarCpfCnpj(Objects.requireNonNull(cpfCnpj, "CPF ou CNPJ é obrigatório"));
     }
 

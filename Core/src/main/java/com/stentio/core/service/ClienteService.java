@@ -43,7 +43,6 @@ public class ClienteService {
                 request.nomeRepresentante(),
                 request.emailRepresentante(),
                 request.telefone(),
-                request.empresaId(),
                 cpfCnpjLimpo
         );
 
@@ -64,7 +63,6 @@ public class ClienteService {
                 request.nomeRepresentante(),
                 request.emailRepresentante(),
                 request.telefone(),
-                request.empresaId(),
                 cpfCnpjLimpo
         );
         clienteRepository.flush();
@@ -91,14 +89,6 @@ public class ClienteService {
         return clienteRepository.findByCpfCnpj(digitos)
                 .map(clienteMapper::paraResponse)
                 .orElseThrow(() -> new ClienteNaoEncontradoException("Cliente não encontrado com CPF/CNPJ: " + cpfCnpj));
-    }
-
-    public Page<ClienteResponse> listarPorEmpresa(UUID empresaId, Pageable paginacao) {
-        if (empresaId == null) {
-            throw new ClienteInvalidoException("ID da empresa não pode ser nulo");
-        }
-        return clienteRepository.findAllByEmpresaId(empresaId, paginacao)
-                .map(clienteMapper::paraResponse);
     }
 
     public Page<ClienteResponse> listar(ClienteFiltro filtro, Pageable paginacao) {

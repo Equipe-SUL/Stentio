@@ -66,14 +66,6 @@ public class ClienteController {
         return clienteService.buscarPorCpfCnpj(cpfCnpj);
     }
 
-    @GetMapping("/empresa/{empresaId}")
-    public PagedModel<ClienteResponse> listarPorEmpresa(
-            @PathVariable UUID empresaId,
-            @PageableDefault(size = 20, sort = "nomeEmpresa") Pageable paginacao) {
-        validarOrdenacao(paginacao.getSort());
-        return new PagedModel<>(clienteService.listarPorEmpresa(empresaId, paginacao));
-    }
-
     @PutMapping("/{id}")
     public ClienteResponse editar(@PathVariable UUID id, @RequestBody @Valid ClienteRequest request) {
         return clienteService.editar(id, request);

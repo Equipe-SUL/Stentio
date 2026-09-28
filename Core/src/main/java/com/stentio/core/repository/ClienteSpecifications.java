@@ -22,10 +22,6 @@ public final class ClienteSpecifications {
 
             List<Predicate> predicados = new ArrayList<>();
 
-            if (filtro.empresaId() != null) {
-                predicados.add(builder.equal(root.get("empresaId"), filtro.empresaId()));
-            }
-
             if (filtro.cpfCnpj() != null && !filtro.cpfCnpj().isBlank()) {
                 String digitos = CpfCnpjUtils.somenteDigitos(filtro.cpfCnpj());
                 predicados.add(builder.equal(root.get("cpfCnpj"), digitos));

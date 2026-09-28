@@ -54,14 +54,12 @@ class ClienteControllerTest {
     @DisplayName("Deve cadastrar cliente com sucesso quando autenticado e dados válidos")
     void deveCadastrarClienteComSucesso() throws Exception {
         UUID clienteId = UUID.randomUUID();
-        UUID empresaId = UUID.randomUUID();
 
         ClienteRequest request = new ClienteRequest(
                 "Stentio Tecnologia",
                 "Wesley Xavier",
                 "wesley@stentio.com",
                 "11987654321",
-                empresaId,
                 "52998224725"
         );
 
@@ -71,7 +69,6 @@ class ClienteControllerTest {
                 "Wesley Xavier",
                 "wesley@stentio.com",
                 "11987654321",
-                empresaId,
                 "52998224725",
                 LocalDateTime.now(),
                 LocalDateTime.now()
@@ -94,14 +91,11 @@ class ClienteControllerTest {
     @WithMockUser(username = "operador@stentio.com", roles = {"ATENDENTE"})
     @DisplayName("Deve retornar 400 Bad Request ao tentar cadastrar cliente com e-mail inválido")
     void deveRetornarBadRequestComEmailInvalido() throws Exception {
-        UUID empresaId = UUID.randomUUID();
-
         ClienteRequest request = new ClienteRequest(
                 "Stentio Tecnologia",
                 "Wesley Xavier",
                 "email_invalido_sem_arroba",
                 "11987654321",
-                empresaId,
                 "52998224725"
         );
 
@@ -116,14 +110,11 @@ class ClienteControllerTest {
     @WithMockUser(username = "operador@stentio.com", roles = {"ATENDENTE"})
     @DisplayName("Deve retornar 400 Bad Request ao tentar cadastrar cliente com CPF/CNPJ inválido")
     void deveRetornarBadRequestComCpfInvalido() throws Exception {
-        UUID empresaId = UUID.randomUUID();
-
         ClienteRequest request = new ClienteRequest(
                 "Stentio Tecnologia",
                 "Wesley Xavier",
                 "wesley@stentio.com",
                 "11987654321",
-                empresaId,
                 "11111111111" // dígitos repetidos
         );
 
@@ -138,14 +129,11 @@ class ClienteControllerTest {
     @WithMockUser(username = "operador@stentio.com", roles = {"ATENDENTE"})
     @DisplayName("Deve retornar 409 Conflict ao tentar cadastrar cliente com CPF/CNPJ já existente")
     void deveRetornarConflictComCpfDuplicado() throws Exception {
-        UUID empresaId = UUID.randomUUID();
-
         ClienteRequest request = new ClienteRequest(
                 "Stentio Tecnologia",
                 "Wesley Xavier",
                 "wesley@stentio.com",
                 "11987654321",
-                empresaId,
                 "52998224725"
         );
 
@@ -165,7 +153,6 @@ class ClienteControllerTest {
     @DisplayName("Deve buscar cliente por ID com sucesso")
     void deveBuscarPorIdComSucesso() throws Exception {
         UUID clienteId = UUID.randomUUID();
-        UUID empresaId = UUID.randomUUID();
 
         ClienteResponse response = new ClienteResponse(
                 clienteId,
@@ -173,7 +160,6 @@ class ClienteControllerTest {
                 "Wesley Xavier",
                 "wesley@stentio.com",
                 "11987654321",
-                empresaId,
                 "52998224725",
                 LocalDateTime.now(),
                 LocalDateTime.now()
@@ -204,7 +190,6 @@ class ClienteControllerTest {
     @DisplayName("Deve buscar cliente por CPF/CNPJ com sucesso")
     void deveBuscarPorCpfCnpjComSucesso() throws Exception {
         UUID clienteId = UUID.randomUUID();
-        UUID empresaId = UUID.randomUUID();
 
         ClienteResponse response = new ClienteResponse(
                 clienteId,
@@ -212,7 +197,6 @@ class ClienteControllerTest {
                 "Wesley Xavier",
                 "wesley@stentio.com",
                 "11987654321",
-                empresaId,
                 "52998224725",
                 LocalDateTime.now(),
                 LocalDateTime.now()
@@ -227,45 +211,16 @@ class ClienteControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "usuario@stentio.com", roles = {"GESTOR_PROJETO"})
-    @DisplayName("Deve listar clientes por empresa com sucesso")
-    void deveListarPorEmpresaComSucesso() throws Exception {
-        UUID clienteId = UUID.randomUUID();
-        UUID empresaId = UUID.randomUUID();
-
-        ClienteResponse response = new ClienteResponse(
-                clienteId,
-                "Stentio Tecnologia",
-                "Wesley Xavier",
-                "wesley@stentio.com",
-                "11987654321",
-                empresaId,
-                "52998224725",
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
-
-        when(clienteService.listarPorEmpresa(eq(empresaId), any()))
-                .thenReturn(new PageImpl<>(List.of(response)));
-
-        mockMvc.perform(get(BASE_PATH + "/empresa/" + empresaId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(clienteId.toString()));
-    }
-
-    @Test
     @WithMockUser(username = "usuario@stentio.com", roles = {"ATENDENTE"})
     @DisplayName("Deve modificar cliente com sucesso quando autenticado")
     void deveModificarClienteComSucesso() throws Exception {
         UUID clienteId = UUID.randomUUID();
-        UUID empresaId = UUID.randomUUID();
 
         ClienteRequest request = new ClienteRequest(
                 "Stentio Tecnologia Atualizada",
                 "Wesley Xavier Modificado",
                 "wesley.novo@stentio.com",
                 "11911112222",
-                empresaId,
                 "52998224725"
         );
 
@@ -275,7 +230,6 @@ class ClienteControllerTest {
                 "Wesley Xavier Modificado",
                 "wesley.novo@stentio.com",
                 "11911112222",
-                empresaId,
                 "52998224725",
                 LocalDateTime.now(),
                 LocalDateTime.now()

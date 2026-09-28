@@ -9,7 +9,6 @@ public record ClienteResponse(
         String nomeRepresentante,
         String emailRepresentante,
         String telefone,
-        UUID empresaId,
         String cpfCnpj,
         LocalDateTime dataCadastro,
         LocalDateTime dataModificacao
