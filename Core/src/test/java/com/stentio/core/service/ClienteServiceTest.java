@@ -46,21 +46,18 @@ class ClienteServiceTest {
     private ClienteService clienteService;
 
     private UUID clienteId;
-    private UUID empresaId;
     private ClienteRequest requestValido;
     private Cliente clienteSalvo;
 
     @BeforeEach
     void setUp() {
         clienteId = UUID.randomUUID();
-        empresaId = UUID.randomUUID();
 
         requestValido = new ClienteRequest(
                 "Acme Ltda",
                 "Carlos Silva",
                 "carlos@acme.com",
                 "11987654321",
-                empresaId,
                 "52998224725"
         );
 
@@ -69,7 +66,6 @@ class ClienteServiceTest {
                 requestValido.nomeRepresentante(),
                 requestValido.emailRepresentante(),
                 requestValido.telefone(),
-                requestValido.empresaId(),
                 requestValido.cpfCnpj()
         );
     }
@@ -86,7 +82,6 @@ class ClienteServiceTest {
         assertEquals("Acme Ltda", response.nomeEmpresa());
         assertEquals("Carlos Silva", response.nomeRepresentante());
         assertEquals("carlos@acme.com", response.emailRepresentante());
-        assertEquals(empresaId, response.empresaId());
         assertEquals("52998224725", response.cpfCnpj());
         verify(clienteRepository).saveAndFlush(any(Cliente.class));
     }
@@ -111,7 +106,6 @@ class ClienteServiceTest {
                 "Carlos Silva Modificado",
                 "novo_email@acme.com",
                 "11999999999",
-                empresaId,
                 "52998224725"
         );
 
@@ -206,24 +200,11 @@ class ClienteServiceTest {
     }
 
     @Test
-    @DisplayName("Deve listar clientes por empresa com paginação")
-    void deveListarClientesPorEmpresa() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Cliente> page = new PageImpl<>(List.of(clienteSalvo), pageable, 1);
-        when(clienteRepository.findAllByEmpresaId(empresaId, pageable)).thenReturn(page);
-
-        Page<ClienteResponse> resultado = clienteService.listarPorEmpresa(empresaId, pageable);
-
-        assertEquals(1, resultado.getTotalElements());
-        assertEquals("Acme Ltda", resultado.getContent().get(0).nomeEmpresa());
-    }
-
-    @Test
     @DisplayName("Deve listar clientes com filtros e paginação")
     void deveListarClientesComFiltros() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Cliente> page = new PageImpl<>(List.of(clienteSalvo), pageable, 1);
-        ClienteFiltro filtro = new ClienteFiltro("Acme", empresaId, null, null);
+        ClienteFiltro filtro = new ClienteFiltro("Acme", null, null);
 
         when(clienteRepository.findAll(ArgumentMatchers.<Specification<Cliente>>any(), eq(pageable))).thenReturn(page);
 

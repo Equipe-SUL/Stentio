@@ -26,15 +26,12 @@ class ClienteRepositoryTest {
     @Test
     @DisplayName("Deve persistir, consultar, atualizar e excluir cliente no banco de dados")
     void devePersistirConsultarAtualizarEExcluirCliente() {
-        UUID empresaId = UUID.randomUUID();
-
         // 1. Cadastrar (Persistência)
         Cliente cliente = new Cliente(
                 "Empresa Teste Persistência",
                 "Representante Teste",
                 "rep@empresateste.com",
                 "11988887777",
-                empresaId,
                 "52998224725"
         );
 
@@ -54,29 +51,24 @@ class ClienteRepositoryTest {
         assertTrue(porCpf.isPresent());
         assertEquals(salvo.getId(), porCpf.get().getId());
 
-        // 4. Consultar por Empresa ID
-        Page<Cliente> porEmpresa = clienteRepository.findAllByEmpresaId(empresaId, PageRequest.of(0, 10));
-        assertEquals(1, porEmpresa.getTotalElements());
-
-        // 5. Consultar com Specifications / Filtros
-        ClienteFiltro filtro = new ClienteFiltro("Teste", empresaId, "52998224725", null);
+        // 4. Consultar com Specifications / Filtros
+        ClienteFiltro filtro = new ClienteFiltro("Teste", "52998224725", null);
         Page<Cliente> filtrados = clienteRepository.findAll(ClienteSpecifications.filtrar(filtro), PageRequest.of(0, 10));
         assertEquals(1, filtrados.getTotalElements());
 
-        // 6. Modificar
+        // 5. Modificar
         salvo.atualizarDados(
                 "Empresa Teste Nome Modificado",
                 "Representante Atualizado",
                 "novo_rep@empresateste.com",
                 "11977776666",
-                empresaId,
                 "52998224725"
         );
         Cliente atualizado = clienteRepository.saveAndFlush(salvo);
         assertEquals("Empresa Teste Nome Modificado", atualizado.getNomeEmpresa());
         assertEquals("novo_rep@empresateste.com", atualizado.getEmailRepresentante());
 
-        // 7. Excluir
+        // 6. Excluir
         clienteRepository.delete(atualizado);
         clienteRepository.flush();
 
@@ -87,15 +79,11 @@ class ClienteRepositoryTest {
     @Test
     @DisplayName("Deve garantir unicidade do CPF/CNPJ no banco de dados")
     void deveGarantirUnicidadeDoCpfCnpj() {
-        UUID empresa1 = UUID.randomUUID();
-        UUID empresa2 = UUID.randomUUID();
-
         Cliente cliente1 = new Cliente(
                 "Empresa Alpha",
                 "Rep Alpha",
                 "alpha@teste.com",
                 "11999990001",
-                empresa1,
                 "11222333000181"
         );
         clienteRepository.saveAndFlush(cliente1);
@@ -105,7 +93,6 @@ class ClienteRepositoryTest {
                 "Rep Beta",
                 "beta@teste.com",
                 "11999990002",
-                empresa2,
                 "11222333000181" // mesmo CNPJ
         );
 

@@ -5,6 +5,7 @@ import { DataTable } from "../../../components/usuarios/DataTable";
 import { RowActions } from "../../../components/usuarios/RowActions";
 import { StatusBadge } from "../../../components/usuarios/Badge";
 import { RecursoFormModal, RecursoFormValues, UnidadeCobranca } from "../../../components/usuarios/RecursoFormModal";
+import { CabecalhoTela } from "../../../components/navegacao/CabecalhoTela";
 import { coreApi, getApiErrorMessage } from "../../../lib/api";
 import type { ColumnDef, FiltroStatus } from "../../../components/usuarios/types";
 
@@ -280,25 +281,25 @@ export default function RecursosPage() {
       keyboardShouldPersistTaps="handled"
     >
       <View className="w-full web:max-w-6xl gap-6">
-        <View className="flex-row flex-wrap items-center justify-between gap-3">
-          <View className="shrink">
-            <Text className="text-2xl font-bold text-neutral-900">Recursos</Text>
-            <Text className="text-sm text-neutral-500">
-              Profissionais freelancers cadastrados, seus serviços e preços
-            </Text>
-          </View>
-
-          <Pressable
-            onPress={() => {
-              setErroCriacao("");
-              setMostrarCriar(true);
-            }}
-            className="flex-row items-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3"
-          >
-            <Ionicons name="add" size={18} color="#ffffff" />
-            <Text className="font-medium text-white">Novo recurso</Text>
-          </Pressable>
-        </View>
+        <CabecalhoTela
+          contexto="Operacional"
+          secao="Recursos"
+          titulo="Recursos"
+          descricao="Profissionais freelancers cadastrados, seus serviços e preços"
+          rotaFallback="/admin"
+          acoes={
+            <Pressable
+              onPress={() => {
+                setErroCriacao("");
+                setMostrarCriar(true);
+              }}
+              className="flex-row items-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3"
+            >
+              <Ionicons name="add" size={18} color="#ffffff" />
+              <Text className="font-medium text-white">Novo recurso</Text>
+            </Pressable>
+          }
+        />
 
         <View className="gap-2">
           <View className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2">

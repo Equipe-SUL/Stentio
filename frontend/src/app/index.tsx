@@ -243,7 +243,7 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       await entrar(email, password, rememberSession);
-      router.replace('/usuarios');
+      router.replace('/admin');
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error));
     } finally {
@@ -252,7 +252,7 @@ export default function LoginScreen() {
   };
 
   if (!carregando && usuario?.role === 'ADMIN') {
-    return <Redirect href="/usuarios" />;
+    return <Redirect href="/admin" />;
   }
 
   return (

@@ -7,6 +7,7 @@ import { RowActions } from "./RowActions";
 import { EntityFormModal } from "./EntityFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { StatusBadge } from "./Badge";
+import { getApiErrorMessage } from "../../lib/api";
 import type { ColumnDef, FieldDef, FiltroStatus } from "./types";
 
 interface EntityBase {
@@ -35,11 +36,11 @@ interface CrudSectionProps<T extends EntityBase> {
   deleteMessage?: string;
   emptyMessage?: string;
   filtros?: FiltrosCrud;
-}
-
-function getApiErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Ocorreu um erro inesperado. Tente novamente.";
+  // Entidades orientadas a fluxo (ex.: solicitação, que evolui de status)
+  // não fazem sentido com edição e exclusão livres — use false para
+  // deixar a seção apenas criar e listar.
+  permitirEdicao?: boolean;
+  permitirExclusao?: boolean;
 }
 
 function renderFieldValue<T>(item: T, field: FieldDef<T>) {
@@ -49,10 +50,30 @@ function renderFieldValue<T>(item: T, field: FieldDef<T>) {
     return <StatusBadge status={valor ? "Ativo" : "Inativo"} />;
   }
 
+  // Campo opcional e vazio não deve virar a palavra "null" na tabela.
+  if (valor === null || valor === undefined || valor === "") {
+    return (
+      <Text className="text-sm text-neutral-400" numberOfLines={1}>
+        —
+      </Text>
+    );
+  }
+
   if (field.type === "iso") {
     return (
       <Text className="font-mono text-xs uppercase text-neutral-600" numberOfLines={1}>
         {String(valor)}
+      </Text>
+    );
+  }
+
+  // Referências (tipo de serviço, idioma, cliente) guardam o UUID; a
+  // tabela exibe o rótulo para não expor o identificador.
+  if (field.type === "select") {
+    const opcao = (field.options ?? []).find((o) => o.value === String(valor ?? ""));
+    return (
+      <Text className="text-sm text-neutral-800" numberOfLines={1}>
+        {opcao ? opcao.label : "—"}
       </Text>
     );
   }
@@ -78,6 +99,8 @@ export function CrudSection<T extends EntityBase>({
   deleteMessage = "Tem certeza que deseja excluir este registro? Essa ação não pode ser desfeita.",
   emptyMessage = "Nenhum registro cadastrado",
   filtros,
+  permitirEdicao = true,
+  permitirExclusao = true,
 }: CrudSectionProps<T>) {
   const [itens, setItens] = useState<T[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -187,38 +210,49 @@ export function CrudSection<T extends EntityBase>({
     }
   }
 
+  // A coluna de ações só existe quando há alguma ação possível na linha.
+  const temAcoes = permitirEdicao || Boolean(updateStatus);
+
   const columns: ColumnDef<T>[] = [
     ...fields.map((field) => ({
       key: field.key,
       header: field.label,
       render: (item: T) => renderFieldValue(item, field),
     })),
-    {
-      key: "id" as keyof T,
-      header: "",
-      width: 92,
-      align: "right",
-      render: (item: T) => (
-        <RowActions
-          onEdit={() => {
-            setErroEdicao("");
-            setItemEmEdicao(item);
-          }}
-          onToggle={
-            updateStatus
-              ? () => handleToggleStatus(item)
-              : undefined
-          }
-          toggleLabel={
-            updateStatus
-              ? Boolean((item as unknown as { ativo?: boolean }).ativo)
-                ? "Desativar"
-                : "Ativar"
-              : undefined
-          }
-        />
-      ),
-    },
+    ...(temAcoes
+      ? [
+          {
+            key: "id" as keyof T,
+            header: "",
+            width: 92,
+            align: "right" as const,
+            render: (item: T) => (
+              <RowActions
+                onEdit={
+                  permitirEdicao
+                    ? () => {
+                        setErroEdicao("");
+                        setItemEmEdicao(item);
+                      }
+                    : undefined
+                }
+                onToggle={
+                  updateStatus
+                    ? () => handleToggleStatus(item)
+                    : undefined
+                }
+                toggleLabel={
+                  updateStatus
+                    ? Boolean((item as unknown as { ativo?: boolean }).ativo)
+                      ? "Desativar"
+                      : "Ativar"
+                    : undefined
+                }
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -322,7 +356,7 @@ export function CrudSection<T extends EntityBase>({
         initialValues={itemEmEdicao ?? ({ id: "", ...defaultValues } as T)}
         onSubmit={handleUpdate}
         onCancel={() => setItemEmEdicao(null)}
-        onDelete={handleSolicitarExclusao}
+        onDelete={permitirEdicao && permitirExclusao ? handleSolicitarExclusao : undefined}
         submitLabel="Salvar"
         erro={erroEdicao}
       />

@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { router } from "expo-router";
 import { ActivityIndicator, ScrollView, View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { DataTable } from "../../../components/usuarios/DataTable";
-import { RoleBadge, StatusBadge } from "../../../components/usuarios/Badge";
-import { RowActions } from "../../../components/usuarios/RowActions";
-import type { ColumnDef } from "../../../components/usuarios/types";
-import { FormularioUsuario, NovoUsuario } from "../../../components/usuarios/CreateUser";
-import { FormularioEdicaoUsuario, UsuarioAtualizado } from "../../../components/usuarios/EditUser";
-import { ConfirmDialog } from "../../../components/usuarios/ConfirmDialog";
-import { useSession } from "../../../lib/session";
-import { api, getApiErrorMessage } from "../../../lib/api";
+import { CabecalhoTela } from "../../../../components/navegacao/CabecalhoTela";
+import { DataTable } from "../../../../components/usuarios/DataTable";
+import { RoleBadge, StatusBadge } from "../../../../components/usuarios/Badge";
+import { RowActions } from "../../../../components/usuarios/RowActions";
+import type { ColumnDef } from "../../../../components/usuarios/types";
+import { FormularioUsuario, NovoUsuario } from "../../../../components/usuarios/CreateUser";
+import { FormularioEdicaoUsuario, UsuarioAtualizado } from "../../../../components/usuarios/EditUser";
+import { ConfirmDialog } from "../../../../components/usuarios/ConfirmDialog";
+import { api, getApiErrorMessage } from "../../../../lib/api";
 
 type Cargo = "Gestor_Projeto" | "Atendente" | "Admin" | "Financeiro";
 type Status = "Ativo" | "Inativo";
@@ -64,7 +63,6 @@ async function buscarUsuarios(): Promise<Usuario[]> {
 }
 
 export default function TabelaUsuarios() {
-  const { sair } = useSession();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | null>(null);
   const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<Usuario | null>(null);
@@ -217,28 +215,16 @@ export default function TabelaUsuarios() {
 
 return (
   <ScrollView
-    className="flex-1 bg-neutral-50"
-    contentContainerClassName="gap-6 p-6 web:px-24 web:py-12 web:items-center"
+    className="flex-1 bg-[#fbfaf8]"
+    contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
     keyboardShouldPersistTaps="handled"
   >
-    <View className="w-full web:max-w-6xl gap-6">
-      <View className="flex-row flex-wrap items-center justify-between gap-3">
-        <View className="shrink">
-          <Text className="text-2xl font-bold text-neutral-900">Usuários</Text>
-          <Text className="text-sm text-neutral-500">
-            Gerenciamento de usuários do sistema
-          </Text>
-        </View>
-
-        <View className="flex-row items-center gap-3">
-          <Pressable
-            onPress={() => sair()}
-            className="flex-row items-center gap-2 rounded-lg border border-neutral-300 px-5 py-3"
-          >
-            <Ionicons name="log-out-outline" size={18} color="#404040" />
-            <Text className="font-medium text-neutral-700">Sair</Text>
-          </Pressable>
-
+    <View className="w-full max-w-5xl mx-auto px-4 py-8 md:px-8 gap-6">
+      <CabecalhoTela
+        contexto="Sistema"
+        secao="Central do sistema"
+        titulo="Usuários"
+        acoes={
           <Pressable
             onPress={() => {
               setErroCriacao("");
@@ -249,8 +235,8 @@ return (
             <Ionicons name="add" size={18} color="#ffffff" />
             <Text className="font-medium text-white">Novo usuário</Text>
           </Pressable>
-        </View>
-      </View>
+        }
+      />
 
       {erroAcao ? (
         <View className="rounded-lg border border-red-200 bg-red-50 p-3">
@@ -286,34 +272,6 @@ return (
             scrollEnabled={false}
           />
         )}
-      </View>
-
-      {/* Atalhos de navegação entre as telas do painel. Provisório: assim que existir
-          menu lateral de verdade, este bloco deve sair e os links passam a viver nele. */}
-      <View className="flex-row flex-wrap items-center gap-3">
-        <Pressable
-          onPress={() => router.push("/configs/sistema/catalogo")}
-          className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-3"
-        >
-          <Ionicons name="book-outline" size={18} color="#6f4f28" />
-          <Text className="font-medium text-neutral-700">Catálogo</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push("/configs/empresa")}
-          className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-3"
-        >
-          <Ionicons name="business-outline" size={18} color="#6f4f28" />
-          <Text className="font-medium text-neutral-700">Empresa</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push("/recursos")}
-          className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-3"
-        >
-          <Ionicons name="people-outline" size={18} color="#6f4f28" />
-          <Text className="font-medium text-neutral-700">Recursos</Text>
-        </Pressable>
       </View>
     </View>
 
