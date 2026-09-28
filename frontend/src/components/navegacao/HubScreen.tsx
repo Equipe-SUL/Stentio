@@ -1,7 +1,26 @@
-import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import React, { useState } from "react";
+import {
+  LayoutChangeEvent,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+
+// A largura do card é medida com onLayout, e não calculada a partir da largura
+// da janela: o container tem max-w, mx-auto, padding responsivo e safe area, e
+// qualquer um desses faz a largura da janela divergir da largura real do
+// conteúdo — o card estoura a margem. onLayout entrega a largura já sem o
+// padding do container, então não há nada para estimar.
+//
+// A contagem de colunas continua vindo da janela, porque uma decisão grossa
+// (1, 2 ou 3 colunas) tolera imprecisão; só a largura em pixel exige medidação.
+const COLUNAS_2_BREAKPOINT = 640;
+const COLUNAS_3_BREAKPOINT = 1024;
+const GAP_CARDS = 16;
 
 export interface HubItem {
   nome: string;
@@ -24,6 +43,33 @@ export function HubScreen({
   itens,
 }: HubScreenProps) {
   const router = useRouter();
+  const { width: larguraJanela } = useWindowDimensions();
+  const [larguraGrid, setLarguraGrid] = useState(0);
+
+  const colunas =
+    larguraJanela >= COLUNAS_3_BREAKPOINT
+      ? 3
+      : larguraJanela >= COLUNAS_2_BREAKPOINT
+        ? 2
+        : 1;
+
+  // O Math.floor garante que os cards somem menos que a linha mesmo com erro de
+  // ponto flutuante: sobra um pixel no fim da linha em vez de o último card
+  // quebrar sozinho para a linha de baixo.
+  const larguraCard =
+    larguraGrid > 0
+      ? Math.floor(
+          (larguraGrid - GAP_CARDS * (colunas - 1)) / colunas,
+        )
+      : 0;
+
+  // Nada é renderizado antes do primeiro onLayout: com largura 0 os cards
+  // colapsariam e a lista daria um salto visível ao abrir a tela.
+  const itensRenderizaveis = larguraGrid > 0 ? itens : [];
+
+  function medirGrid(event: LayoutChangeEvent) {
+    setLarguraGrid(event.nativeEvent.layout.width);
+  }
 
   return (
     <ScrollView
@@ -62,8 +108,12 @@ export function HubScreen({
 
         <Text className="text-sm text-zinc-600 mb-6 max-w-2xl">{subtitulo}</Text>
 
-        <View className="flex-row flex-wrap gap-4">
-          {itens.map((item) => {
+        <View
+          className="flex-row flex-wrap"
+          style={{ gap: GAP_CARDS }}
+          onLayout={medirGrid}
+        >
+          {itensRenderizaveis.map((item) => {
             const disponivel = item.route !== undefined;
             return (
               <TouchableOpacity
@@ -72,9 +122,10 @@ export function HubScreen({
                 accessibilityState={{ disabled: !disponivel }}
                 disabled={!disponivel}
                 onPress={() => item.route && router.push(item.route)}
-                className={`w-full sm:flex-1 sm:min-w-[46%] lg:min-w-[31%] rounded-2xl bg-white border border-zinc-200 p-5 active:bg-zinc-100 ${
+                className={`rounded-2xl bg-white border border-zinc-200 p-5 active:bg-zinc-100 ${
                   disponivel ? "shadow-sm" : "opacity-45"
                 }`}
+                style={{ width: larguraCard, flexShrink: 0 }}
               >
                 <View className="flex-row items-start gap-4">
                   <View

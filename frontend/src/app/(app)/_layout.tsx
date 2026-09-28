@@ -15,6 +15,7 @@ const MENU_CONFIG: MenuGroup[] = [
     items: [
       { name: "Clientes", icon: "people-outline", route: "/clientes" },
       { name: "Solicitações", icon: "document-text-outline" },
+      { name: "Orçamentos", icon: "receipt-outline" },
       { name: "Ordens de Serviço", icon: "clipboard-outline" },
       { name: "Recursos", icon: "person-outline", route: "/recursos" },
     ],
