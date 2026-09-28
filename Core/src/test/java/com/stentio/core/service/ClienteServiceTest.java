@@ -8,7 +8,6 @@ import com.stentio.core.exception.ClienteNaoEncontradoException;
 import com.stentio.core.exception.CpfCnpjJaCadastradoException;
 import com.stentio.core.mapper.ClienteMapper;
 import com.stentio.core.model.Cliente;
-import com.stentio.core.model.EmpresaOperadora;
 import com.stentio.core.repository.ClienteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -61,6 +60,7 @@ class ClienteServiceTest {
                 "Carlos Silva",
                 "carlos@acme.com",
                 "11987654321",
+                empresaId,
                 "52998224725"
         );
 
@@ -69,7 +69,7 @@ class ClienteServiceTest {
                 requestValido.nomeRepresentante(),
                 requestValido.emailRepresentante(),
                 requestValido.telefone(),
-                EmpresaOperadora.ID,
+                requestValido.empresaId(),
                 requestValido.cpfCnpj()
         );
     }
@@ -86,7 +86,7 @@ class ClienteServiceTest {
         assertEquals("Acme Ltda", response.nomeEmpresa());
         assertEquals("Carlos Silva", response.nomeRepresentante());
         assertEquals("carlos@acme.com", response.emailRepresentante());
-        assertEquals(EmpresaOperadora.ID, response.empresaId());
+        assertEquals(empresaId, response.empresaId());
         assertEquals("52998224725", response.cpfCnpj());
         verify(clienteRepository).saveAndFlush(any(Cliente.class));
     }
@@ -111,6 +111,7 @@ class ClienteServiceTest {
                 "Carlos Silva Modificado",
                 "novo_email@acme.com",
                 "11999999999",
+                empresaId,
                 "52998224725"
         );
 

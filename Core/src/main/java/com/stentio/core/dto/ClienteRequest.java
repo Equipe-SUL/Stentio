@@ -3,8 +3,11 @@ package com.stentio.core.dto;
 import com.stentio.core.validation.CpfOuCnpj;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
+import java.util.UUID;
 
 public record ClienteRequest(
 
@@ -23,6 +26,9 @@ public record ClienteRequest(
 
         @Pattern(regexp = "^$|^[0-9+()\\-\\s]{8,20}$", message = "Telefone inválido")
         String telefone,
+
+        @NotNull(message = "ID da empresa é obrigatório")
+        UUID empresaId,
 
         @NotBlank(message = "CPF ou CNPJ é obrigatório")
         @CpfOuCnpj(message = "CPF ou CNPJ inválido")
