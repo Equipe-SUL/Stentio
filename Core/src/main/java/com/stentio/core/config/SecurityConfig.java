@@ -62,6 +62,11 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        // Links de orçamento autorizam somente estas três operações.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/orcamentos").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/public/orcamentos/aprovar",
+                                "/api/v1/public/orcamentos/rejeitar").permitAll()
                         // Regra de clientes: somente a role mais alta (ADMIN) pode excluir clientes
                         .requestMatchers(HttpMethod.DELETE, ROTAS_CLIENTES).hasRole(Role.ADMIN.name())
                         // Qualquer usuário autenticado pode cadastrar, listar, consultar ou modificar clientes
