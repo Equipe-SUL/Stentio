@@ -68,8 +68,13 @@ services:
       RABBITMQ_PASS: ${RABBITMQ_DEFAULT_PASS:-changeme}
 
       JWT_SECRET: ${JWT_SECRET:-minha-chave-secreta-super-longa-para-jwt-stentio-2026}
+
+      APP_ARQUIVOS_DIRETORIO: /app/uploads
     ports:
       - "${CORE_SERVER_PORT:-8082}:8080"
+    volumes:
+      # Sem este volume os anexos das solicitações somem a cada rebuild do container.
+      - core_uploads:/app/uploads
     depends_on:
       - postgres
       - mongodb
@@ -159,6 +164,7 @@ services:
       - "${MAILHOG_PORT:-8025}:8025"
 
 volumes:
+  core_uploads:
   mongo_data:
   postgres_data:
   rabbitmq_data:

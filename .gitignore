@@ -16,3 +16,7 @@ Thumbs.db
 
 # ---- Variáveis de ambiente ----
 .env
+
+# Anexos gravados em dev local (Core)
+Core/uploads/
+uploads/

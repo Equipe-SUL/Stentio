@@ -7,12 +7,16 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.exc.InvalidFormatException;
@@ -65,9 +69,48 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(SolicitacaoNaoEncontradaException.class)
+    public ResponseEntity<ErroResponse> handleSolicitacaoNaoEncontrada(SolicitacaoNaoEncontradaException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(SolicitacaoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleSolicitacaoInvalida(SolicitacaoInvalidaException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // Id enviado no corpo que não existe: o erro está no dado enviado, por isso 400 e não 404.
+    @ExceptionHandler(ReferenciaInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleReferenciaInvalida(ReferenciaInvalidaException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // Sem este handler, um anexo acima do limite viraria 500 em vez de uma mensagem clara.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErroResponse> handleArquivoGrandeDemais(MaxUploadSizeExceededException ex) {
+        return responder(HttpStatus.CONTENT_TOO_LARGE, "Arquivo acima do tamanho máximo permitido");
+    }
+
+    // Ex.: POST em /solicitacoes com JSON no lugar de multipart/form-data.
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErroResponse> handleFormatoNaoSuportado(HttpMediaTypeNotSupportedException ex) {
+        return responder(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Formato de requisição não suportado nesta rota");
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErroResponse> handleValidacao(MethodArgumentNotValidException ex) {
-        List<CampoErro> erros = ex.getBindingResult().getFieldErrors().stream()
+        return responderValidacao(ex.getBindingResult());
+    }
+
+    // Formulários multipart (@ModelAttribute) sinalizam a falha como BindException, a superclasse
+    // de MethodArgumentNotValidException. Mesmo formato de resposta para o front não ver diferença.
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ErroResponse> handleValidacaoFormulario(BindException ex) {
+        return responderValidacao(ex.getBindingResult());
+    }
+
+    private ResponseEntity<ErroResponse> responderValidacao(BindingResult resultado) {
+        List<CampoErro> erros = resultado.getFieldErrors().stream()
                 .map(this::paraCampoErro)
                 .toList();
 

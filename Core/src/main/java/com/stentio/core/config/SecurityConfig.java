@@ -38,6 +38,7 @@ public class SecurityConfig {
     private static final String ROTAS_IDIOMAS = "/api/v1/idiomas/**";
     private static final String ROTAS_TIPOS_SERVICO = "/api/v1/tipos-servico/**";
     private static final String ROTAS_TABELAS_PRECO = "/api/v1/admin/tabelas-preco/**";
+    private static final String ROTAS_SOLICITACOES = "/api/v1/solicitacoes/**";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenService tokenService) throws Exception {
@@ -78,6 +79,9 @@ public class SecurityConfig {
                         .requestMatchers(ROTAS_TIPOS_SERVICO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
                         // CA.5 da US-05: só ADMIN e GESTOR_PROJETO gerenciam a tabela de preços.
                         .requestMatchers(ROTAS_TABELAS_PRECO).hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
+                        // US-09: a solicitação é registrada pelo Atendente; gestor e admin acompanham.
+                        .requestMatchers(ROTAS_SOLICITACOES)
+                        .hasAnyRole(Role.ADMIN.name(), Role.ATENDENTE.name(), Role.GESTOR_PROJETO.name())
                         .anyRequest().authenticated()
                 )
 
