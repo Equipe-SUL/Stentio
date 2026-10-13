@@ -38,6 +38,7 @@ public class SecurityConfig {
     private static final String ROTAS_IDIOMAS = "/api/v1/idiomas/**";
     private static final String ROTAS_TIPOS_SERVICO = "/api/v1/tipos-servico/**";
     private static final String ROTAS_TABELAS_PRECO = "/api/v1/admin/tabelas-preco/**";
+    private static final String ROTA_ENVIAR_ORCAMENTO = "/api/v1/orcamentos/*/enviar-aprovacao";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenService tokenService) throws Exception {
@@ -67,6 +68,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/public/orcamentos/aprovar",
                                 "/api/v1/public/orcamentos/rejeitar").permitAll()
+                        .requestMatchers(HttpMethod.POST, ROTA_ENVIAR_ORCAMENTO)
+                        .hasAnyRole(Role.ATENDENTE.name(), Role.ADMIN.name())
                         // Regra de clientes: somente a role mais alta (ADMIN) pode excluir clientes
                         .requestMatchers(HttpMethod.DELETE, ROTAS_CLIENTES).hasRole(Role.ADMIN.name())
                         // Qualquer usuário autenticado pode cadastrar, listar, consultar ou modificar clientes
