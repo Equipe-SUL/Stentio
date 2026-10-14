@@ -43,6 +43,21 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler(OrcamentoNaoEncontradoException.class)
+    public ResponseEntity<ErroResponse> handleOrcamentoNaoEncontrado(OrcamentoNaoEncontradoException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(OrcamentoIncompletoException.class)
+    public ResponseEntity<ErroResponse> handleOrcamentoIncompleto(OrcamentoIncompletoException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(OrcamentoStatusInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleOrcamentoStatusInvalido(OrcamentoStatusInvalidoException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @ExceptionHandler(EmailJaCadastradoException.class)
     public ResponseEntity<ErroResponse> handleEmailJaCadastrado(EmailJaCadastradoException ex) {
         return responder(HttpStatus.CONFLICT, ex.getMessage());

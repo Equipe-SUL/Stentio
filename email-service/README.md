@@ -215,6 +215,8 @@ Fluxo de processamento:
 5. a mensagem é enviada ao SMTP;
 6. o processamento é reconhecido pelo RabbitMQ. Atualmente, falhas de envio são convertidas em `EMAIL_SEND_FAILED` pelo consumidor e não são relançadas para uma fila de retry ou dead-letter.
 
+O Core publica solicitações de aprovação de orçamento usando esse mesmo contrato (`to`, `subject`, `body`). A alteração de status, o token e a mensagem são gravados atomicamente na outbox do Core; um publicador assíncrono envia o JSON para `email.queue` e tenta novamente em caso de falha ao publicar. O token é removido da outbox depois da confirmação do RabbitMQ. Essa confirmação cobre a entrega à fila, não o envio final pelo SMTP.
+
 Atualmente não existem eventos de sucesso ou falha publicados em outra fila. O próximo passo recomendado é criar eventos como `email.sent` e `email.failed` para rastreabilidade e reprocessamento.
 
 ## 7. Persistência MongoDB

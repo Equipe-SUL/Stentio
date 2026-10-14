@@ -8,12 +8,14 @@ import org.springframework.context.annotation.Configuration;
 public class OrcamentoRabbitConfig {
     public static final String EXCHANGE = "stentio.orcamentos";
     public static final String QUEUE = "stentio.orcamentos.decisoes";
+    public static final String EMAIL_QUEUE = "email.queue";
 
     @Bean
     public Declarables orcamentoDeclarables() {
         TopicExchange exchange = new TopicExchange(EXCHANGE, true, false);
         Queue queue = new Queue(QUEUE, true);
-        return new Declarables(exchange, queue,
+        Queue emailQueue = new Queue(EMAIL_QUEUE, true);
+        return new Declarables(exchange, queue, emailQueue,
                 BindingBuilder.bind(queue).to(exchange).with("orcamento.aprovado"),
                 BindingBuilder.bind(queue).to(exchange).with("orcamento.rejeitado"));
     }

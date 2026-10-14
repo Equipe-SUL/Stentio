@@ -46,4 +46,15 @@ CREATE TABLE IF NOT EXISTS orcamento_decisao_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_orcamento_outbox_pendente
     ON orcamento_decisao_outbox(publicado_em,proxima_tentativa_em,criado_em);
+CREATE TABLE IF NOT EXISTS orcamento_email_outbox (
+    id UUID PRIMARY KEY,
+    orcamento_id UUID NOT NULL REFERENCES orcamentos(id),
+    payload TEXT,
+    criado_em TIMESTAMP WITH TIME ZONE NOT NULL,
+    enviado_em TIMESTAMP WITH TIME ZONE,
+    proxima_tentativa_em TIMESTAMP WITH TIME ZONE NOT NULL,
+    tentativas INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_orcamento_email_outbox_pendente
+    ON orcamento_email_outbox(enviado_em,proxima_tentativa_em,criado_em);
 COMMIT;
