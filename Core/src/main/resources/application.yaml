@@ -37,6 +37,12 @@ spring:
     mongodb:
       uri: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/admin?authSource=admin
 
+  servlet:
+    multipart:
+      # CA.2: limites do upload. Acima disso o Spring corta antes de chegar ao controller.
+      max-file-size: ${APP_ARQUIVO_TAMANHO_MAXIMO:10MB}
+      max-request-size: ${APP_REQUISICAO_TAMANHO_MAXIMO:50MB}
+
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
@@ -65,6 +71,11 @@ api:
       secret: ${JWT_SECRET:dev-secret}
 
 app:
+  arquivos:
+    # Em Docker aponta para o volume; fora dele cai em ./uploads dentro do módulo Core.
+    diretorio: ${APP_ARQUIVOS_DIRETORIO:uploads}
+    extensoes-permitidas: ${APP_ARQUIVOS_EXTENSOES:pdf,doc,docx,odt,rtf,txt,xls,xlsx,ppt,pptx,jpg,jpeg,png}
+    maximo-por-solicitacao: ${APP_ARQUIVOS_MAXIMO:10}
   orcamentos:
     token-validade: ${ORCAMENTO_TOKEN_VALIDADE:PT120H}
     url-consulta-publica: ${ORCAMENTO_URL_CONSULTA_PUBLICA:http://localhost:8082/api/v1/public/orcamentos}
