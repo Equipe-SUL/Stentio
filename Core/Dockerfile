@@ -25,8 +25,11 @@ RUN useradd --system --uid 1001 spring
 
 COPY --from=build /workspace/app.jar ./app.jar
 
+RUN mkdir -p /app/uploads && chown -R spring:spring /app/uploads
+
 USER spring
 
 EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
