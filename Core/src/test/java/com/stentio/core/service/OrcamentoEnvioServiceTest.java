@@ -8,6 +8,7 @@ import com.stentio.core.model.Orcamento;
 import com.stentio.core.model.OrcamentoEmailOutbox;
 import com.stentio.core.model.OrcamentoHistorico;
 import com.stentio.core.model.OrcamentoItem;
+import com.stentio.core.model.OrcamentoItemServico;
 import com.stentio.core.model.StatusOrcamento;
 import com.stentio.core.repository.OrcamentoEmailOutboxRepository;
 import com.stentio.core.repository.OrcamentoHistoricoRepository;
@@ -44,13 +45,16 @@ class OrcamentoEnvioServiceTest {
         orcamento = new Orcamento();
         orcamento.setId(UUID.randomUUID());
         orcamento.setCliente(cliente);
-        orcamento.setStatus(StatusOrcamento.RASCUNHO);
+        orcamento.setStatus(StatusOrcamento.EM_ELABORACAO);
         orcamento.setValorTotal(new BigDecimal("150.00"));
+        OrcamentoItemServico servico = new OrcamentoItemServico();
+        servico.setTipoServico("Tradução");
+        servico.setQuantidade(new BigDecimal("500"));
+        servico.setValorUnitario(new BigDecimal("0.30"));
+        servico.setSubtotal(new BigDecimal("150.00"));
         OrcamentoItem item = new OrcamentoItem();
-        item.setTipoServico("Tradução");
-        item.setQuantidade(new BigDecimal("500"));
-        item.setValorUnitario(new BigDecimal("0.30"));
-        item.setSubtotal(new BigDecimal("150.00"));
+        item.setOrdem(1);
+        item.adicionarServico(servico);
         orcamento.adicionarItem(item);
         when(cliente.getEmailRepresentante()).thenReturn("cliente@example.com");
         when(repository.buscarPorIdComLock(orcamento.getId())).thenReturn(Optional.of(orcamento));
@@ -75,7 +79,7 @@ class OrcamentoEnvioServiceTest {
         assertTrue(payload.get("body").asText().contains("https://stentio.example/orcamento?token="));
         var audit = org.mockito.ArgumentCaptor.forClass(OrcamentoHistorico.class);
         verify(historico).save(audit.capture());
-        assertEquals(StatusOrcamento.RASCUNHO, audit.getValue().getStatusAnterior());
+        assertEquals(StatusOrcamento.EM_ELABORACAO, audit.getValue().getStatusAnterior());
         assertEquals(StatusOrcamento.AGUARDANDO_APROVACAO, audit.getValue().getStatusNovo());
         assertEquals("ATENDENTE", audit.getValue().getOrigem());
     }

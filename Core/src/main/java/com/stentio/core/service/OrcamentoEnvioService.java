@@ -99,14 +99,17 @@ public class OrcamentoEnvioService {
     }
 
     private static void validarCompleto(Orcamento orcamento) {
-        boolean statusPermitido = orcamento.getStatus() == StatusOrcamento.RASCUNHO
+        boolean statusPermitido = orcamento.getStatus() == StatusOrcamento.EM_ELABORACAO
                 || orcamento.getStatus() == StatusOrcamento.AGUARDANDO_APROVACAO
                 || orcamento.getStatus() == StatusOrcamento.REJEITADO;
+        // US-11: cada item (par de idiomas) precisa ter ao menos um serviço, todos com valores calculados.
         boolean itensCalculados = orcamento.getItens() != null && !orcamento.getItens().isEmpty()
                 && orcamento.getItens().stream().allMatch(item ->
-                item.getQuantidade() != null && item.getQuantidade().signum() > 0
-                        && item.getValorUnitario() != null && item.getValorUnitario().signum() > 0
-                        && item.getSubtotal() != null && item.getSubtotal().signum() > 0);
+                item.getServicos() != null && !item.getServicos().isEmpty()
+                        && item.getServicos().stream().allMatch(servico ->
+                        servico.getQuantidade() != null && servico.getQuantidade().signum() > 0
+                                && servico.getValorUnitario() != null && servico.getValorUnitario().signum() > 0
+                                && servico.getSubtotal() != null && servico.getSubtotal().signum() > 0));
         BigDecimal total = orcamento.getValorTotal();
         if (!statusPermitido || orcamento.getCliente() == null
                 || orcamento.getCliente().getEmailRepresentante() == null
