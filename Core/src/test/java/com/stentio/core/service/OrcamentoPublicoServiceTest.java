@@ -42,12 +42,15 @@ class OrcamentoPublicoServiceTest {
         orcamento.setDataExpiracao(agora.plusSeconds(3600));
         orcamento.setTokenHash(TokenOrcamento.hash(token));
         orcamento.setValorTotal(new BigDecimal("1500.00"));
+        OrcamentoItemServico servico = new OrcamentoItemServico();
+        servico.setTipoServico("Tradução Juramentada");
+        servico.setQuantidade(new BigDecimal("5000"));
+        servico.setUnidade(UnidadeCobranca.PALAVRA);
+        servico.setValorUnitario(new BigDecimal("0.30"));
+        servico.setSubtotal(new BigDecimal("1500.00"));
         OrcamentoItem item = new OrcamentoItem();
-        item.setTipoServico("Tradução Juramentada");
-        item.setQuantidade(new BigDecimal("5000"));
-        item.setUnidade("Palavras");
-        item.setValorUnitario(new BigDecimal("0.30"));
-        item.setSubtotal(new BigDecimal("1500.00"));
+        item.setOrdem(1);
+        item.adicionarServico(servico);
         orcamento.adicionarItem(item);
     }
 
@@ -141,7 +144,7 @@ class OrcamentoPublicoServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = StatusOrcamento.class, names = {"RASCUNHO", "APROVADO", "REJEITADO"})
+    @EnumSource(value = StatusOrcamento.class, names = {"EM_ELABORACAO", "APROVADO", "REJEITADO"})
     void statusForaDeAguardandoImpedeDecisao(StatusOrcamento status) {
         prepararDecisao();
         orcamento.setStatus(status);

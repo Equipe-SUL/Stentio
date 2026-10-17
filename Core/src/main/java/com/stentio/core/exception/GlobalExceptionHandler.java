@@ -58,6 +58,16 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(OrcamentoInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleOrcamentoInvalido(OrcamentoInvalidoException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(OrcamentoNaoEditavelException.class)
+    public ResponseEntity<ErroResponse> handleOrcamentoNaoEditavel(OrcamentoNaoEditavelException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(EmailJaCadastradoException.class)
     public ResponseEntity<ErroResponse> handleEmailJaCadastrado(EmailJaCadastradoException ex) {
         return responder(HttpStatus.CONFLICT, ex.getMessage());
