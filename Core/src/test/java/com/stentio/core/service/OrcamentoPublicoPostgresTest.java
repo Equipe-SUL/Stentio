@@ -38,10 +38,13 @@ class OrcamentoPublicoPostgresTest {
     @Autowired OrcamentoTokenService tokenService;
     @Autowired OrcamentoRepository orcamentos;
     @Autowired ClienteRepository clientes;
+    @Autowired IdiomaRepository idiomas;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
     @MockitoSpyBean OrcamentoDecisaoOutboxRepository outbox;
     private UUID clienteId;
+    private UUID idiomaOrigemId;
+    private UUID idiomaDestinoId;
     private UUID orcamentoId;
     private String token;
 
@@ -55,12 +58,20 @@ class OrcamentoPublicoPostgresTest {
             orcamento.setCliente(cliente);
             orcamento.setStatus(StatusOrcamento.AGUARDANDO_APROVACAO);
             orcamento.setValorTotal(new BigDecimal("1500.00"));
+            OrcamentoItemServico servico = new OrcamentoItemServico();
+            servico.setTipoServico("Tradução Juramentada");
+            servico.setQuantidade(new BigDecimal("5000"));
+            servico.setUnidade(UnidadeCobranca.PALAVRA);
+            servico.setValorUnitario(new BigDecimal("0.30"));
+            servico.setSubtotal(new BigDecimal("1500.00"));
             OrcamentoItem item = new OrcamentoItem();
-            item.setTipoServico("Tradução Juramentada");
-            item.setQuantidade(new BigDecimal("5000"));
-            item.setUnidade("Palavras");
-            item.setValorUnitario(new BigDecimal("0.30"));
-            item.setSubtotal(new BigDecimal("1500.00"));
+            item.setOrdem(1);
+            item.setIdiomaOrigem(novoIdioma("Português", "pt"));
+            item.setIdiomaDestino(novoIdioma("Inglês", "en"));
+            idiomaOrigemId = item.getIdiomaOrigem().getId();
+            idiomaDestinoId = item.getIdiomaDestino().getId();
+            item.setSubtotalItem(new BigDecimal("1500.00"));
+            item.adicionarServico(servico);
             orcamento.adicionarItem(item);
             orcamentoId = orcamentos.saveAndFlush(orcamento).getId();
             token = tokenService.emitir(orcamentoId, Instant.now().plusSeconds(3600)).toString();
@@ -72,10 +83,19 @@ class OrcamentoPublicoPostgresTest {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             jdbc.update("delete from orcamento_decisao_outbox where orcamento_id = ?", orcamentoId);
             jdbc.update("delete from orcamento_historico where orcamento_id = ?", orcamentoId);
-            jdbc.update("delete from orcamento_itens where orcamento_id = ?", orcamentoId);
+            jdbc.update("delete from orcamento_item where orcamento_id = ?", orcamentoId);
             jdbc.update("delete from orcamentos where id = ?", orcamentoId);
             jdbc.update("delete from clientes where id = ?", clienteId);
+            jdbc.update("delete from idiomas where id in (?, ?)", idiomaOrigemId, idiomaDestinoId);
         });
+    }
+
+    private Idioma novoIdioma(String nome, String codigoIso) {
+        Idioma idioma = new Idioma();
+        idioma.setNome(nome);
+        // Código aleatório para não colidir com idiomas já cadastrados no banco de testes.
+        idioma.setCodigoIso(codigoIso + "-" + UUID.randomUUID().toString().substring(0, 6));
+        return idiomas.saveAndFlush(idioma);
     }
 
     @Test

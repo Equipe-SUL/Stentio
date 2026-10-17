@@ -76,6 +76,14 @@ app:
     diretorio: ${APP_ARQUIVOS_DIRETORIO:uploads}
     extensoes-permitidas: ${APP_ARQUIVOS_EXTENSOES:pdf,doc,docx,odt,rtf,txt,xls,xlsx,ppt,pptx,jpg,jpeg,png}
     maximo-por-solicitacao: ${APP_ARQUIVOS_MAXIMO:10}
+  orcamentos:
+    token-validade: ${ORCAMENTO_TOKEN_VALIDADE:PT120H}
+    url-consulta-publica: ${ORCAMENTO_URL_CONSULTA_PUBLICA:http://localhost:8082/api/v1/public/orcamentos}
+    outbox:
+      enabled: ${ORCAMENTO_OUTBOX_ENABLED:true}
+      intervalo-ms: ${ORCAMENTO_OUTBOX_INTERVALO_MS:5000}
+      retry-segundos: ${ORCAMENTO_OUTBOX_RETRY_SEGUNDOS:30}
+      confirm-timeout-segundos: ${ORCAMENTO_OUTBOX_CONFIRM_TIMEOUT_SEGUNDOS:5}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:8080,http://localhost:8081,http://localhost:19006}
 
