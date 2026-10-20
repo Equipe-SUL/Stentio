@@ -1,7 +1,8 @@
-package com.example.stentio.repository;
+package com.stentio.repository;
 
-import com.example.stentio.model.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.stentio.model.Usuario;
 
 import java.util.Optional;
 import java.util.UUID;

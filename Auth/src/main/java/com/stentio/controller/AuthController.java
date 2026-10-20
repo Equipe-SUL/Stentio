@@ -1,13 +1,14 @@
-package com.example.stentio.controller;
+package com.stentio.controller;
 
-import com.example.stentio.dto.UsuarioResponseDTO;
-import com.example.stentio.service.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.stentio.dto.UsuarioResponseDTO;
+import com.stentio.service.UsuarioService;
 
 @RestController
 @RequestMapping("/api/v1")

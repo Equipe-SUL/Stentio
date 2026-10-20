@@ -1,17 +1,19 @@
-package com.example.stentio.controller;
+package com.stentio.controller;
 
-import com.example.stentio.config.AuthCookieService;
-import com.example.stentio.dto.LoginRequestDTO;
-import com.example.stentio.dto.LoginResponseDTO;
-import com.example.stentio.dto.UsuarioRequestDTO;
-import com.example.stentio.dto.UsuarioResponseDTO;
-import com.example.stentio.dto.UsuarioUpdateRequestDTO;
-import com.example.stentio.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.stentio.config.AuthCookieService;
+import com.stentio.dto.LoginRequestDTO;
+import com.stentio.dto.LoginResponseDTO;
+import com.stentio.dto.UsuarioRequestDTO;
+import com.stentio.dto.UsuarioResponseDTO;
+import com.stentio.dto.UsuarioUpdateRequestDTO;
+import com.stentio.service.UsuarioService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

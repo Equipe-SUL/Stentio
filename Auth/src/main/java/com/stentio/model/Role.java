@@ -1,4 +1,4 @@
-package com.example.stentio.model;
+package com.stentio.model;
 
 public enum Role {
     ADMIN,

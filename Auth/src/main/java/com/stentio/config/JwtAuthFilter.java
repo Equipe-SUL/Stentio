@@ -1,7 +1,8 @@
-package com.example.stentio.config;
+package com.stentio.config;
 
 import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.example.stentio.service.TokenService;
+import com.stentio.service.TokenService;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -64,4 +65,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         return null;
     }
 
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getRequestURI();
+        return path.startsWith("/swagger-ui") || 
+            path.startsWith("/v3/api-docs") || 
+            path.equals("/swagger-ui.html") ||
+            path.startsWith("/actuator");
+    }
 }

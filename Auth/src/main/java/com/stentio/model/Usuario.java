@@ -1,4 +1,4 @@
-package com.example.stentio.model;
+package com.stentio.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
