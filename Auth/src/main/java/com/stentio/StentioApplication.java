@@ -1,4 +1,4 @@
-package com.example.stentio;
+package com.stentio;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

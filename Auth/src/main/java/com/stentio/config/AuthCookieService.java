@@ -1,9 +1,10 @@
-package com.example.stentio.config;
+package com.stentio.config;
 
-import com.example.stentio.service.TokenService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
+
+import com.stentio.service.TokenService;
 
 @Component
 public class AuthCookieService {
