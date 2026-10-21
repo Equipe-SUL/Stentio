@@ -1,9 +1,11 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    MAX_UPLOAD_BYTES: int = Field(default=10 * 1024 * 1024, gt=0)
     POSTGRES_HOST: str = "postgres"
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "stentio"
