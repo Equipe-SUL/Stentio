@@ -1,10 +1,11 @@
-package com.example.stentio.service;
+package com.stentio.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.example.stentio.model.Role;
-import com.example.stentio.model.Usuario;
+import com.stentio.model.Role;
+import com.stentio.model.Usuario;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 

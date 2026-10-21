@@ -1,12 +1,13 @@
-package com.example.stentio.config;
+package com.stentio.config;
 
-import com.example.stentio.model.Role;
-import com.example.stentio.model.Usuario;
-import com.example.stentio.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+
+import com.stentio.model.Role;
+import com.stentio.model.Usuario;
+import com.stentio.repository.UsuarioRepository;
 
 @Component
 public class DadosAdminInitializer implements CommandLineRunner {

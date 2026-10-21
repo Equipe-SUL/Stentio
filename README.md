@@ -62,7 +62,7 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 
 | Serviço | Responsabilidade | Porta |
 | :------ | :---------------- | :----: |
-| **front** | Interface web e mobile (Expo / React Native Web) | 8080 |
+| **front** | Interface web e mobile (Expo / React Native Web) | 80 |
 | **auth** | Autenticação, usuários, sessão e controle de acesso por perfil (JWT) | 8081 |
 | **core** | Domínio de negócio: clientes, recursos, catálogos, tabelas de preço e solicitações | 8082 |
 | **email-service** | Envio de e-mails, configuração SMTP e dados da empresa | 8083 |
@@ -182,7 +182,7 @@ Acompanhe a subida com `docker compose ps` e os logs com `docker compose logs -f
 
 | Serviço | URL |
 | :------ | :-- |
-| Frontend | http://localhost:8080 |
+| Frontend | http://localhost |
 | Auth (API) | http://localhost:8081 |
 | Core (API) | http://localhost:8082 |
 | email-service (API) | http://localhost:8083 |

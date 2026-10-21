@@ -155,7 +155,7 @@ async function arquivoComoBlob(uri: string, type: string): Promise<Blob> {
  * nativo não há cookie, então use carregarLogo().
  */
 export function getLogoUrl(): string {
-  return `${EMPRESA_API_URL}/api/v1/empresa/logo`;
+  return `${EMPRESA_API_URL.replace(/\/$/, '')}/api/v1/empresa/logo`;
 }
 
 /**
