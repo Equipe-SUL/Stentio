@@ -94,6 +94,16 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(OrdemServicoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleOrdemServicoInvalida(OrdemServicoInvalidaException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(OrdemServicoNaoEncontradaException.class)
+    public ResponseEntity<ErroResponse> handleOrdemServicoNaoEncontrada(OrdemServicoNaoEncontradaException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
     @ExceptionHandler(SolicitacaoNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleSolicitacaoNaoEncontrada(SolicitacaoNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
