@@ -1,7 +1,7 @@
 [project]
 name = "import-service"
 version = "0.1.0"
-description = "Add your description here"
+description = "Payload data loader by Fatec Students"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -16,3 +16,8 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
 ]
+
+[tool.pytest]
+minversion = "9.0"
+addopts = ["-ra"]
+pythonpath = ["src"]

@@ -1,9 +1,8 @@
 from contextlib import asynccontextmanager
 
+from config import settings
 from loguru import logger
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-from config import settings
 
 async_engine = create_async_engine(
     url=settings.database_url, echo=settings.DATABASE_ECHO
