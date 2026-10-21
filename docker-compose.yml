@@ -170,6 +170,17 @@ services:
       - "${MAILHOG_PORT_SMTP:-1025}:1025"
       - "${MAILHOG_PORT:-8025}:8025"
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARED_TUNNEL_TOKEN}", "--url", "http://front:80"]
+    depends_on:
+      - front
+    networks:
+      - stentio-network
+    restart: unless-stopped
+    profiles:
+      - deploy
+
 volumes:
   core_uploads:
   mongo_data:
