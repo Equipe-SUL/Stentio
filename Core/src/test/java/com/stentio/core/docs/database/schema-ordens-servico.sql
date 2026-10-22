@@ -11,4 +11,8 @@ CREATE TABLE IF NOT EXISTS ordens_servico (
     CONSTRAINT uk_ordens_servico_orcamento UNIQUE (orcamento_id),
     CONSTRAINT ck_ordens_servico_status CHECK (status IN ('PENDENTE_ALOCACAO'))
 );
+
+-- orcamento_id já é indexado por uk_ordens_servico_orcamento; solicitacao_id não tem índice
+-- automático (Postgres não indexa colunas de FK), então criamos explicitamente.
+CREATE INDEX IF NOT EXISTS idx_ordens_servico_solicitacao ON ordens_servico (solicitacao_id);
 COMMIT;
