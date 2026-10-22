@@ -5,7 +5,7 @@ class Base(DeclarativeBase):
     pass
 
 
-class Recurso(DeclarativeBase):
+class Recurso(Base):
     __tablename__ = "recursos"
     id: Mapped[str] = mapped_column(primary_key=True)
     ativo: Mapped[bool] = mapped_column(default=True)

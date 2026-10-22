@@ -1,5 +1,6 @@
 import csv
 import io
+from collections.abc import Iterator
 
 
 class CsvUploadError(Exception):
@@ -35,7 +36,9 @@ def _detect_separator(text: str) -> str:
     return candidates[0] if candidates else ","
 
 
-def validate_csv(contents: bytes, separator: str | None = None) -> dict:
+def iter_csv_records(
+    contents: bytes, separator: str | None = None
+) -> Iterator[tuple[int, dict[str, str]]]:
     if not contents:
         raise CsvUploadError(422, "ARQUIVO_VAZIO", "O arquivo está vazio.")
     try:
@@ -78,7 +81,6 @@ def validate_csv(contents: bytes, separator: str | None = None) -> dict:
             )
 
         total = 0
-        sample = []
         for row in reader:
             if not row:  # Ignore physical blank lines; do not ignore records like ',,'.
                 continue
@@ -97,8 +99,7 @@ def validate_csv(contents: bytes, separator: str | None = None) -> dict:
                     linha=reader.line_num,
                 )
             total += 1
-            if len(sample) < 5:
-                sample.append(dict(zip(headers, row, strict=True)))
+            yield reader.line_num, dict(zip(headers, row, strict=True))
     except csv.Error as exc:
         raise CsvUploadError(
             422,
@@ -113,4 +114,13 @@ def validate_csv(contents: bytes, separator: str | None = None) -> dict:
             "SEM_REGISTROS",
             "O CSV precisa conter cabeçalho e pelo menos um registro.",
         )
+
+
+def validate_csv(contents: bytes, separator: str | None = None) -> dict:
+    total = 0
+    sample = []
+    for _, row in iter_csv_records(contents, separator):
+        total += 1
+        if len(sample) < 5:
+            sample.append(row)
     return {"total_linhas": total, "amostra_dados": sample}
