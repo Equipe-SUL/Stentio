@@ -1,6 +1,6 @@
-package com.example.stentio.dto;
+package com.stentio.dto;
 
-import com.example.stentio.model.Role;
+import com.stentio.model.Role;
 
 public record LoginResponseDTO (
         String token,

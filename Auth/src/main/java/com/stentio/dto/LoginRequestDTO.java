@@ -1,4 +1,4 @@
-package com.example.stentio.dto;
+package com.stentio.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

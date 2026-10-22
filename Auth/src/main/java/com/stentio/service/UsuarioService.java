@@ -1,18 +1,19 @@
-package com.example.stentio.service;
+package com.stentio.service;
 
-import com.example.stentio.dto.LoginRequestDTO;
-import com.example.stentio.dto.LoginResponseDTO;
-import com.example.stentio.dto.UsuarioRequestDTO;
-import com.example.stentio.dto.UsuarioResponseDTO;
-import com.example.stentio.dto.UsuarioUpdateRequestDTO;
-import com.example.stentio.exception.CredenciaisLoginException;
-import com.example.stentio.exception.EmailJaCadastradoException;
-import com.example.stentio.exception.UsuarioNaoEncontradoException;
-import com.example.stentio.model.Role;
-import com.example.stentio.model.Usuario;
-import com.example.stentio.repository.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import com.stentio.dto.LoginRequestDTO;
+import com.stentio.dto.LoginResponseDTO;
+import com.stentio.dto.UsuarioRequestDTO;
+import com.stentio.dto.UsuarioResponseDTO;
+import com.stentio.dto.UsuarioUpdateRequestDTO;
+import com.stentio.exception.CredenciaisLoginException;
+import com.stentio.exception.EmailJaCadastradoException;
+import com.stentio.exception.UsuarioNaoEncontradoException;
+import com.stentio.model.Role;
+import com.stentio.model.Usuario;
+import com.stentio.repository.UsuarioRepository;
 
 import java.util.List;
 import java.util.UUID;

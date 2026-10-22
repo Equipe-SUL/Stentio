@@ -1,4 +1,4 @@
-package com.example.stentio.exception;
+package com.stentio.exception;
 
 public class EmailJaCadastradoException extends RuntimeException {
 
