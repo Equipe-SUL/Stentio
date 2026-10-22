@@ -29,13 +29,15 @@ public class OrdemServicoController {
 
     // CA.1 e CA.2. Mesma assinatura da listagem de orçamentos: filtros em snake_case e página base 1.
     @GetMapping
-    @Operation(summary = "Lista ordens de serviço paginadas, com filtros opcionais de status e cliente")
+    @Operation(summary = "Lista ordens de serviço paginadas, com filtros opcionais de status e cliente (cliente_id ou cliente)")
     public ResponseEntity<OrdemServicoPaginaResponse> listar(
             @RequestParam(required = false) StatusOrdemServico status,
             @RequestParam(name = "cliente_id", required = false) UUID clienteId,
+            @RequestParam(name = "cliente", required = false) UUID cliente,
             @RequestParam(defaultValue = "1") int pagina,
             @RequestParam(name = "tamanho_pagina", defaultValue = "10") int tamanhoPagina) {
-        return ResponseEntity.ok(ordemServicoConsultaService.listar(status, clienteId, pagina, tamanhoPagina));
+        UUID filtroCliente = clienteId != null ? clienteId : cliente;
+        return ResponseEntity.ok(ordemServicoConsultaService.listar(status, filtroCliente, pagina, tamanhoPagina));
     }
 
     // CA.3

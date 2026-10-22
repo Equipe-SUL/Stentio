@@ -122,6 +122,33 @@ class OrdemServicoControllerTest {
 
     @Test
     @WithMockUser(username = "gestor@stentio.com", roles = {"GESTOR_PROJETO"})
+    @DisplayName("Cenário 1b: deve aceitar cliente como alias de cliente_id")
+    void deveListarFiltrandoPorAliasCliente() throws Exception {
+        when(ordemServicoConsultaService.listar(any(), any(), anyInt(), anyInt())).thenReturn(pagina());
+
+        mockMvc.perform(get(BASE_PATH).param("cliente", clienteId.toString()))
+                .andExpect(status().isOk());
+
+        verify(ordemServicoConsultaService).listar(eq(null), eq(clienteId), eq(1), eq(10));
+    }
+
+    @Test
+    @WithMockUser(username = "gestor@stentio.com", roles = {"GESTOR_PROJETO"})
+    @DisplayName("Cenário 1b: deve priorizar cliente_id quando ambos os nomes vêm preenchidos")
+    void devePriorizarClienteIdSobreAlias() throws Exception {
+        when(ordemServicoConsultaService.listar(any(), any(), anyInt(), anyInt())).thenReturn(pagina());
+
+        UUID outroCliente = UUID.randomUUID();
+        mockMvc.perform(get(BASE_PATH)
+                        .param("cliente_id", clienteId.toString())
+                        .param("cliente", outroCliente.toString()))
+                .andExpect(status().isOk());
+
+        verify(ordemServicoConsultaService).listar(eq(null), eq(clienteId), eq(1), eq(10));
+    }
+
+    @Test
+    @WithMockUser(username = "gestor@stentio.com", roles = {"GESTOR_PROJETO"})
     @DisplayName("CA.2: deve repassar pagina e tamanho_pagina recebidos na URL")
     void deveRepassarPaginacao() throws Exception {
         when(ordemServicoConsultaService.listar(any(), any(), anyInt(), anyInt())).thenReturn(pagina());
