@@ -57,6 +57,7 @@ class OrdemServicoControllerTest {
     private OrdemServicoPaginaResponse pagina() {
         OrdemServicoResumoResponse resumo = new OrdemServicoResumoResponse(
                 ordemId,
+                "OS-2026-0001",
                 StatusOrdemServico.PENDENTE_ALOCACAO,
                 clienteId,
                 "Empresa XPTO",
@@ -71,6 +72,7 @@ class OrdemServicoControllerTest {
 
         return new OrdemServicoDetalheResponse(
                 ordemId,
+                "OS-2026-0001",
                 StatusOrdemServico.PENDENTE_ALOCACAO,
                 UUID.randomUUID(),
                 Instant.parse("2026-10-09T08:00:00Z"),
@@ -100,6 +102,7 @@ class OrdemServicoControllerTest {
                 .andExpect(jsonPath("$.total_elementos").value(1))
                 .andExpect(jsonPath("$.conteudo.length()").value(1))
                 .andExpect(jsonPath("$.conteudo[0].id").value(ordemId.toString()))
+                .andExpect(jsonPath("$.conteudo[0].codigo_visual").value("OS-2026-0001"))
                 .andExpect(jsonPath("$.conteudo[0].status").value("PENDENTE_ALOCACAO"))
                 .andExpect(jsonPath("$.conteudo[0].cliente_nome").value("Empresa XPTO"))
                 .andExpect(jsonPath("$.conteudo[0].data_criacao").value(Matchers.startsWith("2026-10-09")));
@@ -174,6 +177,7 @@ class OrdemServicoControllerTest {
         mockMvc.perform(get(BASE_PATH + "/" + ordemId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(ordemId.toString()))
+                .andExpect(jsonPath("$.codigo").value("OS-2026-0001"))
                 .andExpect(jsonPath("$.status").value("PENDENTE_ALOCACAO"))
                 .andExpect(jsonPath("$.orcamento_id").exists())
                 .andExpect(jsonPath("$.cliente.id").value(clienteId.toString()))

@@ -10,6 +10,7 @@ import java.util.UUID;
 // Linha da listagem. Segue o estilo do módulo de orçamento (snake_case), de onde a OS nasce.
 public record OrdemServicoResumoResponse(
         UUID id,
+        @JsonProperty("codigo_visual") String codigoVisual,
         StatusOrdemServico status,
         @JsonProperty("cliente_id") UUID clienteId,
         @JsonProperty("cliente_nome") String clienteNome,

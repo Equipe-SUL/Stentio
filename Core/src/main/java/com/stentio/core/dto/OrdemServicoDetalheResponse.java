@@ -11,6 +11,7 @@ import java.util.UUID;
 // CA.3: dados completos da OS, com os vínculos de cliente e solicitação.
 public record OrdemServicoDetalheResponse(
         UUID id,
+        String codigo,
         StatusOrdemServico status,
         @JsonProperty("orcamento_id") UUID orcamentoId,
         @JsonProperty("data_criacao") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant dataCriacao,

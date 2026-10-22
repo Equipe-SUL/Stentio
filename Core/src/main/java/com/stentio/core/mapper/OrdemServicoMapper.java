@@ -9,8 +9,12 @@ import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.Solicitacao;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 // Converte entidade em resposta. Não consulta o banco: quem carrega as entidades é o service.
 @Component
@@ -21,6 +25,7 @@ public class OrdemServicoMapper {
         Cliente cliente = ordem.getOrcamento().getCliente();
         return new OrdemServicoResumoResponse(
                 ordem.getId(),
+                codigoVisual(ordem.getCriadoEm(), ordem.getId()),
                 ordem.getStatus(),
                 cliente.getId(),
                 cliente.getNomeEmpresa(),
@@ -33,6 +38,7 @@ public class OrdemServicoMapper {
 
         return new OrdemServicoDetalheResponse(
                 ordem.getId(),
+                codigoVisual(ordem.getCriadoEm(), ordem.getId()),
                 ordem.getStatus(),
                 ordem.getOrcamento().getId(),
                 ordem.getCriadoEm(),
@@ -65,5 +71,12 @@ public class OrdemServicoMapper {
         // Reaproveita o download autenticado da US-09 em vez de expor o caminho em disco.
         String url = "/api/v1/solicitacoes/" + solicitacao.getId() + "/arquivos/" + arquivo.getId();
         return new Arquivo(arquivo.getId(), arquivo.getNomeOriginal(), url);
+    }
+
+    // Código legível de exibição (ex.: OS-2026-A1B2C3). Derivado de dados imutáveis — ano de criação e id —, sem coluna no banco
+    static String codigoVisual(Instant criadoEm, UUID id) {
+        String ano = String.valueOf(criadoEm.atZone(ZoneOffset.UTC).getYear());
+        String sufixo = id.toString().substring(0, 6).toUpperCase(Locale.ROOT);
+        return "OS-" + ano + "-" + sufixo;
     }
 }

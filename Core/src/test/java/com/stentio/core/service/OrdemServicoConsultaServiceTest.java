@@ -53,7 +53,7 @@ class OrdemServicoConsultaServiceTest {
 
     private OrdemServicoResumoResponse resumo() {
         return new OrdemServicoResumoResponse(
-                ordemId, StatusOrdemServico.PENDENTE_ALOCACAO, clienteId, "Empresa XPTO", Instant.now());
+                ordemId, "OS-2026-0001", StatusOrdemServico.PENDENTE_ALOCACAO, clienteId, "Empresa XPTO", Instant.now());
     }
 
     @Test
@@ -123,6 +123,7 @@ class OrdemServicoConsultaServiceTest {
         OrdemServico ordem = Mockito.mock(OrdemServico.class);
         OrdemServicoDetalheResponse detalhe = new OrdemServicoDetalheResponse(
                 ordemId,
+                "OS-2026-0001",
                 StatusOrdemServico.PENDENTE_ALOCACAO,
                 UUID.randomUUID(),
                 Instant.now(),
