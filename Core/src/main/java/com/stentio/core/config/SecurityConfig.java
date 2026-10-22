@@ -39,6 +39,7 @@ public class SecurityConfig {
     private static final String ROTAS_TIPOS_SERVICO = "/api/v1/tipos-servico/**";
     private static final String ROTAS_TABELAS_PRECO = "/api/v1/admin/tabelas-preco/**";
     private static final String ROTAS_SOLICITACOES = "/api/v1/solicitacoes/**";
+    private static final String ROTAS_ORDENS_SERVICO = "/api/v1/ordens-servico/**";
     private static final String ROTA_ENVIAR_ORCAMENTO = "/api/v1/orcamentos/*/enviar-aprovacao";
     private static final String ROTAS_ORCAMENTOS = "/api/v1/orcamentos/**";
 
@@ -89,6 +90,9 @@ public class SecurityConfig {
                         // US-09: a solicitação é registrada pelo Atendente; gestor e admin acompanham.
                         .requestMatchers(ROTAS_SOLICITACOES)
                         .hasAnyRole(Role.ADMIN.name(), Role.ATENDENTE.name(), Role.GESTOR_PROJETO.name())
+                        // US-17: consulta das ordens de serviço é do Gestor de Projeto, com o admin acompanhando.
+                        .requestMatchers(ROTAS_ORDENS_SERVICO)
+                        .hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
                         .anyRequest().authenticated()
                 )
 
