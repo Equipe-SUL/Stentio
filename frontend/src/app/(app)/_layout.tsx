@@ -29,6 +29,7 @@ const MENU_CONFIG: MenuGroup[] = [
         icon: "settings-outline",
         route: "/admin",
       },
+      { name: "Importar recursos", icon: "cloud-upload-outline", route: "/importacoes" },
     ],
   },
 ];
