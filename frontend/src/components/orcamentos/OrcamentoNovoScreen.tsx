@@ -47,11 +47,15 @@ export function OrcamentoNovoScreen() {
       coreApi.get<{ content: TipoServico[] }>("/api/v1/tipos-servico", { params: { ativo: true, size: 100 } }),
     ]).then(([sols, idi, serv]) => {
       if (!ativo) return;
-      setSolicitacoes(sols);
+      const disponiveis = sols.filter((s) => s.status === "PENDENTE_ORCAMENTO");
+      setSolicitacoes(disponiveis);
       setIdiomas(idi.data.content ?? []);
       setTipos(serv.data.content ?? []);
-      const escolha = params.solicitacaoId ? sols.find((s) => s.id === params.solicitacaoId) : sols.find((s) => s.status === "PENDENTE_ORCAMENTO") ?? sols[0];
-      if (escolha) { setSolicitacaoId(escolha.id); setItens([novoItem(escolha.idiomaOrigem.id, escolha.idiomaDestino.id)]); }
+      const escolha = params.solicitacaoId
+        ? disponiveis.find((s) => s.id === params.solicitacaoId)
+        : disponiveis[0];
+      setSolicitacaoId(escolha?.id ?? "");
+      if (escolha) setItens([novoItem(escolha.idiomaOrigem.id, escolha.idiomaDestino.id)]);
     }).catch((e) => { if (ativo) setErro(getApiErrorMessage(e)); }).finally(() => { if (ativo) setCarregando(false); });
     return () => { ativo = false; };
   }, [params.solicitacaoId]);
@@ -96,7 +100,7 @@ export function OrcamentoNovoScreen() {
       {!orcamentoId ? <View className="gap-4 rounded-2xl border border-neutral-200 bg-white p-5">
         <Text className="text-lg font-semibold text-neutral-900">1. Cabeçalho da proposta</Text>
         <Text className="text-sm text-neutral-600">Escolha a solicitação que originou este orçamento.</Text>
-        {solicitacoes.length === 0 && !carregando ? <Text className="text-sm text-neutral-500">Não há solicitações disponíveis.</Text> : null}
+        {solicitacoes.length === 0 && !carregando ? <Text className="text-sm text-neutral-500">Não há solicitações pendentes de orçamento.</Text> : null}
         <View className="gap-2">{solicitacoes.map((s) => <Pressable key={s.id} onPress={() => { setSolicitacaoId(s.id); setItens([novoItem(s.idiomaOrigem.id, s.idiomaDestino.id)]); }} className={`flex-row items-center justify-between rounded-xl border p-3 ${solicitacaoId === s.id ? "border-[#6f4f28] bg-[#f8f2ec]" : "border-neutral-200"}`}>
           <View className="flex-1"><Text className="text-sm font-semibold text-neutral-800">{s.cliente.nomeEmpresa}</Text><Text className="mt-1 text-xs text-neutral-500">{s.categoriaProjeto.nome} · {s.idiomaOrigem.nome} → {s.idiomaDestino.nome}</Text></View>
           <Ionicons name={solicitacaoId === s.id ? "checkmark-circle" : "ellipse-outline"} size={22} color="#6f4f28" />
