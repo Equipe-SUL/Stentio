@@ -1,15 +1,11 @@
 from functools import lru_cache
 
-from pydantic import Field, HttpUrl
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     MAX_UPLOAD_BYTES: int = Field(default=10 * 1024 * 1024, gt=0)
-    MAX_IMPORT_RESOURCES: int = Field(default=100, gt=0)
-    MAX_IMPORT_ROWS: int = Field(default=5000, gt=0)
-    CORE_API_URL: HttpUrl = HttpUrl("http://localhost:8082")
-    CORE_TIMEOUT_SECONDS: float = Field(default=15, gt=0, allow_inf_nan=False)
     POSTGRES_HOST: str = "postgres"
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "stentio"

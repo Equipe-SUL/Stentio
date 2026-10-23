@@ -593,9 +593,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "asyncpg" },
-    { name = "email-validator" },
     { name = "fastapi", extra = ["standard"] },
-    { name = "httpx" },
     { name = "loguru" },
     { name = "polars" },
     { name = "sqlalchemy", extra = ["asyncio"] },
@@ -609,9 +607,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.32.0" },
-    { name = "email-validator", specifier = ">=2.3.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.152.0" },
-    { name = "httpx", specifier = ">=0.28.1,<1" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "polars", specifier = ">=2.0.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.5" },
