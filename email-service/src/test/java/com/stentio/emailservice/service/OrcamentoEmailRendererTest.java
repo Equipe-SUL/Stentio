@@ -41,7 +41,7 @@ class OrcamentoEmailRendererTest {
 
     private static ConfiguracaoEmpresaDocument empresa() {
         return new ConfiguracaoEmpresaDocument(ConfiguracaoEmpresaDocument.ID_UNICO,
-                "Stentio Traduções", "12.345.678/0001-99", "Rua das Flores, 100 - São Paulo/SP",
+                "Aliança Traduções", "12.345.678/0001-99", "Rua das Flores, 100 - São Paulo/SP",
                 "(11) 99999-0000");
     }
 
@@ -108,12 +108,25 @@ class OrcamentoEmailRendererTest {
                 mensagem(new OrcamentoEmailMensagem.Cliente("Maria", null), solicitacaoCompleta()),
                 empresa(), SEM_ANEXOS, false);
 
-        assertTrue(corpo.texto().contains("Stentio Traduções"));
-        // O CNPJ é normalizado sem pontuação no cadastro; o e-mail mostra como está guardado.
-        assertTrue(corpo.texto().contains("CNPJ: 12345678000199"));
+        assertTrue(corpo.texto().contains("Aliança Traduções"));
+        // O cadastro guarda o CNPJ sem pontuação; quem lê o e-mail é o cliente, então
+        // ele volta com a máscara.
+        assertTrue(corpo.texto().contains("CNPJ: 12.345.678/0001-99"), corpo.texto());
         assertTrue(corpo.texto().contains("Rua das Flores, 100 - São Paulo/SP"));
         assertTrue(corpo.texto().contains("Telefone: (11) 99999-0000"));
-        assertTrue(corpo.html().contains("Stentio Tradu"));
+        assertTrue(corpo.html().contains("Aliança Tradu"));
+    }
+
+    @Test
+    void cnpjForaDoTamanhoEsperadoSaiComoEstaGuardado() {
+        var curto = new ConfiguracaoEmpresaDocument(ConfiguracaoEmpresaDocument.ID_UNICO,
+                "Aliança Traduções", "123", "Rua 1", null);
+
+        var corpo = renderer.renderizar(
+                mensagem(new OrcamentoEmailMensagem.Cliente("Maria", null), null),
+                curto, SEM_ANEXOS, false);
+
+        assertTrue(corpo.texto().contains("CNPJ: 123"));
     }
 
     @Test

@@ -60,7 +60,7 @@ class OrcamentoEmailServiceTest {
     void montaOEmailComDadosDaEmpresaEOsAnexosDaSolicitacao() {
         when(empresas.findById(ConfiguracaoEmpresaDocument.ID_UNICO))
                 .thenReturn(Optional.of(new ConfiguracaoEmpresaDocument(
-                        ConfiguracaoEmpresaDocument.ID_UNICO, "Stentio Traduções",
+                        ConfiguracaoEmpresaDocument.ID_UNICO, "Aliança Traduções",
                         "12.345.678/0001-99", "Rua das Flores, 100", "(11) 99999-0000")));
 
         service.enviar(mensagem(List.of(
@@ -70,7 +70,7 @@ class OrcamentoEmailServiceTest {
         assertEquals("cliente@teste.com", enviada.destinatario());
         assertEquals("Orçamento ORC-2026-ABCDEF aguardando sua aprovação", enviada.assunto());
         assertTrue(enviada.texto().contains("Olá, Maria Souza"));
-        assertTrue(enviada.texto().contains("Stentio Traduções"));
+        assertTrue(enviada.texto().contains("Aliança Traduções"));
         assertNotNull(enviada.html());
         assertEquals(1, enviada.anexos().size());
         assertEquals("contrato.pdf", enviada.anexos().get(0).nome());

@@ -16,6 +16,8 @@ import com.stentio.core.repository.OrcamentoEmailOutboxRepository;
 import com.stentio.core.repository.OrcamentoHistoricoRepository;
 import com.stentio.core.repository.OrcamentoRepository;
 import com.stentio.core.support.CodigoVisual;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,7 @@ import java.util.UUID;
 @Service
 @Transactional(readOnly = true)
 public class OrcamentoEnvioService {
+    private static final Logger log = LoggerFactory.getLogger(OrcamentoEnvioService.class);
     private static final String MENSAGEM_SUCESSO = "Orçamento enviado para a fila de e-mails com sucesso";
 
     private final OrcamentoRepository orcamentos;
@@ -58,6 +61,21 @@ public class OrcamentoEnvioService {
         this.clock = clock;
         this.validadeToken = validadeToken;
         this.urlConsultaPublica = urlConsultaPublica;
+        avisarSeUrlNaoForAlcancavelPeloCliente(urlConsultaPublica);
+    }
+
+    /**
+     * O link vai para o e-mail de um cliente externo. Apontado para localhost, ele abre a
+     * máquina de quem recebeu, não a nossa — e o orçamento nunca é aprovado. Em
+     * desenvolvimento isso é esperado; em qualquer outro ambiente é configuração faltando,
+     * então o aviso sai no boot e não só quando alguém reclama.
+     */
+    private static void avisarSeUrlNaoForAlcancavelPeloCliente(String url) {
+        if (url != null && (url.contains("localhost") || url.contains("127.0.0.1"))) {
+            log.warn("app.orcamentos.url-consulta-publica aponta para {} — o cliente externo não "
+                    + "consegue abrir esse link. Defina ORCAMENTO_URL_CONSULTA_PUBLICA com o "
+                    + "endereço público antes de enviar orçamentos de verdade.", url);
+        }
     }
 
     @Transactional

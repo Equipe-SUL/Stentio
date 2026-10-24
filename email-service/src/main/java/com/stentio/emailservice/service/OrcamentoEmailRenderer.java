@@ -202,7 +202,7 @@ public class OrcamentoEmailRenderer {
             linhas.add(empresa.getNome().strip());
         }
         if (preenchido(empresa.getCnpj())) {
-            linhas.add("CNPJ: " + empresa.getCnpj().strip());
+            linhas.add("CNPJ: " + cnpjComMascara(empresa.getCnpj().strip()));
         }
         if (preenchido(empresa.getEndereco())) {
             linhas.add(empresa.getEndereco().strip());
@@ -214,6 +214,19 @@ public class OrcamentoEmailRenderer {
             linhas.add("Em caso de dúvida, responda este e-mail ou fale com a gente pelos contatos acima.");
         }
         return linhas;
+    }
+
+    /**
+     * O cadastro guarda o CNPJ sem pontuação. Quem lê é o cliente, então ele volta com a
+     * máscara. Qualquer coisa fora de 14 caracteres sai como está guardado — vale também
+     * para o CNPJ alfanumérico, em que a máscara é a mesma e só o conteúdo muda.
+     */
+    private static String cnpjComMascara(String cnpj) {
+        if (cnpj.length() != 14) {
+            return cnpj;
+        }
+        return cnpj.substring(0, 2) + "." + cnpj.substring(2, 5) + "." + cnpj.substring(5, 8)
+                + "/" + cnpj.substring(8, 12) + "-" + cnpj.substring(12);
     }
 
     private static String nomeDaEmpresa(ConfiguracaoEmpresaDocument empresa) {
