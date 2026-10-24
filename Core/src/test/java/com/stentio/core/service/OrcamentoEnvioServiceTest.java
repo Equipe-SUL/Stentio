@@ -94,7 +94,9 @@ class OrcamentoEnvioServiceTest {
         assertEquals(codigoEsperado, dadosOrcamento.get("codigo").asText());
         assertEquals("Orçamento " + codigoEsperado + " aguardando sua aprovação",
                 payload.get("subject").asText());
-        assertEquals("150.00", dadosOrcamento.get("valorTotal").asText());
+        // O Jackson normaliza os zeros à direita ao reler o JSON, então "150.00" volta como
+        // 150. O que importa é o valor, não a representação — por isso a comparação é numérica.
+        assertEquals(0, new BigDecimal("150.00").compareTo(dadosOrcamento.get("valorTotal").decimalValue()));
         assertEquals("https://stentio.example/orcamento?token=" + response.tokenAprovacao(),
                 dadosOrcamento.get("linkAprovacao").asText());
         assertEquals(response.dataExpiracao().toString(), dadosOrcamento.get("dataExpiracao").asText());
@@ -142,11 +144,18 @@ class OrcamentoEnvioServiceTest {
 
         var anexos = payload.get("anexos");
         assertEquals(2, anexos.size());
-        // Empate no enviadoEm cai no desempate por nome, então a ordem é estável entre envios.
-        assertEquals("anexo.docx", anexos.get(0).get("nomeArquivo").asText());
-        assertEquals("2026/10/b.docx", anexos.get(0).get("caminho").asText());
-        assertEquals("contrato.pdf", anexos.get(1).get("nomeArquivo").asText());
-        assertEquals("application/pdf", anexos.get(1).get("tipoConteudo").asText());
+        // A ordem vem do enviadoEm, que a entidade preenche com o relógio na construção, e o
+        // teste não tem como fixá-lo. Conferir posição aqui deixaria o teste refém de dois
+        // now() consecutivos caírem no mesmo instante, então a conferência é por nome. A
+        // ordenação em si é a mesma do OrdemServicoMapper, coberta lá.
+        var nomes = new java.util.ArrayList<String>();
+        anexos.forEach(anexo -> nomes.add(anexo.get("nomeArquivo").asText()));
+        assertEquals(java.util.Set.of("contrato.pdf", "anexo.docx"), new java.util.HashSet<>(nomes));
+
+        var contrato = anexos.get(nomes.indexOf("contrato.pdf"));
+        assertEquals("2026/10/a.pdf", contrato.get("caminho").asText());
+        assertEquals("application/pdf", contrato.get("tipoConteudo").asText());
+        assertEquals("2026/10/b.docx", anexos.get(nomes.indexOf("anexo.docx")).get("caminho").asText());
     }
 
     @Test
