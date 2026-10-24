@@ -6,6 +6,7 @@ import { coreApi, getApiErrorMessage } from "../../lib/api";
 import { CabecalhoTela } from "../navegacao/CabecalhoTela";
 import { listarSolicitacoes } from "../solicitacoes/solicitacoesApi";
 import type { SolicitacaoResponse } from "../solicitacoes/types";
+import { SelectField } from "../solicitacoes/SelectField";
 import { criarCabecalho, salvarItens, type OrcamentoItemInput, type UnidadeCobranca } from "./orcamentosApi";
 
 interface Idioma { id: string; nome: string; codigoIso: string; }
@@ -62,7 +63,9 @@ export function OrcamentoNovoScreen() {
 
 
   const total = useMemo(() => itens.reduce((soma, item) => soma + item.servicos.reduce((sub, serv) => sub + numerico(serv.quantidade) * numerico(serv.valor), 0), 0), [itens]);
-  const idiomaLabel = (id: string) => { const idioma = idiomas.find((i) => i.id === id); return idioma ? `${idioma.nome} (${idioma.codigoIso.toUpperCase()})` : "Selecione"; };
+  const opcoesSolicitacao = solicitacoes.map((s) => ({ value: s.id, label: `${s.cliente.nomeEmpresa} · ${s.categoriaProjeto.nome} · ${s.idiomaOrigem.codigoIso.toUpperCase()} → ${s.idiomaDestino.codigoIso.toUpperCase()}` }));
+  const opcoesIdioma = idiomas.map((idioma) => ({ value: idioma.id, label: `${idioma.nome} (${idioma.codigoIso.toUpperCase()})` }));
+  const opcoesTipoServico = tipos.map((tipo) => ({ value: tipo.nome, label: tipo.nome }));
   const mudarItem = (index: number, patch: Partial<ItemForm>) => setItens((atual) => atual.map((item, i) => i === index ? { ...item, ...patch } : item));
   const mudarServico = (itemIndex: number, servicoIndex: number, patch: Partial<ServicoForm>) => setItens((atual) => atual.map((item, i) => i === itemIndex ? { ...item, servicos: item.servicos.map((serv, j) => j === servicoIndex ? { ...serv, ...patch } : serv) } : item));
 
@@ -101,10 +104,18 @@ export function OrcamentoNovoScreen() {
         <Text className="text-lg font-semibold text-neutral-900">1. Cabeçalho da proposta</Text>
         <Text className="text-sm text-neutral-600">Escolha a solicitação que originou este orçamento.</Text>
         {solicitacoes.length === 0 && !carregando ? <Text className="text-sm text-neutral-500">Não há solicitações pendentes de orçamento.</Text> : null}
-        <View className="gap-2">{solicitacoes.map((s) => <Pressable key={s.id} onPress={() => { setSolicitacaoId(s.id); setItens([novoItem(s.idiomaOrigem.id, s.idiomaDestino.id)]); }} className={`flex-row items-center justify-between rounded-xl border p-3 ${solicitacaoId === s.id ? "border-[#6f4f28] bg-[#f8f2ec]" : "border-neutral-200"}`}>
-          <View className="flex-1"><Text className="text-sm font-semibold text-neutral-800">{s.cliente.nomeEmpresa}</Text><Text className="mt-1 text-xs text-neutral-500">{s.categoriaProjeto.nome} · {s.idiomaOrigem.nome} → {s.idiomaDestino.nome}</Text></View>
-          <Ionicons name={solicitacaoId === s.id ? "checkmark-circle" : "ellipse-outline"} size={22} color="#6f4f28" />
-        </Pressable>)}</View>
+        <SelectField
+          label="Solicitação"
+          value={solicitacaoId}
+          onChange={(id) => {
+            const selecionada = solicitacoes.find((s) => s.id === id);
+            setSolicitacaoId(id);
+            if (selecionada) setItens([novoItem(selecionada.idiomaOrigem.id, selecionada.idiomaDestino.id)]);
+          }}
+          options={opcoesSolicitacao}
+          placeholder="Selecione a solicitação..."
+          disabled={carregando || solicitacoes.length === 0}
+        />
         <Campo label="Data de expiração" value={dataExpiracao} onChangeText={setDataExpiracao} placeholder="AAAA-MM-DD" />
         <Pressable disabled={!solicitacao || salvando || carregando} onPress={() => void iniciar()} className="flex-row items-center justify-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3 disabled:opacity-50">{salvando ? <ActivityIndicator color="white" /> : null}<Text className="font-semibold text-white">Criar cabeçalho e continuar</Text></Pressable>
       </View> : <>
@@ -113,11 +124,13 @@ export function OrcamentoNovoScreen() {
           <View className="flex-row items-center justify-between"><View><Text className="text-lg font-semibold text-neutral-900">2. Itens e serviços</Text><Text className="text-sm text-neutral-500">Adicione pares de idiomas e precifique cada serviço.</Text></View></View>
           {itens.map((item, idx) => <View key={idx} className="gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
             <View className="flex-row items-center justify-between"><Text className="font-semibold text-neutral-800">Par de idiomas {idx + 1}</Text>{itens.length > 1 ? <Pressable onPress={() => setItens((atual) => atual.filter((_, i) => i !== idx))}><Text className="text-xs text-red-600">Remover</Text></Pressable> : null}</View>
-            <View className="flex-row flex-wrap gap-2"><View className="min-w-[140px] flex-1 gap-1"><Text className="text-xs text-neutral-600">Origem</Text><View className="flex-row flex-wrap gap-1">{idiomas.map((idioma) => <Pressable key={idioma.id} onPress={() => mudarItem(idx, { origem: idioma.id })} className={`rounded-md border px-2 py-1.5 ${item.origem === idioma.id ? "border-[#6f4f28] bg-[#f4e9df]" : "border-neutral-200 bg-white"}`}><Text className="text-xs text-neutral-700">{idiomaLabel(idioma.id)}</Text></Pressable>)}</View></View>
-            <View className="min-w-[140px] flex-1 gap-1"><Text className="text-xs text-neutral-600">Destino</Text><View className="flex-row flex-wrap gap-1">{idiomas.map((idioma) => <Pressable key={idioma.id} onPress={() => mudarItem(idx, { destino: idioma.id })} className={`rounded-md border px-2 py-1.5 ${item.destino === idioma.id ? "border-[#6f4f28] bg-[#f4e9df]" : "border-neutral-200 bg-white"}`}><Text className="text-xs text-neutral-700">{idiomaLabel(idioma.id)}</Text></Pressable>)}</View></View></View>
+            <View className="flex-row flex-wrap gap-3">
+              <SelectField label="Idioma de origem" value={item.origem} onChange={(origem) => mudarItem(idx, { origem })} options={opcoesIdioma} placeholder="Selecione a origem..." invalid={Boolean(item.origem && item.origem === item.destino)} />
+              <SelectField label="Idioma de destino" value={item.destino} onChange={(destino) => mudarItem(idx, { destino })} options={opcoesIdioma} placeholder="Selecione o destino..." invalid={Boolean(item.destino && item.origem === item.destino)} />
+            </View>
             {item.origem && item.origem === item.destino ? <Text className="text-xs text-red-600">Origem e destino precisam ser diferentes.</Text> : null}
             {item.servicos.map((serv, si) => <View key={si} className="gap-2 rounded-lg border border-neutral-200 bg-white p-3"><View className="flex-row items-center justify-between"><Text className="text-sm font-medium text-neutral-700">Serviço {si + 1}</Text>{item.servicos.length > 1 ? <Pressable onPress={() => mudarItem(idx, { servicos: item.servicos.filter((_, j) => j !== si) })}><Text className="text-xs text-red-600">Remover</Text></Pressable> : null}</View>
-              <View className="flex-row flex-wrap gap-2">{tipos.map((t) => <Pressable key={t.id} onPress={() => mudarServico(idx, si, { tipo: t.nome })} className={`rounded-full border px-3 py-1.5 ${serv.tipo === t.nome ? "border-[#6f4f28] bg-[#6f4f28]" : "border-neutral-300"}`}><Text className={`text-xs ${serv.tipo === t.nome ? "text-white" : "text-neutral-700"}`}>{t.nome}</Text></Pressable>)}</View>
+              <SelectField label="Tipo de serviço" value={serv.tipo} onChange={(tipo) => mudarServico(idx, si, { tipo })} options={opcoesTipoServico} placeholder="Selecione o serviço..." />
               <View className="flex-row flex-wrap gap-2"><Campo label="Quantidade" value={serv.quantidade} onChangeText={(v) => mudarServico(idx, si, { quantidade: v })} keyboardType="decimal-pad" placeholder="Ex.: 1500" error={serv.quantidade && !positivo(serv.quantidade) ? "Deve ser maior que zero" : undefined} /><View className="min-w-[105px] flex-1 gap-1"><Text className="text-xs font-medium text-neutral-600">Unidade</Text><View className="flex-row flex-wrap gap-1">{UNIDADES.map((u) => <Pressable key={u} onPress={() => mudarServico(idx, si, { unidade: u })} className={`rounded-md border px-2 py-2 ${serv.unidade === u ? "border-[#6f4f28] bg-[#f4e9df]" : "border-neutral-300 bg-white"}`}><Text className="text-[10px] text-neutral-700">{u}</Text></Pressable>)}</View></View><Campo label="Valor unitário (R$)" value={serv.valor} onChangeText={(v) => mudarServico(idx, si, { valor: v })} keyboardType="decimal-pad" placeholder="0,00" error={serv.valor && !positivo(serv.valor) ? "Deve ser maior que zero" : undefined} /></View>
               <Text className="text-right text-xs text-neutral-500">Subtotal: {dinheiro(numerico(serv.quantidade) * numerico(serv.valor))}</Text>
             </View>)}
