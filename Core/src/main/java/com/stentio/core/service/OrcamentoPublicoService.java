@@ -112,3 +112,27 @@ public class OrcamentoPublicoService {
                 orcamento.getTokenUtilizadoEm(), agora);
     }
 }
+
+    public ArquivoPublicoParaDownload baixarArquivoPublico(String token, UUID arquivoId) {
+        Orcamento orcamento = orcamentos.buscarPublicoPorTokenHash(TokenOrcamento.hash(token))
+                .orElseThrow(LinkOrcamentoInvalidoException::new);
+        validar(orcamento, clock.instant());
+
+        if (orcamento.getSolicitacao() == null) {
+            throw new LinkOrcamentoInvalidoException();
+        }
+
+        ArquivoSolicitacao arquivo = orcamento.getSolicitacao().getArquivos().stream()
+                .filter(a -> a.getId().equals(arquivoId))
+                .findFirst()
+                .orElseThrow(LinkOrcamentoInvalidoException::new);
+
+        org.springframework.core.io.Resource recurso = null;
+        // Resource carregado pelo caller via ArquivoStorageService
+        return new ArquivoPublicoParaDownload(arquivo.getCaminho(), arquivo.getNomeOriginal(),
+                arquivo.getTipoConteudo(), arquivo.getTamanhoBytes());
+    }
+
+    public record ArquivoPublicoParaDownload(String caminho, String nomeOriginal,
+                                            String tipoConteudo, long tamanhoBytes) {
+    }

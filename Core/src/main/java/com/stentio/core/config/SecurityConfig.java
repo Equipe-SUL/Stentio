@@ -65,8 +65,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
-                        // Links de orçamento autorizam somente estas três operações.
+                        // Links de orçamento autorizam somente estas operações públicas.
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/orcamentos").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/orcamentos/arquivos/**").permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/public/orcamentos/aprovar",
                                 "/api/v1/public/orcamentos/rejeitar").permitAll()
