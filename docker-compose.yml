@@ -111,6 +111,19 @@ services:
     networks:
       - stentio-network
 
+  import-service:
+    build:
+      context: ./import-service
+    container_name: stentio-import-service
+    env_file:
+      - .env
+    ports:
+      - "8123:8000"
+    depends_on:
+      - postgres
+    networks:
+      - stentio-network
+
   postgres:
     image: postgres:18-trixie
     container_name: postgresdb-local
@@ -172,7 +185,7 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARED_TUNNEL_TOKEN}", "--url", "http://front:80"]
+    command: [ "tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARED_TUNNEL_TOKEN}", "--url", "http://front:80" ]
     depends_on:
       - front
     networks:

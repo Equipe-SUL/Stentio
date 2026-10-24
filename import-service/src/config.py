@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
     DATABASE_ECHO: bool = True
+    LOGGER_LEVEL: str = "DEBUG"
+
+    @field_validator("LOGGER_LEVEL")
+    @classmethod
+    def normalize_logger_level(cls, value: str) -> str:
+        return value.upper()
 
     model_config = SettingsConfigDict(
         env_file=".env",

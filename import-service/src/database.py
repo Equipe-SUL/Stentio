@@ -20,17 +20,3 @@ async def get_db():
         except Exception:
             await session.rollback()
             raise
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    from sqlalchemy import text
-
-    async def test_connection():
-        async with get_db() as session:
-            result = await session.execute(text("SELECT 1 FROM recursos"))
-            logger.info("database is online!")
-            logger.info(f"entries found: {len(result.fetchall())}")
-
-    asyncio.run(test_connection())

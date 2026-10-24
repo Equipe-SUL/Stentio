@@ -1,11 +1,22 @@
+import sys
 from typing import Annotated
 
 import polars as pl
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile, status
+from loguru import logger
 
 from src.config import settings
-from src.process import processar_arquivo
+from src.process import process_dataframe
 from src.schemas.upload_schema import UploadSummary
+
+logger.remove()
+
+logger.add(
+    sys.stdout,
+    level=settings.LOGGER_LEVEL,
+    colorize=True,
+    enqueue=True,
+)
 
 app = FastAPI()
 
@@ -56,7 +67,7 @@ async def upload_csv(
             },
             extra_columns="ignore",
         ).rename({"e-mail": "email"})
-        background_task.add_task(processar_arquivo, df)
+        background_task.add_task(process_dataframe, df)
 
         return UploadSummary(
             status="Received",
