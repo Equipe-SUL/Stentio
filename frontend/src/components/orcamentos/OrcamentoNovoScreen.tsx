@@ -126,8 +126,8 @@ export function OrcamentoNovoScreen() {
   };
 
   return <ScrollView className="flex-1 bg-[#fbfaf8]" contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-    <View className="mx-auto w-full max-w-5xl gap-5 px-4 py-8 md:px-8">
-      <CabecalhoTela contexto="Operacional" secao="Orçamentos" titulo={orcamentoId ? "Elaborar orçamento" : "Novo orçamento"} descricao="Selecione a solicitação e monte a proposta com os serviços e valores." rotaFallback="/orcamentos" />
+    <View className="mx-auto w-full max-w-5xl gap-4 px-4 py-8 md:px-8">
+      <CabecalhoTela contexto="Operacional" secao="Orçamentos" titulo={orcamentoId ? "Elaborar orçamento" : "Novo orçamento"} descricao="Selecione a solicitação e monte a proposta com os serviços e valores." rotaFallback="/orcamentos" compacto />
       {carregando ? <View className="items-center rounded-xl bg-white p-10"><ActivityIndicator color="#6f4f28" /></View> : null}
       {erro ? <View className="rounded-lg border border-red-200 bg-red-50 p-3"><Text className="text-sm text-red-700">{erro}</Text></View> : null}
       {!orcamentoId ? <View className="gap-4 rounded-2xl border border-neutral-200 bg-white p-5">
