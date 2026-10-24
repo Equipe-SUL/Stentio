@@ -78,9 +78,10 @@ services:
 
       APP_ARQUIVOS_DIRETORIO: /app/uploads
 
-      # Link que vai no e-mail de aprovação do orçamento. O cliente é externo, então em
-      # qualquer ambiente que não seja a máquina do dev isto precisa ser o endereço público.
-      ORCAMENTO_URL_CONSULTA_PUBLICA: ${ORCAMENTO_URL_CONSULTA_PUBLICA:-http://localhost:8082/api/v1/public/orcamentos}
+      # Link que vai no e-mail de aprovação do orçamento: a tela pública da US-15, servida
+      # pelo nginx do front. O cliente é externo, então em qualquer ambiente que não seja a
+      # máquina do dev isto precisa ser o endereço público.
+      ORCAMENTO_URL_CONSULTA_PUBLICA: ${ORCAMENTO_URL_CONSULTA_PUBLICA:-http://localhost/orcamento}
     ports:
       - "${CORE_SERVER_PORT:-8082}:8080"
     volumes:
