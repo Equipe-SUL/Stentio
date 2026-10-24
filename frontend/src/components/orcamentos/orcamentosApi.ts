@@ -10,7 +10,7 @@ export interface PaginaOrcamentos { pagina: number; tamanho_pagina: number; tota
 export type OrcamentoItemInput = Pick<OrcamentoItem, "ordem" | "idioma_origem_id" | "idioma_destino_id" | "servicos">;
 
 export function codigoOrcamento(id: string) {
-  return id.slice(0, 7).toUpperCase();
+  return `ORC-${id.slice(0, 7).toUpperCase()}`;
 }
 
 export async function listarOrcamentos(pagina: number, tamanhoPagina: number, status?: StatusOrcamento) {
