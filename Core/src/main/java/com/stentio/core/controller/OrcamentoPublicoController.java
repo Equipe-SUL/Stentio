@@ -1,6 +1,7 @@
 package com.stentio.core.controller;
 
 import com.stentio.core.dto.*;
+import com.stentio.core.dto.EmpresaPublicaResponse;
 import com.stentio.core.service.ArquivoStorageService;
 import com.stentio.core.service.OrcamentoPublicoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -76,3 +77,24 @@ public class OrcamentoPublicoController {
                 .header("Referrer-Policy", "no-referrer").body(body);
     }
 }
+
+    @GetMapping("/empresa")
+    @Operation(summary = "Consulta dados públicos da empresa pelo token do orçamento", security = {})
+    public ResponseEntity<EmpresaPublicaResponse> consultarEmpresa(@RequestParam(required = false) String token) {
+        return resposta(service.consultarEmpresa(token));
+    }
+
+    @GetMapping("/empresa/logo")
+    @Operation(summary = "Retorna logo da empresa pelo token do orçamento", security = {})
+    public ResponseEntity<byte[]> consultarLogoEmpresa(@RequestParam(required = false) String token) {
+        byte[] logo = service.obterLogoEmpresa(token);
+        if (logo == null || logo.length == 0) {
+            return ResponseEntity.notFound().build();
+        }
+        String contentType = service.obterContentTypeLogoEmpresa(token);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "no-referrer")
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(logo);
+    }

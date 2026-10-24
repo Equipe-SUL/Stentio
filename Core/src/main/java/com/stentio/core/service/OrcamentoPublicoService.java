@@ -22,14 +22,17 @@ public class OrcamentoPublicoService {
     private final OrcamentoDecisaoOutboxRepository outbox;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final RestTemplate emailServiceRestTemplate;
 
     public OrcamentoPublicoService(OrcamentoRepository orcamentos, OrcamentoHistoricoRepository historico,
-                                  OrcamentoDecisaoOutboxRepository outbox, ObjectMapper objectMapper, Clock clock) {
+                                  OrcamentoDecisaoOutboxRepository outbox, ObjectMapper objectMapper, Clock clock,
+                                  @Qualifier("emailServiceRestTemplate") RestTemplate emailServiceRestTemplate) {
         this.orcamentos = orcamentos;
         this.historico = historico;
         this.outbox = outbox;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.emailServiceRestTemplate = emailServiceRestTemplate;
     }
 
     public OrcamentoPublicoResponse consultar(String token) {
@@ -135,4 +138,50 @@ public class OrcamentoPublicoService {
 
     public record ArquivoPublicoParaDownload(String caminho, String nomeOriginal,
                                             String tipoConteudo, long tamanhoBytes) {
+    }
+
+import com.stentio.core.dto.EmpresaPublicaResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+
+    public EmpresaPublicaResponse consultarEmpresa(String token) {
+        Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
+                .orElseThrow(LinkOrcamentoInvalidoException::new);
+        validar(orcamento, clock.instant());
+        try {
+            ResponseEntity<EmpresaPublicaResponse> resposta = emailServiceRestTemplate.getForEntity("/api/v1/empresa", EmpresaPublicaResponse.class);
+            return resposta.getBody();
+        } catch (RestClientException ex) {
+            throw new LinkOrcamentoInvalidoException();
+        }
+    }
+
+    public byte[] obterLogoEmpresa(String token) {
+        Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
+                .orElseThrow(LinkOrcamentoInvalidoException::new);
+        validar(orcamento, clock.instant());
+        try {
+            ResponseEntity<byte[]> resposta = emailServiceRestTemplate.getForEntity("/api/v1/empresa/logo", byte[].class);
+            return resposta.getBody();
+        } catch (RestClientException ex) {
+            throw new LinkOrcamentoInvalidoException();
+        }
+    }
+
+    public String obterContentTypeLogoEmpresa(String token) {
+        Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
+                .orElseThrow(LinkOrcamentoInvalidoException::new);
+        validar(orcamento, clock.instant());
+        try {
+            ResponseEntity<byte[]> resposta = emailServiceRestTemplate.getForEntity("/api/v1/empresa/logo", byte[].class);
+            if (resposta.getHeaders().getContentType() != null) {
+                return resposta.getHeaders().getContentType().toString();
+            }
+        } catch (RestClientException ex) {
+            // ignora
+        }
+        return "image/png";
     }

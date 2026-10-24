@@ -92,3 +92,6 @@ springdoc:
     enabled: ${ENABLE_DOCS:true}
   swagger-ui:
     enabled: ${ENABLE_DOCS:true}
+app:
+  email-service:
+    url: ${EMAIL_SERVICE_URL:http://email-service:8083}
