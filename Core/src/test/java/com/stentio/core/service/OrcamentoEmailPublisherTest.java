@@ -45,7 +45,7 @@ class OrcamentoEmailPublisherTest {
 
         publisher.publicar(email);
 
-        verify(rabbit).send(eq(""), eq(OrcamentoRabbitConfig.EMAIL_QUEUE),
+        verify(rabbit).send(eq(""), eq(OrcamentoRabbitConfig.EMAIL_ORCAMENTO_QUEUE),
                 argThat(message -> message.getMessageProperties().getMessageId().equals(email.getId().toString())
                         && message.getMessageProperties().getContentType().equals("application/json")
                         && java.util.Arrays.equals(message.getBody(), email.getPayload().getBytes(java.nio.charset.StandardCharsets.UTF_8))),

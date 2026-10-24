@@ -3,12 +3,16 @@ package com.stentio.core.service;
 import com.stentio.core.exception.OrcamentoIncompletoException;
 import com.stentio.core.exception.OrcamentoNaoEncontradoException;
 import com.stentio.core.exception.OrcamentoStatusInvalidoException;
+import com.stentio.core.model.ArquivoArmazenado;
+import com.stentio.core.model.CategoriaProjeto;
 import com.stentio.core.model.Cliente;
+import com.stentio.core.model.Idioma;
 import com.stentio.core.model.Orcamento;
 import com.stentio.core.model.OrcamentoEmailOutbox;
 import com.stentio.core.model.OrcamentoHistorico;
 import com.stentio.core.model.OrcamentoItem;
 import com.stentio.core.model.OrcamentoItemServico;
+import com.stentio.core.model.Solicitacao;
 import com.stentio.core.model.StatusOrcamento;
 import com.stentio.core.repository.OrcamentoEmailOutboxRepository;
 import com.stentio.core.repository.OrcamentoHistoricoRepository;
@@ -57,7 +61,13 @@ class OrcamentoEnvioServiceTest {
         item.adicionarServico(servico);
         orcamento.adicionarItem(item);
         when(cliente.getEmailRepresentante()).thenReturn("cliente@example.com");
+        when(cliente.getNomeRepresentante()).thenReturn("Maria Souza");
+        when(cliente.getNomeEmpresa()).thenReturn("Empresa XPTO");
         when(repository.buscarPorIdComLock(orcamento.getId())).thenReturn(Optional.of(orcamento));
+    }
+
+    private static int ocorrencias(String texto, String trecho) {
+        return texto.split(java.util.regex.Pattern.quote(trecho), -1).length - 1;
     }
 
     @Test
@@ -72,16 +82,80 @@ class OrcamentoEnvioServiceTest {
 
         var pending = org.mockito.ArgumentCaptor.forClass(OrcamentoEmailOutbox.class);
         verify(outbox).save(pending.capture());
+        // US-13: a outbox guarda dados estruturados; o corpo é montado no email-service.
         var payload = JsonMapper.builder().build().readTree(pending.getValue().getPayload());
         assertEquals("cliente@example.com", payload.get("to").asText());
-        assertTrue(payload.get("body").asText().contains(orcamento.getId().toString()));
-        assertTrue(payload.get("body").asText().contains(response.tokenAprovacao().toString()));
-        assertTrue(payload.get("body").asText().contains("https://stentio.example/orcamento?token="));
+        assertEquals("Maria Souza", payload.get("cliente").get("nomeRepresentante").asText());
+        assertEquals("Empresa XPTO", payload.get("cliente").get("nomeEmpresa").asText());
+
+        var dadosOrcamento = payload.get("orcamento");
+        String codigoEsperado = "ORC-2026-"
+                + orcamento.getId().toString().substring(0, 6).toUpperCase(java.util.Locale.ROOT);
+        assertEquals(codigoEsperado, dadosOrcamento.get("codigo").asText());
+        assertEquals("Orçamento " + codigoEsperado + " aguardando sua aprovação",
+                payload.get("subject").asText());
+        // O Jackson normaliza os zeros à direita ao reler o JSON, então "150.00" volta como
+        // 150. O que importa é o valor, não a representação — por isso a comparação é numérica.
+        assertEquals(0, new BigDecimal("150.00").compareTo(dadosOrcamento.get("valorTotal").decimalValue()));
+        assertEquals("https://stentio.example/orcamento?token=" + response.tokenAprovacao(),
+                dadosOrcamento.get("linkAprovacao").asText());
+        assertEquals(response.dataExpiracao().toString(), dadosOrcamento.get("dataExpiracao").asText());
+        // O token não aparece mais solto: existe uma única vez no payload, dentro do link.
+        assertEquals(1, ocorrencias(pending.getValue().getPayload(), response.tokenAprovacao().toString()));
+        // Orçamento sem solicitação vinculada não quebra o envio.
+        assertTrue(payload.get("solicitacao").isNull());
+        assertTrue(payload.get("anexos").isEmpty());
         var audit = org.mockito.ArgumentCaptor.forClass(OrcamentoHistorico.class);
         verify(historico).save(audit.capture());
         assertEquals(StatusOrcamento.EM_ELABORACAO, audit.getValue().getStatusAnterior());
         assertEquals(StatusOrcamento.AGUARDANDO_APROVACAO, audit.getValue().getStatusNovo());
         assertEquals("ATENDENTE", audit.getValue().getOrigem());
+    }
+
+    @Test
+    void mensagemLevaDadosDaSolicitacaoEOsAnexosOrdenados() throws Exception {
+        CategoriaProjeto categoria = new CategoriaProjeto();
+        categoria.setNome("Jurídico");
+        Idioma origem = new Idioma();
+        origem.setId(UUID.randomUUID());
+        origem.setNome("Português");
+        Idioma destino = new Idioma();
+        destino.setId(UUID.randomUUID());
+        destino.setNome("Inglês");
+
+        Solicitacao solicitacao = new Solicitacao(cliente, categoria, origem, destino, "Contrato social");
+        solicitacao.anexarArquivo(new ArquivoArmazenado("contrato.pdf", "2026/10/a.pdf", "application/pdf", 10L));
+        solicitacao.anexarArquivo(new ArquivoArmazenado("anexo.docx", "2026/10/b.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 20L));
+        orcamento.setSolicitacao(solicitacao);
+
+        service.enviarParaAprovacao(orcamento.getId());
+
+        var pending = org.mockito.ArgumentCaptor.forClass(OrcamentoEmailOutbox.class);
+        verify(outbox).save(pending.capture());
+        var payload = JsonMapper.builder().build().readTree(pending.getValue().getPayload());
+
+        var dados = payload.get("solicitacao");
+        assertEquals("Jurídico", dados.get("categoria").asText());
+        assertEquals("Português", dados.get("idiomaOrigem").asText());
+        assertEquals("Inglês", dados.get("idiomaDestino").asText());
+        assertEquals("Contrato social", dados.get("descricao").asText());
+        assertEquals(solicitacao.getDataRecebimento().toString(), dados.get("dataRecebimento").asText());
+
+        var anexos = payload.get("anexos");
+        assertEquals(2, anexos.size());
+        // A ordem vem do enviadoEm, que a entidade preenche com o relógio na construção, e o
+        // teste não tem como fixá-lo. Conferir posição aqui deixaria o teste refém de dois
+        // now() consecutivos caírem no mesmo instante, então a conferência é por nome. A
+        // ordenação em si é a mesma do OrdemServicoMapper, coberta lá.
+        var nomes = new java.util.ArrayList<String>();
+        anexos.forEach(anexo -> nomes.add(anexo.get("nomeArquivo").asText()));
+        assertEquals(java.util.Set.of("contrato.pdf", "anexo.docx"), new java.util.HashSet<>(nomes));
+
+        var contrato = anexos.get(nomes.indexOf("contrato.pdf"));
+        assertEquals("2026/10/a.pdf", contrato.get("caminho").asText());
+        assertEquals("application/pdf", contrato.get("tipoConteudo").asText());
+        assertEquals("2026/10/b.docx", anexos.get(nomes.indexOf("anexo.docx")).get("caminho").asText());
     }
 
     @Test
