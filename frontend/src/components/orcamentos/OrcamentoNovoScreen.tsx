@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { createElement, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
 import { coreApi, getApiErrorMessage } from "../../lib/api";
 import { CabecalhoTela } from "../navegacao/CabecalhoTela";
 import { listarSolicitacoes } from "../solicitacoes/solicitacoesApi";
 import type { SolicitacaoResponse } from "../solicitacoes/types";
 import { SelectField } from "../solicitacoes/SelectField";
-import { criarCabecalho, salvarItens, type OrcamentoItemInput, type UnidadeCobranca } from "./orcamentosApi";
+import { codigoOrcamento, criarCabecalho, salvarItens, type OrcamentoItemInput, type UnidadeCobranca } from "./orcamentosApi";
 
 interface Idioma { id: string; nome: string; codigoIso: string; }
 interface TipoServico { id: string; nome: string; ativo: boolean; }
@@ -16,13 +17,42 @@ interface ItemForm { origem: string; destino: string; servicos: ServicoForm[]; }
 const UNIDADES: UnidadeCobranca[] = ["PALAVRA", "PAGINA", "HORA"];
 const novoServico = (): ServicoForm => ({ tipo: "", quantidade: "", unidade: "PALAVRA", valor: "" });
 const novoItem = (origem = "", destino = ""): ItemForm => ({ origem, destino, servicos: [novoServico()] });
-const hojeMaisSete = () => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); };
+const dataLocal = (data: Date) => `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
+const hojeMaisSete = () => { const d = new Date(); d.setDate(d.getDate() + 7); return dataLocal(d); };
 const numerico = (valor: string) => Number(valor.replace(",", "."));
 const positivo = (valor: string) => Number.isFinite(numerico(valor)) && numerico(valor) > 0;
 const dinheiro = (valor: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor || 0);
 
 function Campo({ label, value, onChangeText, placeholder, keyboardType = "default", error }: { label: string; value: string; onChangeText: (text: string) => void; placeholder?: string; keyboardType?: "default" | "numeric" | "decimal-pad"; error?: string }) {
   return <View className="min-w-0 flex-1 gap-1"><Text className="text-xs font-medium text-neutral-600">{label}</Text><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} keyboardType={keyboardType} className={`rounded-lg border bg-white px-3 py-2.5 text-sm text-neutral-800 ${error ? "border-red-500" : "border-neutral-300"}`} />{error ? <Text className="text-xs text-red-600">{error}</Text> : null}</View>;
+}
+
+function SeletorData({ value, onChange }: { value: string; onChange: (data: string) => void }) {
+  const [ano, mes, dia] = value.split("-").map(Number);
+  const hoje = dataLocal(new Date());
+  const diasNoMes = new Date(ano, mes, 0).getDate();
+  const anosDisponiveis = Array.from({ length: 6 }, (_, index) => new Date().getFullYear() + index);
+  const atualizar = (novoAno: number, novoMes: number, novoDia: number) => {
+    const diaValido = Math.min(novoDia, new Date(novoAno, novoMes, 0).getDate());
+    const novaData = `${novoAno}-${String(novoMes).padStart(2, "0")}-${String(diaValido).padStart(2, "0")}`;
+    if (novaData >= hoje) onChange(novaData);
+  };
+
+  return <View className="gap-1">
+    <Text className="text-xs font-medium text-neutral-600">Data de expiração</Text>
+    {Platform.OS === "web" ? createElement("input", {
+      type: "date",
+      value,
+      min: hoje,
+      onChange: (event) => onChange(event.currentTarget.value),
+      "aria-label": "Data de expiração",
+      style: { width: "100%", minHeight: 42, padding: "8px 12px", border: "1px solid #d4d4d4", borderRadius: 8, backgroundColor: "white", color: "#262626", fontSize: 14 },
+    }) : <View className="flex-row gap-2">
+      <View className="min-w-0 flex-[0.8] overflow-hidden rounded-lg border border-neutral-300 bg-white"><Picker selectedValue={dia} onValueChange={(novoDia) => atualizar(ano, mes, Number(novoDia))} style={{ color: "#171717" }} accessibilityLabel="Dia"><Picker.Item label="Dia" value={0} />{Array.from({ length: diasNoMes }, (_, index) => index + 1).map((opcao) => <Picker.Item key={opcao} label={String(opcao).padStart(2, "0")} value={opcao} />)}</Picker></View>
+      <View className="min-w-0 flex-[1.4] overflow-hidden rounded-lg border border-neutral-300 bg-white"><Picker selectedValue={mes} onValueChange={(novoMes) => atualizar(ano, Number(novoMes), dia)} style={{ color: "#171717" }} accessibilityLabel="Mês">{Array.from({ length: 12 }, (_, index) => index + 1).map((opcao) => <Picker.Item key={opcao} label={new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date(2020, opcao - 1, 1))} value={opcao} />)}</Picker></View>
+      <View className="min-w-0 flex-1 overflow-hidden rounded-lg border border-neutral-300 bg-white"><Picker selectedValue={ano} onValueChange={(novoAno) => atualizar(Number(novoAno), mes, dia)} style={{ color: "#171717" }} accessibilityLabel="Ano">{anosDisponiveis.map((opcao) => <Picker.Item key={opcao} label={String(opcao)} value={opcao} />)}</Picker></View>
+    </View>}
+  </View>;
 }
 
 export function OrcamentoNovoScreen() {
@@ -116,10 +146,10 @@ export function OrcamentoNovoScreen() {
           placeholder="Selecione a solicitação..."
           disabled={carregando || solicitacoes.length === 0}
         />
-        <Campo label="Data de expiração" value={dataExpiracao} onChangeText={setDataExpiracao} placeholder="AAAA-MM-DD" />
+        <SeletorData value={dataExpiracao} onChange={setDataExpiracao} />
         <Pressable disabled={!solicitacao || salvando || carregando} onPress={() => void iniciar()} className="flex-row items-center justify-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3 disabled:opacity-50">{salvando ? <ActivityIndicator color="white" /> : null}<Text className="font-semibold text-white">Criar cabeçalho e continuar</Text></Pressable>
       </View> : <>
-        <View className="flex-row items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4"><Ionicons name="checkmark-circle" size={22} color="#15803d" /><View><Text className="text-sm font-semibold text-green-800">Cabeçalho criado</Text><Text className="text-xs text-green-700">ID {orcamentoId}</Text></View></View>
+        <View className="flex-row items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4"><Ionicons name="checkmark-circle" size={22} color="#15803d" /><View><Text className="text-sm font-semibold text-green-800">Cabeçalho criado</Text><Text className="text-xs text-green-700">Código {codigoOrcamento(orcamentoId)}</Text></View></View>
         <View className="gap-4 rounded-2xl border border-neutral-200 bg-white p-5">
           <View className="flex-row items-center justify-between"><View><Text className="text-lg font-semibold text-neutral-900">2. Itens e serviços</Text><Text className="text-sm text-neutral-500">Adicione pares de idiomas e precifique cada serviço.</Text></View></View>
           {itens.map((item, idx) => <View key={idx} className="gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4">

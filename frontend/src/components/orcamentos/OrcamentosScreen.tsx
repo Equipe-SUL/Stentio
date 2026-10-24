@@ -6,7 +6,7 @@ import { CabecalhoTela } from "../navegacao/CabecalhoTela";
 import { DataTable } from "../usuarios/DataTable";
 import type { ColumnDef } from "../usuarios/types";
 import { getApiErrorMessage } from "../../lib/api";
-import { listarOrcamentos, type OrcamentoResumo, type StatusOrcamento } from "./orcamentosApi";
+import { codigoOrcamento, listarOrcamentos, type OrcamentoResumo, type StatusOrcamento } from "./orcamentosApi";
 
 const FILTROS: { valor: StatusOrcamento | "TODOS"; rotulo: string }[] = [
   { valor: "TODOS", rotulo: "Todos" }, { valor: "EM_ELABORACAO", rotulo: "Em elaboração" },
@@ -44,7 +44,7 @@ useEffect(() => {
     return () => { ativo = false; };
   }, [pagina, filtro]);
   const colunas: ColumnDef<OrcamentoResumo>[] = [
-    { key: "id", header: "Proposta", render: (x) => <Text className="text-xs font-medium text-neutral-700" numberOfLines={1}>{x.id}</Text> },
+    { key: "id", header: "Código", render: (x) => <Text className="text-sm font-semibold tracking-wide text-neutral-800">{codigoOrcamento(x.id)}</Text> },
     { key: "status", header: "Status", render: (x) => <Text className="text-xs font-semibold text-[#6f4f28]">{ROTULOS[x.status] ?? x.status}</Text> },
     { key: "valor_total", header: "Valor", render: (x) => <Text className="text-sm font-semibold text-neutral-800">{moeda(x.valor_total)}</Text> },
     { key: "data_expiracao", header: "Expira em", render: (x) => <Text className="text-sm text-neutral-600">{dataCurta(x.data_expiracao)}</Text> },

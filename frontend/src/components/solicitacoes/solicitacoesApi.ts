@@ -112,6 +112,11 @@ export async function listarSolicitacoes(): Promise<SolicitacaoResponse[]> {
   return extrairLista<SolicitacaoResponse>(data);
 }
 
+export async function buscarSolicitacao(id: string): Promise<SolicitacaoResponse> {
+  const { data } = await coreApi.get<SolicitacaoResponse>(`${ENDPOINTS.solicitacoes}/${id}`);
+  return data;
+}
+
 export async function baixarArquivoSolicitacao(url: string, nomeArquivo: string): Promise<void> {
   if (Platform.OS === "web" && typeof window !== "undefined") {
     const { data } = await coreApi.get(url, { responseType: "blob" });
