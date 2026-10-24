@@ -6,6 +6,7 @@ import com.stentio.core.event.OrcamentoDecisaoEvento;
 import com.stentio.core.exception.LinkOrcamentoInvalidoException;
 import com.stentio.core.model.*;
 import com.stentio.core.repository.*;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -32,10 +33,31 @@ public class OrcamentoPublicoService {
     }
 
     public OrcamentoPublicoResponse consultar(String token) {
-        Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
+        Orcamento orcamento = orcamentos.buscarPublicoPorTokenHash(TokenOrcamento.hash(token))
                 .orElseThrow(LinkOrcamentoInvalidoException::new);
         validar(orcamento, clock.instant());
-        // Materializa os itens LAZY dentro da transação; não devolve entidade JPA.
+        if (orcamento.getSolicitacao() != null) {
+            Hibernate.initialize(orcamento.getSolicitacao());
+            if (orcamento.getSolicitacao().getArquivos() != null) {
+                orcamento.getSolicitacao().getArquivos().forEach(Hibernate::initialize);
+            }
+            if (orcamento.getSolicitacao().getCategoriaProjeto() != null) {
+                Hibernate.initialize(orcamento.getSolicitacao().getCategoriaProjeto());
+            }
+            if (orcamento.getSolicitacao().getIdiomaOrigem() != null) {
+                Hibernate.initialize(orcamento.getSolicitacao().getIdiomaOrigem());
+            }
+            if (orcamento.getSolicitacao().getIdiomaDestino() != null) {
+                Hibernate.initialize(orcamento.getSolicitacao().getIdiomaDestino());
+            }
+        }
+        if (orcamento.getItens() != null) {
+            orcamento.getItens().forEach(item -> {
+                if (item.getServicos() != null) {
+                    item.getServicos().forEach(Hibernate::initialize);
+                }
+            });
+        }
         return OrcamentoPublicoResponse.de(orcamento);
     }
 
@@ -46,7 +68,6 @@ public class OrcamentoPublicoService {
 
     @Transactional
     public OrcamentoDecisaoResponse rejeitar(String token, String motivo) {
-        // Também valida chamadas internas, além do @Valid do controller.
         if (motivo == null || motivo.isBlank() || motivo.length() > 2000) {
             throw new IllegalArgumentException("Motivo da rejeição é obrigatório e deve ter no máximo 2000 caracteres");
         }
@@ -56,7 +77,6 @@ public class OrcamentoPublicoService {
     private OrcamentoDecisaoResponse decidir(String token, StatusOrcamento decisao, String motivo) {
         Orcamento orcamento = orcamentos.buscarPorTokenComLock(TokenOrcamento.hash(token))
                 .orElseThrow(LinkOrcamentoInvalidoException::new);
-        // Valida a expiração depois de obter o lock, inclusive se houve espera.
         Instant agora = clock.instant();
         validar(orcamento, agora);
 

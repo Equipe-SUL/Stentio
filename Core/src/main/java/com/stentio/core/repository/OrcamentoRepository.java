@@ -27,3 +27,15 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, UUID>, Jpa
     @Query("select distinct o from Orcamento o left join fetch o.itens where o.id = :id")
     Optional<Orcamento> buscarDetalhePorId(@Param("id") UUID id);
 }
+
+    // Consulta pública: carrega solicitação, arquivos, itens e serviços sem N+1.
+    @Query("select distinct o from Orcamento o " +
+            "left join fetch o.solicitacao s " +
+            "left join fetch s.categoriaProjeto " +
+            "left join fetch s.idiomaOrigem " +
+            "left join fetch s.idiomaDestino " +
+            "left join fetch s.arquivos " +
+            "left join fetch o.itens i " +
+            "left join fetch i.servicos " +
+            "where o.tokenHash = :hash")
+    Optional<Orcamento> buscarPublicoPorTokenHash(@Param("hash") String hash);
