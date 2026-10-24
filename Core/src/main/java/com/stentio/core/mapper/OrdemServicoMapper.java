@@ -7,13 +7,12 @@ import com.stentio.core.model.ArquivoSolicitacao;
 import com.stentio.core.model.Cliente;
 import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.Solicitacao;
+import com.stentio.core.support.CodigoVisual;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 // Converte entidade em resposta. Não consulta o banco: quem carrega as entidades é o service.
@@ -73,10 +72,9 @@ public class OrdemServicoMapper {
         return new Arquivo(arquivo.getId(), arquivo.getNomeOriginal(), url);
     }
 
-    // Código legível de exibição (ex.: OS-2026-A1B2C3). Derivado de dados imutáveis — ano de criação e id —, sem coluna no banco
+    // Código legível de exibição (ex.: OS-2026-A1B2C3). A regra virou CodigoVisual porque o
+    // orçamento passou a precisar do mesmo formato no e-mail da US-13.
     static String codigoVisual(Instant criadoEm, UUID id) {
-        String ano = String.valueOf(criadoEm.atZone(ZoneOffset.UTC).getYear());
-        String sufixo = id.toString().substring(0, 6).toUpperCase(Locale.ROOT);
-        return "OS-" + ano + "-" + sufixo;
+        return CodigoVisual.gerar("OS", criadoEm, id);
     }
 }
