@@ -188,6 +188,12 @@ Acompanhe a subida com `docker compose ps` e os logs com `docker compose logs -f
 | email-service (API) | http://localhost:8083 |
 | RabbitMQ (painel) | http://localhost:15672 |
 
+Para ter um seed de teste, use no PowerShell:
+
+```powershell
+$env:SEED_TEST_DATA_ENABLED="true"; docker compose up -d --build core
+```
+
 ### 4. Rodar os serviços fora do Docker (opcional)
 
 Suba apenas a infraestrutura:
