@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { homeRouteForRole } from "../../lib/routePermissions";
+import { useSession } from "../../lib/session";
 
 // Abaixo desta largura o botão de ação não cabe ao lado do título sem espremer o
 // texto e derrubar a última letra do título para a linha de baixo. Nesse caso ele
@@ -13,7 +15,7 @@ interface CabecalhoTelaProps {
   secao: string;
   titulo: string;
   descricao?: string;
-  rotaFallback?: Href;
+  rotaFallback?: string;
   acoes?: ReactNode;
   compacto?: boolean;
 }
@@ -28,7 +30,12 @@ export function CabecalhoTela({
   compacto = false,
 }: CabecalhoTelaProps) {
   const router = useRouter();
+  const { usuario } = useSession();
   const { width: larguraJanela } = useWindowDimensions();
+  const rotaDeVolta =
+    rotaFallback === "/admin" && usuario
+      ? homeRouteForRole(usuario.role)
+      : rotaFallback;
 
   const empilharAcao =
     acoes !== undefined && larguraJanela < LARGURA_MINIMA_ACAO_AO_LADO;
@@ -45,7 +52,9 @@ export function CabecalhoTela({
             do celular. min-w-0 é o que permite o texto quebrar. */}
         <View className="flex-1 min-w-0 flex-row items-center gap-3">
           <TouchableOpacity
-            onPress={() => (router.canGoBack() ? router.back() : router.push(rotaFallback))}
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.push(rotaDeVolta as Href)
+            }
             className="p-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm active:bg-zinc-100"
             style={{ flexShrink: 0 }}
             accessibilityLabel="Voltar"

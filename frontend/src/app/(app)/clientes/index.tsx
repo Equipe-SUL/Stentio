@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { ConsultaCatalogo } from "../../../components/catalogo/ConsultaCatalogo";
 import { CrudSection } from "../../../components/usuarios/CrudSection";
 import { useBuscaDebounce } from "../../../components/usuarios/useBuscaDebounce";
+import { useSession } from "../../../lib/session";
 import {
   atualizarCliente,
   camposCliente,
@@ -12,6 +13,7 @@ import {
 
 export default function ClientesScreen() {
   const busca = useBuscaDebounce();
+  const { usuario } = useSession();
 
   const fetchClientes = useCallback(
     () => listarClientes(busca.debounced),
@@ -43,6 +45,7 @@ export default function ClientesScreen() {
         updateItem={atualizarCliente}
         deleteItem={excluirCliente}
         deleteMessage="Este cliente será excluído permanentemente. A ação não pode ser desfeita."
+        permitirExclusao={usuario?.role === "ADMIN"}
         emptyMessage="Nenhum cliente cadastrado"
         filtros={{ busca: busca.valor, onBusca: busca.setValor }}
       />

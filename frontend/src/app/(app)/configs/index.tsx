@@ -1,4 +1,5 @@
 import { HubScreen, type HubItem } from "../../../components/navegacao/HubScreen";
+import { useSession } from "../../../lib/session";
 
 const ITENS: HubItem[] = [
   {
@@ -44,12 +45,24 @@ const ITENS: HubItem[] = [
 ];
 
 export default function ConfiguracoesScreen() {
+  const { usuario } = useSession();
+  const itensDisponiveis =
+    usuario?.role === "ADMIN"
+      ? ITENS
+      : ITENS.filter((item) =>
+          ["Idiomas", "Tipos de Serviço", "Categorias de Projeto"].includes(item.nome),
+        );
+
   return (
     <HubScreen
       breadcrumb="Configurações do Sistema"
       titulo="Configurações"
-      subtitulo="Parâmetros que sustentam o sistema: dados da empresa, envio de e-mail e as bases cadastrais usadas em orçamentos e ordens de serviço."
-      itens={ITENS}
+      subtitulo={
+        usuario?.role === "ADMIN"
+          ? "Parâmetros que sustentam o sistema: dados da empresa, envio de e-mail e as bases cadastrais usadas em orçamentos e ordens de serviço."
+          : "Gerencie os idiomas, tipos de serviço e categorias usados nos projetos."
+      }
+      itens={itensDisponiveis}
     />
   );
 }
