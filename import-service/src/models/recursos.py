@@ -20,7 +20,7 @@ class Recurso(Base):
     nome: Mapped[str] = mapped_column(nullable=False)
     telefone: Mapped[str | None] = mapped_column(nullable=True)
     tipos_servicos: Mapped[list["TipoServico"]] = relationship(
-    "TipoServico",
-    secondary=recurso_tipos_servicos,
-    back_populates="recursos",
+        "TipoServico",
+        secondary=recurso_tipos_servicos,
+        back_populates="recursos",
     )

@@ -1,24 +1,58 @@
-import sys
-from typing import Annotated
+from typing import Annotated, Literal
 
-import polars as pl
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile, status
+from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from loguru import logger
+from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 
 from src.config import settings
-from src.process import process_dataframe
-from src.schemas.upload_schema import UploadSummary
+from src.import_plan import ImportErrorDetail, build_plan, read_dataframe
+from src.process import process_plan
+from src.schemas.upload_schema import UploadSummary, ValidationSummary
 
-logger.remove()
-
-logger.add(
-    sys.stdout,
-    level=settings.LOGGER_LEVEL,
-    colorize=True,
-    enqueue=True,
+app = FastAPI(title="Stentio Import Service", version="0.2.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization", "X-Stentio-Import"],
 )
 
-app = FastAPI()
+
+@app.exception_handler(ImportErrorDetail)
+async def import_error(request, exc):
+    return JSONResponse(status_code=exc.status, content={"detail": exc.detail})
+
+
+@app.exception_handler(RequestValidationError)
+async def request_error(request, exc):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": {
+                "codigo": "REQUISICAO_INVALIDA",
+                "mensagem": "Envie 'file' e, opcionalmente, 'separador' (; ou ,).",
+            }
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def unexpected_error(request, exc):
+    logger.error("Falha inesperada: {}", type(exc).__name__)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": {
+                "codigo": "ERRO_INTERNO",
+                "mensagem": "Não foi possível concluir a solicitação.",
+            }
+        },
+    )
 
 
 @app.get("/")
@@ -26,60 +60,90 @@ def inicio():
     return {"status": "Online!"}
 
 
-@app.post(
-    "/upload-csv",
-    status_code=status.HTTP_202_ACCEPTED,
-    response_model=UploadSummary,
-    responses={
-        status.HTTP_400_BAD_REQUEST: {
-            "description": "Arquivo inválido ou extensão incorreta"
-        },
-        status.HTTP_413_CONTENT_TOO_LARGE: {
-            "descripton": "O arquivo enviado ultrapassou o limite"
-        },
-    },
-)
-async def upload_csv(
-    file: Annotated[UploadFile, File()], background_task: BackgroundTasks
-):
-    if not file:
-        raise HTTPException(status_code=400, datail="Nenhum arquivo enviado.")
+@app.get("/api/v1/importacoes/configuracao")
+def configuration():
+    return {
+        "max_upload_bytes": settings.MAX_UPLOAD_BYTES,
+        "max_recursos": settings.MAX_IMPORT_RESOURCES,
+        "max_linhas": settings.MAX_IMPORT_ROWS,
+    }
 
-    if file.filename is not None and not file.filename.endswith(".csv"):
-        raise HTTPException(
-            status_code=400, detail="Apenas arquivos .csv são permitidos."
-        )
 
-    if file.size and file.size > settings.MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=413, detail="O arquivo excede o limite permitido de 50MB."
-        )
-
+async def prepare(file, separator):
     try:
-        contents = await file.read()
-        df = pl.read_csv(
-            contents,
-            schema={
-                "ativo": pl.Int8,
-                "e-mail": pl.String,
-                "nome": pl.String,
-                "telefone": pl.String,
-            },
-            extra_columns="ignore",
-        ).rename({"e-mail": "email"})
-        background_task.add_task(process_dataframe, df)
-
-        return UploadSummary(
-            status="Received",
-            filename=file.filename or "",
-            size=str(file.size),
-            lines=df.height,
+        if not file.filename or not file.filename.lower().endswith(".csv"):
+            raise ImportErrorDetail(
+                "Envie um arquivo com extensão .csv.",
+                code="EXTENSAO_INVALIDA",
+                status=400,
+            )
+        if file.size is not None and file.size > settings.MAX_UPLOAD_BYTES:
+            raise ImportErrorDetail(
+                "Arquivo acima do limite configurado.",
+                code="ARQUIVO_MUITO_GRANDE",
+                status=413,
+            )
+        contents = bytearray()
+        while chunk := await file.read(
+            min(65536, settings.MAX_UPLOAD_BYTES - len(contents) + 1)
+        ):
+            contents.extend(chunk)
+            if len(contents) > settings.MAX_UPLOAD_BYTES:
+                raise ImportErrorDetail(
+                    "Arquivo acima do limite configurado.",
+                    code="ARQUIVO_MUITO_GRANDE",
+                    status=413,
+                )
+        df = await run_in_threadpool(
+            read_dataframe, bytes(contents), separator, settings.MAX_IMPORT_ROWS
         )
-    except pl.exceptions.SchemaError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        plan = await run_in_threadpool(build_plan, df, settings.MAX_IMPORT_RESOURCES)
+        return plan
+    finally:
+        await file.close()
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao processar o arquivo: {e!s}",
-        )
+
+@app.post("/upload-csv/validar", response_model=ValidationSummary)
+async def validate_csv(
+    file: Annotated[UploadFile, File()],
+    separador: Annotated[Literal[";", ","], Form()] = ";",
+):
+    plan = await prepare(file, separador)
+    return {"status": "Validado", "filename": file.filename, **plan.preview()}
+
+
+@app.post("/upload-csv", response_model=UploadSummary)
+async def upload_csv(
+    file: Annotated[UploadFile, File()],
+    separador: Annotated[Literal[";", ","], Form()] = ";",
+):
+    plan = await prepare(file, separador)
+    try:
+        report = await process_plan(plan)
+    except IntegrityError as exc:
+        raise ImportErrorDetail(
+            "Conflito de integridade no banco. A transação foi revertida.",
+            code="CONFLITO_BANCO",
+            status=409,
+        ) from exc
+    except DataError as exc:
+        raise ImportErrorDetail(
+            "Dados incompatíveis com o banco. A transação foi revertida.",
+            code="DADOS_BANCO_INVALIDOS",
+            status=422,
+        ) from exc
+    except (SQLAlchemyError, OSError, TimeoutError) as exc:
+        logger.error("Falha no banco durante importação: {}", type(exc).__name__)
+        raise ImportErrorDetail(
+            "Falha de acesso ao banco. A importação não foi confirmada.",
+            code="BANCO_INDISPONIVEL",
+            status=503,
+        ) from exc
+    return {
+        "status": "Concluido",
+        "filename": file.filename,
+        "total_linhas": plan.lines,
+        "total_recursos": len(plan.resources),
+        "total_servicos": len(plan.services),
+        **report,
+    }
