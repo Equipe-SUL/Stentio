@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,16 +27,16 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, UUID>, Jpa
     // (default_batch_fetch_size). Dois "join fetch" em listas gerariam MultipleBagFetchException.
     @Query("select distinct o from Orcamento o left join fetch o.itens where o.id = :id")
     Optional<Orcamento> buscarDetalhePorId(@Param("id") UUID id);
-}
 
-    // Consulta pública: carrega solicitação, arquivos, itens e serviços sem N+1.
+    // Consulta pública: carrega uma única coleção (itens) nesta consulta.
+    // Arquivos e serviços são inicializados pelo service em consultas separadas,
+    // pois três join fetch de listas causariam MultipleBagFetchException.
     @Query("select distinct o from Orcamento o " +
             "left join fetch o.solicitacao s " +
             "left join fetch s.categoriaProjeto " +
             "left join fetch s.idiomaOrigem " +
             "left join fetch s.idiomaDestino " +
-            "left join fetch s.arquivos " +
             "left join fetch o.itens i " +
-            "left join fetch i.servicos " +
             "where o.tokenHash = :hash")
     Optional<Orcamento> buscarPublicoPorTokenHash(@Param("hash") String hash);
+}

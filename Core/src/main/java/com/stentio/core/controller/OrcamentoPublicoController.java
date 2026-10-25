@@ -1,7 +1,6 @@
 package com.stentio.core.controller;
 
 import com.stentio.core.dto.*;
-import com.stentio.core.dto.EmpresaPublicaResponse;
 import com.stentio.core.service.ArquivoStorageService;
 import com.stentio.core.service.OrcamentoPublicoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,24 +59,6 @@ public class OrcamentoPublicoController {
                 .body(recurso);
     }
 
-    @PostMapping("/aprovar")
-    @Operation(summary = "Aprova orçamento e consome o link", security = {})
-    public ResponseEntity<OrcamentoDecisaoResponse> aprovar(@Valid @RequestBody OrcamentoAprovacaoRequest request) {
-        return resposta(service.aprovar(request.token()));
-    }
-
-    @PostMapping("/rejeitar")
-    @Operation(summary = "Rejeita orçamento e registra o motivo", security = {})
-    public ResponseEntity<OrcamentoDecisaoResponse> rejeitar(@Valid @RequestBody OrcamentoRejeicaoRequest request) {
-        return resposta(service.rejeitar(request.token(), request.motivo()));
-    }
-
-    private <T> ResponseEntity<T> resposta(T body) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .header("Referrer-Policy", "no-referrer").body(body);
-    }
-}
-
     @GetMapping("/empresa")
     @Operation(summary = "Consulta dados públicos da empresa pelo token do orçamento", security = {})
     public ResponseEntity<EmpresaPublicaResponse> consultarEmpresa(@RequestParam(required = false) String token) {
@@ -98,3 +79,21 @@ public class OrcamentoPublicoController {
                 .contentType(MediaType.parseMediaType(contentType))
                 .body(logo);
     }
+
+    @PostMapping("/aprovar")
+    @Operation(summary = "Aprova orçamento e consome o link", security = {})
+    public ResponseEntity<OrcamentoDecisaoResponse> aprovar(@Valid @RequestBody OrcamentoAprovacaoRequest request) {
+        return resposta(service.aprovar(request.token()));
+    }
+
+    @PostMapping("/rejeitar")
+    @Operation(summary = "Rejeita orçamento e registra o motivo", security = {})
+    public ResponseEntity<OrcamentoDecisaoResponse> rejeitar(@Valid @RequestBody OrcamentoRejeicaoRequest request) {
+        return resposta(service.rejeitar(request.token(), request.motivo()));
+    }
+
+    private <T> ResponseEntity<T> resposta(T body) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "no-referrer").body(body);
+    }
+}

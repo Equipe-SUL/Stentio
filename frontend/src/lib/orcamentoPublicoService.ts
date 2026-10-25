@@ -87,3 +87,82 @@ export function decidirOrcamento(token: string, acao: 'aprovar' | 'rejeitar', mo
     body: JSON.stringify(acao === 'aprovar' ? { token } : { token, motivo: motivo.trim() }),
   });
 }
+
+export interface EmpresaPublica {
+  nome: string;
+  cnpj: string;
+  endereco: string;
+  telefone: string | null;
+  logo_disponivel: boolean;
+}
+
+export interface ArquivoPublico {
+  id: string;
+  nome: string;
+  tipo_conteudo?: string | null;
+  tamanho_bytes: number;
+}
+
+export interface CategoriaPublica {
+  id: string;
+  nome: string;
+}
+
+export interface IdiomaPublico {
+  id: string;
+  nome: string;
+  codigo_iso: string;
+}
+
+export interface SolicitacaoPublica {
+  id: string;
+  descricao?: string | null;
+  data_recebimento?: string | null;
+  categoria?: CategoriaPublica | null;
+  idioma_origem?: IdiomaPublico | null;
+  idioma_destino?: IdiomaPublico | null;
+  arquivos?: ArquivoPublico[];
+}
+
+export interface OrcamentoPublico {
+  id: string;
+  status: StatusOrcamento;
+  valor_total: number;
+  data_expiracao: string;
+  itens: ItemOrcamento[];
+  numero_versao?: number | null;
+  criado_em?: string | null;
+  solicitacao?: SolicitacaoPublica | null;
+}
+
+export function getLogoEmpresaPublicaUrl(token: string): string {
+  if (!token.trim()) return '';
+  return baseUrl() + '/api/v1/public/orcamentos/empresa/logo?token=' + encodeURIComponent(token);
+}
+
+export function getUrlArquivoPublico(token: string, arquivoId: string): string {
+  if (!token.trim() || !arquivoId) return '';
+  return baseUrl() + '/api/v1/public/orcamentos/arquivos/' + arquivoId + '?token=' + encodeURIComponent(token);
+}
+
+export async function consultarEmpresaPublica(token: string): Promise<EmpresaPublica> {
+  if (!token.trim()) throw new ErroOrcamento(LINK_INDISPONIVEL, true);
+  return requisitar('/empresa?token=' + encodeURIComponent(token));
+}
+
+export async function baixarArquivoPublico(token: string, arquivoId: string, nome: string): Promise<void> {
+  if (!token.trim() || !arquivoId) throw new ErroOrcamento(LINK_INDISPONIVEL, true);
+  const url = getUrlArquivoPublico(token, arquivoId);
+  const response = await fetch(url, { credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer' });
+  if (!response.ok) {
+    throw new ErroOrcamento('Não foi possível baixar o arquivo.');
+  }
+  const blob = await response.blob();
+  const link = document.createElement('a');
+  link.href = window.URL.createObjectURL(blob);
+  link.download = nome || 'arquivo';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(link.href);
+}

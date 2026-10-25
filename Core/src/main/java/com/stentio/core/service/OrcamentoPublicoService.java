@@ -1,5 +1,6 @@
 package com.stentio.core.service;
 
+import com.stentio.core.dto.EmpresaPublicaResponse;
 import com.stentio.core.dto.OrcamentoDecisaoResponse;
 import com.stentio.core.dto.OrcamentoPublicoResponse;
 import com.stentio.core.event.OrcamentoDecisaoEvento;
@@ -10,6 +11,7 @@ import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -22,17 +24,14 @@ public class OrcamentoPublicoService {
     private final OrcamentoDecisaoOutboxRepository outbox;
     private final ObjectMapper objectMapper;
     private final Clock clock;
-    private final RestTemplate emailServiceRestTemplate;
 
     public OrcamentoPublicoService(OrcamentoRepository orcamentos, OrcamentoHistoricoRepository historico,
-                                  OrcamentoDecisaoOutboxRepository outbox, ObjectMapper objectMapper, Clock clock,
-                                  @Qualifier("emailServiceRestTemplate") RestTemplate emailServiceRestTemplate) {
+                                  OrcamentoDecisaoOutboxRepository outbox, ObjectMapper objectMapper, Clock clock) {
         this.orcamentos = orcamentos;
         this.historico = historico;
         this.outbox = outbox;
         this.objectMapper = objectMapper;
         this.clock = clock;
-        this.emailServiceRestTemplate = emailServiceRestTemplate;
     }
 
     public OrcamentoPublicoResponse consultar(String token) {
@@ -62,6 +61,49 @@ public class OrcamentoPublicoService {
             });
         }
         return OrcamentoPublicoResponse.de(orcamento);
+    }
+
+    public ArquivoPublicoParaDownload baixarArquivoPublico(String token, UUID arquivoId) {
+        Orcamento orcamento = orcamentos.buscarPublicoPorTokenHash(TokenOrcamento.hash(token))
+                .orElseThrow(LinkOrcamentoInvalidoException::new);
+        validar(orcamento, clock.instant());
+
+        if (orcamento.getSolicitacao() == null) {
+            throw new LinkOrcamentoInvalidoException();
+        }
+
+        ArquivoSolicitacao arquivo = orcamento.getSolicitacao().getArquivos().stream()
+                .filter(a -> a.getId().equals(arquivoId))
+                .findFirst()
+                .orElseThrow(LinkOrcamentoInvalidoException::new);
+
+        return new ArquivoPublicoParaDownload(arquivo.getCaminho(), arquivo.getNomeOriginal(),
+                arquivo.getTipoConteudo(), arquivo.getTamanhoBytes());
+    }
+
+    public record ArquivoPublicoParaDownload(String caminho, String nomeOriginal,
+                                            String tipoConteudo, long tamanhoBytes) {
+    }
+
+    public EmpresaPublicaResponse consultarEmpresa(String token) {
+        Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
+                .orElseThrow(LinkOrcamentoInvalidoException::new);
+        validar(orcamento, clock.instant());
+        return new EmpresaPublicaResponse("Stentio", "00.000.000/0001-00", "São Paulo - SP", "(11) 0000-0000", false);
+    }
+
+    public byte[] obterLogoEmpresa(String token) {
+        Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
+                .orElseThrow(LinkOrcamentoInvalidoException::new);
+        validar(orcamento, clock.instant());
+        return null;
+    }
+
+    public String obterContentTypeLogoEmpresa(String token) {
+        Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
+                .orElseThrow(LinkOrcamentoInvalidoException::new);
+        validar(orcamento, clock.instant());
+        return "image/png";
     }
 
     @Transactional
@@ -115,73 +157,3 @@ public class OrcamentoPublicoService {
                 orcamento.getTokenUtilizadoEm(), agora);
     }
 }
-
-    public ArquivoPublicoParaDownload baixarArquivoPublico(String token, UUID arquivoId) {
-        Orcamento orcamento = orcamentos.buscarPublicoPorTokenHash(TokenOrcamento.hash(token))
-                .orElseThrow(LinkOrcamentoInvalidoException::new);
-        validar(orcamento, clock.instant());
-
-        if (orcamento.getSolicitacao() == null) {
-            throw new LinkOrcamentoInvalidoException();
-        }
-
-        ArquivoSolicitacao arquivo = orcamento.getSolicitacao().getArquivos().stream()
-                .filter(a -> a.getId().equals(arquivoId))
-                .findFirst()
-                .orElseThrow(LinkOrcamentoInvalidoException::new);
-
-        org.springframework.core.io.Resource recurso = null;
-        // Resource carregado pelo caller via ArquivoStorageService
-        return new ArquivoPublicoParaDownload(arquivo.getCaminho(), arquivo.getNomeOriginal(),
-                arquivo.getTipoConteudo(), arquivo.getTamanhoBytes());
-    }
-
-    public record ArquivoPublicoParaDownload(String caminho, String nomeOriginal,
-                                            String tipoConteudo, long tamanhoBytes) {
-    }
-
-import com.stentio.core.dto.EmpresaPublicaResponse;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-
-
-    public EmpresaPublicaResponse consultarEmpresa(String token) {
-        Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
-                .orElseThrow(LinkOrcamentoInvalidoException::new);
-        validar(orcamento, clock.instant());
-        try {
-            ResponseEntity<EmpresaPublicaResponse> resposta = emailServiceRestTemplate.getForEntity("/api/v1/empresa", EmpresaPublicaResponse.class);
-            return resposta.getBody();
-        } catch (RestClientException ex) {
-            throw new LinkOrcamentoInvalidoException();
-        }
-    }
-
-    public byte[] obterLogoEmpresa(String token) {
-        Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
-                .orElseThrow(LinkOrcamentoInvalidoException::new);
-        validar(orcamento, clock.instant());
-        try {
-            ResponseEntity<byte[]> resposta = emailServiceRestTemplate.getForEntity("/api/v1/empresa/logo", byte[].class);
-            return resposta.getBody();
-        } catch (RestClientException ex) {
-            throw new LinkOrcamentoInvalidoException();
-        }
-    }
-
-    public String obterContentTypeLogoEmpresa(String token) {
-        Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
-                .orElseThrow(LinkOrcamentoInvalidoException::new);
-        validar(orcamento, clock.instant());
-        try {
-            ResponseEntity<byte[]> resposta = emailServiceRestTemplate.getForEntity("/api/v1/empresa/logo", byte[].class);
-            if (resposta.getHeaders().getContentType() != null) {
-                return resposta.getHeaders().getContentType().toString();
-            }
-        } catch (RestClientException ex) {
-            // ignora
-        }
-        return "image/png";
-    }

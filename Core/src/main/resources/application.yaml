@@ -86,12 +86,11 @@ app:
       confirm-timeout-segundos: ${ORCAMENTO_OUTBOX_CONFIRM_TIMEOUT_SEGUNDOS:5}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:8080,http://localhost:8081,http://localhost:19006}
+  email-service:
+    url: ${EMAIL_SERVICE_URL:http://email-service:8083}
 
 springdoc:
   api-docs:
     enabled: ${ENABLE_DOCS:true}
   swagger-ui:
     enabled: ${ENABLE_DOCS:true}
-app:
-  email-service:
-    url: ${EMAIL_SERVICE_URL:http://email-service:8083}

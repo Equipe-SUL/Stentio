@@ -4,6 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import {
   consultarOrcamento, decidirOrcamento, ErroOrcamento, LINK_INDISPONIVEL,
   podeDecidir, validarMotivo, nomeUnidade, type OrcamentoPublico,
+  consultarEmpresaPublica, getLogoEmpresaPublicaUrl, baixarArquivoPublico, type EmpresaPublica,
 } from '../lib/orcamentoPublicoService';
 
 const moeda = (valor: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
@@ -29,8 +30,27 @@ function PaginaOrcamento({ token }: { token: string }) {
   const [enviando, setEnviando] = useState(false);
   const [sucesso, setSucesso] = useState('');
   const [dataDecisao, setDataDecisao] = useState('');
+  const [empresa, setEmpresa] = useState<EmpresaPublica | null>(null);
+  const [erroEmpresa, setErroEmpresa] = useState('');
+  const [baixandoArquivoId, setBaixandoArquivoId] = useState<string | null>(null);
   const bloqueio = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    if (!token) return;
+    consultarEmpresaPublica(token).then(resultado => {
+      if (ativo) {
+        setEmpresa(resultado);
+        setErroEmpresa('');
+      }
+    }).catch((error: unknown) => {
+      if (ativo) {
+        setErroEmpresa(error instanceof Error ? error.message : 'Não foi possível carregar os dados da empresa.');
+      }
+    });
+    return () => { ativo = false; };
+  }, [token]);
 
   useEffect(() => {
     let ativo = true;
@@ -75,7 +95,21 @@ function PaginaOrcamento({ token }: { token: string }) {
       <Head><title>Seu orçamento | Stentio</title><meta name="referrer" content="no-referrer" /><meta name="robots" content="noindex, nofollow" /></Head>
       <style>{css}</style>
       <div className="op-container">
-        <header className="op-brand">STENTIO <span>PROPOSTA COMERCIAL</span></header>
+        <header className="op-brand">
+          <div className="op-brand-left">
+            {empresa?.logo_disponivel && token ? (
+              <img src={getLogoEmpresaPublicaUrl(token)} alt={empresa.nome || 'Logo da empresa'} className="op-logo" />
+            ) : null}
+            <div>{empresa?.nome || 'STENTIO'} <span>PROPOSTA COMERCIAL</span></div>
+          </div>
+          {(empresa?.endereco || empresa?.telefone) ? (
+            <div className="op-brand-info">
+              {empresa.endereco ? <div>{empresa.endereco}</div> : null}
+              {empresa.telefone ? <div>{empresa.telefone}</div> : null}
+            </div>
+          ) : <span>PROPOSTA COMERCIAL</span>}
+        </header>
+        {erroEmpresa ? <p className="op-error op-company-error" role="alert">{erroEmpresa}</p> : null}
         <section className="op-card" aria-busy={carregando}>
           {carregando ? <p role="status">Carregando seu orçamento…</p> : indisponivel ? (
             <><h1>Link indisponível</h1><p role="alert">{erro}</p></>
@@ -87,9 +121,44 @@ function PaginaOrcamento({ token }: { token: string }) {
               <div className="op-heading"><div><p className="op-eyebrow">PREPARADO PARA VOCÊ</p>
                 <h1>Seu orçamento</h1><p>Confira os serviços e registre sua decisão abaixo.</p></div>
                 <span className="op-status">{rotuloStatus(orcamento.status)}</span></div>
-              <p className="op-id">Referência: {orcamento.id}</p>
+              <p className="op-id">Referência: {orcamento.id}{orcamento.numero_versao ? <> · Versão {orcamento.numero_versao}</> : null}{orcamento.criado_em ? <> · Emitido em {data(orcamento.criado_em)}</> : null}</p>
               {sucesso && <p className="op-success" role="status">{sucesso}{dataDecisao && <><br /><small>Decisão registrada em {data(dataDecisao)}.</small></>}</p>}
               {erro && !acao && <p className="op-error" role="alert">{erro}</p>}
+              <div className="op-solicitacao">
+                  <h2>Solicitação</h2>
+                  {orcamento.solicitacao ? <>
+                    <div className="op-solicitacao-grid">
+                    {orcamento.solicitacao.categoria?.nome ? <div><span>Categoria</span><strong>{orcamento.solicitacao.categoria.nome}</strong></div> : null}
+                    {orcamento.solicitacao.data_recebimento ? <div><span>Recebido em</span><strong>{data(orcamento.solicitacao.data_recebimento)}</strong></div> : null}
+                    {(orcamento.solicitacao.idioma_origem?.nome && orcamento.solicitacao.idioma_destino?.nome) ? <div className="op-idiomas"><span>Idiomas</span><strong>{orcamento.solicitacao.idioma_origem.nome} ({orcamento.solicitacao.idioma_origem.codigo_iso?.toUpperCase()}) → {orcamento.solicitacao.idioma_destino.nome} ({orcamento.solicitacao.idioma_destino.codigo_iso?.toUpperCase()})</strong></div> : null}
+                    </div>
+                    {orcamento.solicitacao.descricao ? <div className="op-descricao"><span>Descrição / Instruções</span><p>{orcamento.solicitacao.descricao}</p></div> : null}
+                    {orcamento.solicitacao.arquivos && orcamento.solicitacao.arquivos.length > 0 ? (
+                      <div className="op-arquivos">
+                        <span>Anexos ({orcamento.solicitacao.arquivos.length})</span>
+                        <ul>
+                          {orcamento.solicitacao.arquivos.map(arq => (
+                            <li key={arq.id}>
+                              <button type="button" disabled={baixandoArquivoId === arq.id} onClick={async () => {
+                                try {
+                                  setBaixandoArquivoId(arq.id);
+                                  await baixarArquivoPublico(token, arq.id, arq.nome);
+                                } catch (e) {
+                                  console.error(e);
+                                } finally {
+                                  setBaixandoArquivoId(null);
+                                }
+                              }}>
+                                {baixandoArquivoId === arq.id ? 'Baixando...' : arq.nome}
+                              </button>
+                              <small>{arq.tamanho_bytes ? `${Math.round(arq.tamanho_bytes/1024)} KB` : ''}</small>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </> : <p className="op-muted">Esta proposta não possui uma solicitação vinculada.</p>}
+                </div>
               <div className="op-table" tabIndex={0} role="region" aria-label="Itens do orçamento">
                 <table>
                   <caption>Serviços de tradução</caption>
@@ -161,6 +230,8 @@ const css = `
 .orcamento-publico .op-secondary{background:white;color:#764325;border-color:#d8c6b8}
 .orcamento-publico :focus-visible{outline:3px solid #b66f40;outline-offset:3px}
 .orcamento-publico .op-error{background:#fff1f0;color:#a12e25;padding:14px;border-radius:8px}
+.orcamento-publico .op-company-error{max-width:1060px;margin:0 auto 20px}
+.orcamento-publico .op-muted{color:#635b56;font-size:14px;margin:0}
 .orcamento-publico .op-success,.orcamento-publico .op-closed{background:#edf6ef;color:#27633a;padding:14px;border-radius:8px}
 .orcamento-publico footer{text-align:center;font-size:12px;color:#84786f;margin-top:24px}
 .orcamento-publico dialog{border:1px solid #e9e1d8;border-radius:16px;padding:28px;max-width:510px;width:calc(100% - 32px);color:#292421;margin:auto}
@@ -170,4 +241,25 @@ const css = `
 .orcamento-publico small{color:#635b56}
 .orcamento-publico .op-dialog-actions{margin-top:24px}
 @media(max-width:650px){.orcamento-publico{padding:20px 12px}.orcamento-publico .op-card{padding:24px 18px}.orcamento-publico .op-heading{flex-direction:column}.orcamento-publico h1{font-size:30px}.orcamento-publico .op-brand{font-size:20px}.orcamento-publico .op-brand span{font-size:9px;letter-spacing:1px}.orcamento-publico .op-summary{flex-direction:column;gap:8px}.orcamento-publico .op-total{align-self:flex-start;text-align:left}.orcamento-publico .op-actions button{width:100%}}
+.orcamento-publico .op-brand-left{display:flex;align-items:center;gap:12px}
+.orcamento-publico .op-logo{height:40px;max-width:160px;object-fit:contain}
+.orcamento-publico .op-brand-info{text-align:right;font-size:12px;color:#635b56;line-height:1.4}
+.orcamento-publico .op-solicitacao{border:1px solid #e9e1d8;border-radius:12px;padding:20px;margin-top:20px;background:#faf7f3}
+.orcamento-publico .op-solicitacao + .op-table{margin-top:24px}
+.orcamento-publico .op-solicitacao h2{font:700 20px/1.3 Georgia,serif;margin:0 0 12px}
+.orcamento-publico .op-solicitacao-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.orcamento-publico .op-solicitacao-grid>div{background:white;border:1px solid #e9e1d8;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.orcamento-publico .op-solicitacao-grid span{font-size:12px;color:#635b56}
+.orcamento-publico .op-solicitacao-grid strong{font-size:14px}
+.orcamento-publico .op-idiomas{grid-column:1/-1}
+.orcamento-publico .op-descricao{margin-top:14px;background:white;border:1px solid #e9e1d8;border-radius:10px;padding:14px}
+.orcamento-publico .op-descricao span{display:block;font-size:12px;color:#635b56;margin-bottom:6px}
+.orcamento-publico .op-descricao p{margin:0;white-space:pre-wrap}
+.orcamento-publico .op-arquivos{margin-top:14px;background:white;border:1px solid #e9e1d8;border-radius:10px;padding:14px}
+.orcamento-publico .op-arquivos span{display:block;font-size:12px;color:#635b56;margin-bottom:8px}
+.orcamento-publico .op-arquivos ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.orcamento-publico .op-arquivos li{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #eee8e2;border-radius:8px;padding:8px 12px}
+.orcamento-publico .op-arquivos button{background:transparent;border:none;color:#8c5230;font:600 14px system-ui,sans-serif;padding:0;min-height:auto}
+.orcamento-publico .op-arquivos button:disabled{opacity:.6}
+.orcamento-publico .op-arquivos small{color:#84786f}
 `;
