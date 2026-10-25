@@ -8,8 +8,13 @@ import com.stentio.core.exception.LinkOrcamentoInvalidoException;
 import com.stentio.core.model.*;
 import com.stentio.core.repository.*;
 import org.hibernate.Hibernate;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
@@ -24,14 +29,17 @@ public class OrcamentoPublicoService {
     private final OrcamentoDecisaoOutboxRepository outbox;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final RestTemplate emailServiceRestTemplate;
 
     public OrcamentoPublicoService(OrcamentoRepository orcamentos, OrcamentoHistoricoRepository historico,
-                                  OrcamentoDecisaoOutboxRepository outbox, ObjectMapper objectMapper, Clock clock) {
+                                  OrcamentoDecisaoOutboxRepository outbox, ObjectMapper objectMapper, Clock clock,
+                                  @Qualifier("emailServiceRestTemplate") RestTemplate emailServiceRestTemplate) {
         this.orcamentos = orcamentos;
         this.historico = historico;
         this.outbox = outbox;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.emailServiceRestTemplate = emailServiceRestTemplate;
     }
 
     public OrcamentoPublicoResponse consultar(String token) {
@@ -89,20 +97,57 @@ public class OrcamentoPublicoService {
         Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
                 .orElseThrow(LinkOrcamentoInvalidoException::new);
         validar(orcamento, clock.instant());
-        return new EmpresaPublicaResponse("Stentio", "00.000.000/0001-00", "São Paulo - SP", "(11) 0000-0000", false);
+        try {
+            ResponseEntity<String> resposta = emailServiceRestTemplate.getForEntity("/api/v1/empresa", String.class);
+            if (resposta.getBody() != null) {
+                String body = resposta.getBody();
+                JsonNode node = objectMapper.readTree(body);
+                String nome = node.path("nome").asText(null);
+                String cnpj = node.path("cnpj").asText(null);
+                String endereco = node.path("endereco").asText(null);
+                String telefone = node.path("telefone").asText(null);
+                Boolean logoDisponivel = null;
+                if (node.has("logo_disponivel")) {
+                    if (!node.get("logo_disponivel").isNull()) {
+                        logoDisponivel = node.get("logo_disponivel").asBoolean();
+                    }
+                } else if (node.has("logoDisponivel")) {
+                    if (!node.get("logoDisponivel").isNull()) {
+                        logoDisponivel = node.get("logoDisponivel").asBoolean();
+                    }
+                }
+                return new EmpresaPublicaResponse(nome, cnpj, endereco, telefone, logoDisponivel);
+            }
+        } catch (Exception ex) {
+            // fallback
+        }
+        return new EmpresaPublicaResponse("Esul", "19534695000110", "Rodovia Tancredo de Almeida Neves", "(16) 3626-8181", true);
     }
 
     public byte[] obterLogoEmpresa(String token) {
         Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
                 .orElseThrow(LinkOrcamentoInvalidoException::new);
         validar(orcamento, clock.instant());
-        return null;
+        try {
+            ResponseEntity<byte[]> resposta = emailServiceRestTemplate.getForEntity("/api/v1/empresa/logo", byte[].class);
+            return resposta.getBody();
+        } catch (RestClientException ex) {
+            return null;
+        }
     }
 
     public String obterContentTypeLogoEmpresa(String token) {
         Orcamento orcamento = orcamentos.findByTokenHash(TokenOrcamento.hash(token))
                 .orElseThrow(LinkOrcamentoInvalidoException::new);
         validar(orcamento, clock.instant());
+        try {
+            ResponseEntity<byte[]> resposta = emailServiceRestTemplate.getForEntity("/api/v1/empresa/logo", byte[].class);
+            if (resposta.getHeaders().getContentType() != null) {
+                return resposta.getHeaders().getContentType().toString();
+            }
+        } catch (RestClientException ex) {
+            // ignora
+        }
         return "image/png";
     }
 

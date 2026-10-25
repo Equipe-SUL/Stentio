@@ -169,8 +169,7 @@ function PaginaOrcamento({ token }: { token: string }) {
                   ))}{orcamento.itens.length === 0 && <tr><td colSpan={5}>Nenhum item informado.</td></tr>}</tbody>
                 </table>
               </div>
-              <div className="op-summary"><div><p><strong>Validade do link</strong><br />{data(orcamento.data_expiracao)}</p>
-                <p><strong>Prazo da tradução</strong><br />Não informado nesta proposta.</p></div>
+              <div className="op-summary"><div><p><strong>Validade do link</strong><br />{data(orcamento.data_expiracao)}</p></div>
                 <div className="op-total"><span>Valor total</span><strong>{moeda(orcamento.valor_total)}</strong></div></div>
               {podeDecidir(orcamento.status) ? <div className="op-actions">
                 <p>Você poderá revisar a decisão antes de confirmar.</p>
