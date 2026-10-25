@@ -30,7 +30,6 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenService tokenService) throws Exception {
         return http
-                // CSRF desligado: API stateless, e o cookie do Auth é SameSite=Lax, que já bloqueia POST/PUT/PATCH vindos de outros sites.
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -44,27 +43,18 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(rotas -> rotas
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-
-                        // Empresa: leitura para qualquer usuário autenticado, escrita restrita ao ADMIN.
-                        .requestMatchers(HttpMethod.GET, ROTA_EMPRESA, ROTAS_EMPRESA).authenticated()
-                        .requestMatchers(ROTA_EMPRESA, ROTAS_EMPRESA).hasRole(Role.ADMIN.name())
-
-                        // SMTP e envio de e-mail também exigem sessão; alterar a configuração é do ADMIN.
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/v1/smtp",
-                                "/api/v1/smtp/**"
-                        ).authenticated()
+                        .requestMatchers(HttpMethod.GET, ROTA_EMPRESA).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/empresa/logo").permitAll()
+                        .requestMatchers(HttpMethod.PUT, ROTA_EMPRESA, ROTAS_EMPRESA).hasRole(Role.ADMIN.name())
+                        .requestMatchers(HttpMethod.PATCH, ROTA_EMPRESA, ROTAS_EMPRESA).hasRole(Role.ADMIN.name())
                         .requestMatchers("/api/v1/smtp", "/api/v1/smtp/**").hasRole(Role.ADMIN.name())
-
+                        .requestMatchers(HttpMethod.GET, "/api/v1/smtp").authenticated()
                         .anyRequest().authenticated()
                 )
-
                 .addFilterBefore(new JwtAuthFilter(tokenService), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
-    // Mesmo formato de erro do GlobalExceptionHandler, para o front tratar todas as falhas de um jeito só.
     private static void escreverErro(HttpServletResponse response, HttpStatus status, String mensagem) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
