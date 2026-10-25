@@ -71,6 +71,9 @@ api:
       secret: ${JWT_SECRET:dev-secret}
 
 app:
+  seed:
+    test-data:
+      enabled: ${SEED_TEST_DATA_ENABLED:false}
   arquivos:
     # Em Docker aponta para o volume; fora dele cai em ./uploads dentro do módulo Core.
     diretorio: ${APP_ARQUIVOS_DIRETORIO:uploads}

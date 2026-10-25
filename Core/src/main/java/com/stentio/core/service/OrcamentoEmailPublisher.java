@@ -33,7 +33,8 @@ public class OrcamentoEmailPublisher {
         properties.setMessageId(email.getId().toString());
         Message message = new Message(email.getPayload().getBytes(StandardCharsets.UTF_8), properties);
         CorrelationData correlation = new CorrelationData(email.getId() + ":" + UUID.randomUUID());
-        rabbitTemplate.send("", OrcamentoRabbitConfig.EMAIL_QUEUE, message, correlation);
+        // Só a outbox de orçamento passa por aqui, então o destino é sempre a fila da US-13.
+        rabbitTemplate.send("", OrcamentoRabbitConfig.EMAIL_ORCAMENTO_QUEUE, message, correlation);
         CorrelationData.Confirm confirm = correlation.getFuture().get(timeoutSegundos, TimeUnit.SECONDS);
         if (!confirm.ack() || correlation.getReturned() != null) {
             throw new IllegalStateException("E-mail não confirmado ou não roteado pelo RabbitMQ");

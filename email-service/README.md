@@ -8,6 +8,7 @@ Responsabilidades atuais:
 
 - receber solicitações de envio por HTTP;
 - consumir mensagens da fila `email.queue`;
+- consumir dados de orçamento da fila `email.orcamento.queue` e montar o corpo do e-mail;
 - enviar mensagens por SMTP usando Spring Mail;
 - permitir configurar e testar o servidor SMTP;
 - persistir a configuração SMTP ativa no MongoDB.
@@ -213,9 +214,49 @@ Fluxo de processamento:
 3. `EmailConsumer` converte o JSON em `SendEmailRequest`;
 4. `EmailService` carrega a configuração SMTP do MongoDB;
 5. a mensagem é enviada ao SMTP;
-6. o processamento é reconhecido pelo RabbitMQ. Atualmente, falhas de envio são convertidas em `EMAIL_SEND_FAILED` pelo consumidor e não são relançadas para uma fila de retry ou dead-letter.
+6. o processamento é reconhecido pelo RabbitMQ. Falhas de envio são propagadas pelo consumidor, então a mensagem não é confirmada. Ainda não existe fila de retry nem dead-letter.
 
-O Core publica solicitações de aprovação de orçamento usando esse mesmo contrato (`to`, `subject`, `body`). A alteração de status, o token e a mensagem são gravados atomicamente na outbox do Core; um publicador assíncrono envia o JSON para `email.queue` e tenta novamente em caso de falha ao publicar. O token é removido da outbox depois da confirmação do RabbitMQ. Essa confirmação cobre a entrega à fila, não o envio final pelo SMTP.
+### Fila do e-mail de orçamento (US-13)
+
+| Item | Valor |
+|---|---|
+| Fila | `email.orcamento.queue` |
+| Routing key | `email.orcamento.queue` (exchange padrão) |
+| Consumidor | `OrcamentoEmailConsumer` |
+
+O e-mail de aprovação do orçamento **não** usa o contrato `to`/`subject`/`body`. Ele precisa dos dados da empresa remetente, que ficam no MongoDB deste serviço e não existem no Core, então o Core envia **dados** e quem monta o corpo é o email-service.
+
+```json
+{
+  "to": "representante@cliente.com",
+  "subject": "Orçamento ORC-2026-ABCDEF aguardando sua aprovação",
+  "cliente": { "nomeRepresentante": "Maria Souza", "nomeEmpresa": "Empresa XPTO" },
+  "orcamento": {
+    "codigo": "ORC-2026-ABCDEF",
+    "numeroVersao": 1,
+    "valorTotal": 1500.00,
+    "linkAprovacao": "http://localhost:8082/api/v1/public/orcamentos?token=...",
+    "dataExpiracao": "2026-10-28T20:30:00Z"
+  },
+  "solicitacao": {
+    "categoria": "Jurídico",
+    "idiomaOrigem": "Português",
+    "idiomaDestino": "Inglês",
+    "descricao": "Contrato social",
+    "dataRecebimento": "2026-10-20T09:15:00"
+  },
+  "anexos": [
+    { "nomeArquivo": "contrato.pdf", "caminho": "2026/10/uuid.pdf", "tipoConteudo": "application/pdf" }
+  ]
+}
+```
+
+- `solicitacao` é `null` quando o orçamento foi criado sem vínculo com solicitação.
+- As datas são texto ISO-8601; a formatação em pt-BR é feita no `OrcamentoEmailRenderer`.
+- `caminho` é relativo ao diretório de uploads. O email-service monta o volume `core_uploads` em `/app/uploads` **somente leitura** (`APP_ANEXOS_DIRETORIO`) e anexa os arquivos à mensagem. Um arquivo que não puder ser lido, ou que estoure `app.anexos.limite-total-bytes` (10 MB por padrão), é informado no corpo em vez de impedir o envio.
+- Empresa não cadastrada: o e-mail sai sem o rodapé de contato, com aviso no log.
+
+A alteração de status, o token e a mensagem são gravados atomicamente na outbox do Core; um publicador assíncrono envia o JSON para `email.orcamento.queue` e tenta novamente em caso de falha ao publicar. O token é removido da outbox depois da confirmação do RabbitMQ. Essa confirmação cobre a entrega à fila, não o envio final pelo SMTP.
 
 Atualmente não existem eventos de sucesso ou falha publicados em outra fila. O próximo passo recomendado é criar eventos como `email.sent` e `email.failed` para rastreabilidade e reprocessamento.
 
