@@ -16,6 +16,7 @@ import { baixarArquivoSolicitacao } from "./solicitacoesApi";
 interface SolicitacaoDetalhesModalProps {
   solicitacao: SolicitacaoResponse | null;
   onClose: () => void;
+  onCriarOrcamento?: (solicitacao: SolicitacaoResponse) => void;
 }
 
 function formatarData(isoString?: string): string {
@@ -41,6 +42,7 @@ function formatarTamanho(bytes?: number): string {
 export function SolicitacaoDetalhesModal({
   solicitacao,
   onClose,
+  onCriarOrcamento,
 }: SolicitacaoDetalhesModalProps) {
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
@@ -210,7 +212,12 @@ export function SolicitacaoDetalhesModal({
           </ScrollView>
 
           {/* Rodapé com botão de fechar */}
-          <View className="border-t border-neutral-200 px-6 py-4 flex-row justify-end bg-neutral-50">
+          <View className="border-t border-neutral-200 px-6 py-4 flex-row justify-between bg-neutral-50">
+            {onCriarOrcamento && solicitacao.status === "PENDENTE_ORCAMENTO" ? (
+              <Pressable onPress={() => onCriarOrcamento(solicitacao)} className="rounded-lg bg-[#6f4f28] px-5 py-2.5 active:bg-[#5b4020]">
+                <Text className="text-sm font-medium text-white">Criar orçamento</Text>
+              </Pressable>
+            ) : <View />}
             <Pressable
               onPress={onClose}
               className="rounded-lg bg-neutral-800 px-5 py-2.5 active:bg-neutral-900"

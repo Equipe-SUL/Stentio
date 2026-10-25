@@ -290,6 +290,7 @@ export function SolicitacoesListScreen() {
       <SolicitacaoDetalhesModal
         solicitacao={solicitacaoSelecionada}
         onClose={() => setSolicitacaoSelecionada(null)}
+        onCriarOrcamento={(solicitacao) => { setSolicitacaoSelecionada(null); router.push({ pathname: "/orcamentos/novo", params: { solicitacaoId: solicitacao.id } }); }}
       />
     </ScrollView>
   );

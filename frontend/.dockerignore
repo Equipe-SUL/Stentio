@@ -1,2 +1,5 @@
 .expo/
 node_modules/
+dist/
+.git/
+npm-debug.log*
