@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src import process
 from src.models import Recurso, TipoServico
 from src.models.base import Base
-from src.models.recurso_tipos_servicos import recurso_tipos_servicos
+from src.models.recurso_tipos_servicos import recurso_tipos_servico
 from src.import_plan import build_plan, read_dataframe
 
 
@@ -85,7 +85,7 @@ def test_real_postgres_transaction_and_reupload(monkeypatch):
                 )
                 assert (
                     await session.scalar(
-                        select(func.count()).select_from(recurso_tipos_servicos)
+                        select(func.count()).select_from(recurso_tipos_servico)
                     )
                     == 2
                 )

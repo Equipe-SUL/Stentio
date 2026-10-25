@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import TYPE_CHECKING
-from src.models.recurso_tipos_servicos import recurso_tipos_servicos
+from src.models.recurso_tipos_servicos import recurso_tipos_servico
 
 from src.models.base import Base
 
@@ -19,6 +19,6 @@ class TipoServico(Base):
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
     recursos: Mapped[list["Recurso"]] = relationship(
         "Recurso",
-        secondary=recurso_tipos_servicos,
-        back_populates="tipos_servicos",
+        secondary=recurso_tipos_servico,
+        back_populates="tipos_servico",
     )

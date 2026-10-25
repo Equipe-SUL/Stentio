@@ -12,7 +12,7 @@ from src import process
 from src.app import app
 from src.models import Recurso, TipoServico
 from src.models.base import Base
-from src.models.recurso_tipos_servicos import recurso_tipos_servicos
+from src.models.recurso_tipos_servicos import recurso_tipos_servico
 from src.import_plan import build_plan, read_dataframe
 
 HEADER = "ativo;e-mail;nome;telefone;tipo_servico;descricao_servico\n"
@@ -61,7 +61,7 @@ async def counts(factory):
         return tuple(
             [
                 await session.scalar(select(func.count()).select_from(model))
-                for model in (Recurso, TipoServico, recurso_tipos_servicos)
+                for model in (Recurso, TipoServico, recurso_tipos_servico)
             ]
         )
 
@@ -90,10 +90,10 @@ def test_complete_flow_one_commit_reupload_and_grouping(monkeypatch):
                     await session.scalars(
                         select(Recurso)
                         .where(Recurso.email == "ana@example.com")
-                        .options(selectinload(Recurso.tipos_servicos))
+                        .options(selectinload(Recurso.tipos_servico))
                     )
                 ).one()
-                assert {s.nome for s in ana.tipos_servicos} == {"Tradução", "Revisão"}
+                assert {s.nome for s in ana.tipos_servico} == {"Tradução", "Revisão"}
                 assert ana.telefone == "01199990000"
 
     asyncio.run(scenario())
@@ -137,7 +137,7 @@ def test_database_failure_during_flush_rolls_back_every_table(monkeypatch):
             async with engine.begin() as connection:
                 await connection.execute(
                     text(
-                        "CREATE TRIGGER bloquear_vinculo BEFORE INSERT ON recurso_tipos_servicos BEGIN SELECT RAISE(ABORT, 'forced failure'); END"
+                        "CREATE TRIGGER bloquear_vinculo BEFORE INSERT ON recurso_tipos_servico BEGIN SELECT RAISE(ABORT, 'forced failure'); END"
                     )
                 )
             response = await post(HEADER + REVIEW + BIA)

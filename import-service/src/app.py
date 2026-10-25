@@ -133,7 +133,14 @@ async def upload_csv(
             status=422,
         ) from exc
     except (SQLAlchemyError, OSError, TimeoutError) as exc:
-        logger.error("Falha no banco durante importação: {}", type(exc).__name__)
+        original = getattr(exc, "orig", exc)
+
+        logger.error(
+            "Falha no banco: tipo={} | sqlstate={} | causa={}",
+            type(exc).__name__,
+            getattr(original, "sqlstate", None),
+            str(original).split("\n", 1)[0],
+        )
         raise ImportErrorDetail(
             "Falha de acesso ao banco. A importação não foi confirmada.",
             code="BANCO_INDISPONIVEL",

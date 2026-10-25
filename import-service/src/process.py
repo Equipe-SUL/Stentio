@@ -78,7 +78,7 @@ async def persist_plan(session, plan: ImportPlan):
                         emails[start : start + 500]
                     )
                 )
-                .options(selectinload(Recurso.tipos_servicos))
+                .options(selectinload(Recurso.tipos_servico))
             )
             for resource in (await session.scalars(stmt)).all():
                 key = clean(resource.email).lower()
@@ -99,7 +99,7 @@ async def persist_plan(session, plan: ImportPlan):
                     email=email,
                     telefone=data.telefone,
                     ativo=data.ativo,
-                    tipos_servicos=[],
+                    tipos_servico=[],
                 )
                 report["recursos_criados"] += 1
             else:
@@ -114,13 +114,13 @@ async def persist_plan(session, plan: ImportPlan):
                         status=409,
                     )
                 report["recursos_reutilizados"] += 1
-            linked = {service.id for service in resource.tipos_servicos}
+            linked = {service.id for service in resource.tipos_servico}
             for key in sorted(data.services):
                 service = catalog[key]
                 if service.id in linked:
                     report["vinculos_existentes"] += 1
                 else:
-                    resource.tipos_servicos.append(service)
+                    resource.tipos_servico.append(service)
                     linked.add(service.id)
                     report["vinculos_criados"] += 1
             pending.append(resource)
