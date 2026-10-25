@@ -71,6 +71,9 @@ api:
       secret: ${JWT_SECRET:dev-secret}
 
 app:
+  seed:
+    test-data:
+      enabled: ${SEED_TEST_DATA_ENABLED:false}
   arquivos:
     # Em Docker aponta para o volume; fora dele cai em ./uploads dentro do módulo Core.
     diretorio: ${APP_ARQUIVOS_DIRETORIO:uploads}
@@ -86,6 +89,8 @@ app:
       confirm-timeout-segundos: ${ORCAMENTO_OUTBOX_CONFIRM_TIMEOUT_SEGUNDOS:5}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:8080,http://localhost:8081,http://localhost:19006}
+  email-service:
+    url: ${EMAIL_SERVICE_URL:http://email-service:8083}
 
 springdoc:
   api-docs:

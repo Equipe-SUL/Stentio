@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ class OrcamentoPublicoServiceTest {
     @Mock OrcamentoRepository repository;
     @Mock OrcamentoHistoricoRepository historico;
     @Mock OrcamentoDecisaoOutboxRepository outbox;
+    @Mock RestTemplate emailServiceRestTemplate;
     private final Instant agora = Instant.parse("2026-10-10T17:00:00Z");
     private final String token = "6bbd9908-4783-4991-a4f9-b0fc1807115a";
     private Orcamento orcamento;
@@ -35,7 +37,7 @@ class OrcamentoPublicoServiceTest {
     @BeforeEach
     void preparar() {
         service = new OrcamentoPublicoService(repository, historico, outbox, mapper,
-                Clock.fixed(agora, ZoneOffset.UTC));
+                Clock.fixed(agora, ZoneOffset.UTC), emailServiceRestTemplate);
         orcamento = new Orcamento();
         orcamento.setId(UUID.randomUUID());
         orcamento.setStatus(StatusOrcamento.AGUARDANDO_APROVACAO);
@@ -60,7 +62,7 @@ class OrcamentoPublicoServiceTest {
 
     @Test
     void consultaRetornaItensEValoresSemConsumirToken() {
-        when(repository.findByTokenHash(TokenOrcamento.hash(token))).thenReturn(Optional.of(orcamento));
+        when(repository.buscarPublicoPorTokenHash(TokenOrcamento.hash(token))).thenReturn(Optional.of(orcamento));
         var resposta = service.consultar(token);
         assertEquals(new BigDecimal("1500.00"), resposta.valorTotal());
         assertEquals("Tradução Juramentada", resposta.itens().getFirst().tipoServico());
@@ -134,7 +136,7 @@ class OrcamentoPublicoServiceTest {
     @Test
     void decisaoImpedeReusoParaAprovarRejeitarEConsultar() {
         prepararDecisao();
-        when(repository.findByTokenHash(TokenOrcamento.hash(token))).thenReturn(Optional.of(orcamento));
+        when(repository.buscarPublicoPorTokenHash(TokenOrcamento.hash(token))).thenReturn(Optional.of(orcamento));
         service.aprovar(token);
         assertThrows(LinkOrcamentoInvalidoException.class, () -> service.aprovar(token));
         assertThrows(LinkOrcamentoInvalidoException.class, () -> service.rejeitar(token, "Outro motivo"));

@@ -36,7 +36,8 @@ class OrcamentoPublicoControllerTest {
                 "Palavras", new BigDecimal("0.30"), new BigDecimal("1500.00"));
         when(service.consultar(token)).thenReturn(new OrcamentoPublicoResponse(UUID.randomUUID(),
                 StatusOrcamento.AGUARDANDO_APROVACAO, new BigDecimal("1500.00"),
-                Instant.parse("2026-10-15T23:59:59Z"), List.of(item)));
+                Instant.parse("2026-10-15T23:59:59Z"), List.of(item), 1,
+                Instant.parse("2026-10-10T17:00:00Z"), null));
         mvc.perform(get(path).param("token", token))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))

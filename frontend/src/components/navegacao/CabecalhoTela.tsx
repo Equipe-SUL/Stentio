@@ -15,6 +15,7 @@ interface CabecalhoTelaProps {
   descricao?: string;
   rotaFallback?: Href;
   acoes?: ReactNode;
+  compacto?: boolean;
 }
 
 export function CabecalhoTela({
@@ -24,6 +25,7 @@ export function CabecalhoTela({
   descricao,
   rotaFallback = "/admin",
   acoes,
+  compacto = false,
 }: CabecalhoTelaProps) {
   const router = useRouter();
   const { width: larguraJanela } = useWindowDimensions();
@@ -34,7 +36,7 @@ export function CabecalhoTela({
   return (
     <>
       <View
-        className={`mb-8 pb-4 border-b border-zinc-200 ${
+        className={`${compacto ? "mb-4 pb-3" : "mb-8 pb-4"} border-b border-zinc-200 ${
           empilharAcao ? "flex-col" : "flex-row items-center justify-between"
         }`}
       >
@@ -81,7 +83,7 @@ export function CabecalhoTela({
       </View>
 
       {descricao ? (
-        <Text className="text-sm text-zinc-600 mb-6 max-w-2xl">{descricao}</Text>
+        <Text className={`text-sm text-zinc-600 max-w-2xl ${compacto ? "mb-3" : "mb-6"}`}>{descricao}</Text>
       ) : null}
     </>
   );
