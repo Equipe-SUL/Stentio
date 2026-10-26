@@ -9,16 +9,22 @@ import com.stentio.core.exception.OrcamentoNaoEditavelException;
 import com.stentio.core.exception.OrcamentoNaoEncontradoException;
 import com.stentio.core.exception.ReferenciaInvalidaException;
 import com.stentio.core.exception.SolicitacaoNaoEncontradaException;
+import com.stentio.core.exception.SolicitacaoInvalidaException;
+import com.stentio.core.model.CategoriaProjeto;
 import com.stentio.core.model.Cliente;
 import com.stentio.core.model.Idioma;
 import com.stentio.core.model.Orcamento;
 import com.stentio.core.model.Solicitacao;
 import com.stentio.core.model.StatusOrcamento;
+import com.stentio.core.model.StatusSolicitacao;
 import com.stentio.core.model.UnidadeCobranca;
 import com.stentio.core.repository.ClienteRepository;
 import com.stentio.core.repository.IdiomaRepository;
 import com.stentio.core.repository.OrcamentoRepository;
 import com.stentio.core.repository.SolicitacaoRepository;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,6 +69,7 @@ class OrcamentoServiceTest {
     private final Clock clock = Clock.fixed(AGORA, ZoneOffset.UTC);
 
     private OrcamentoService service;
+    private ValidatorFactory validatorFactory;
 
     private final UUID solicitacaoId = UUID.randomUUID();
     private final UUID clienteId = UUID.randomUUID();
@@ -74,14 +81,21 @@ class OrcamentoServiceTest {
 
     @BeforeEach
     void setup() {
-        service = new OrcamentoService(orcamentos, solicitacoes, clientes, idiomas, calculo, clock);
+        validatorFactory = Validation.buildDefaultValidatorFactory();
+        service = new OrcamentoService(orcamentos, solicitacoes, clientes, idiomas, calculo, clock,
+                validatorFactory.getValidator());
 
         cliente = mock(Cliente.class);
         when(cliente.getId()).thenReturn(clienteId);
 
-        solicitacao = mock(Solicitacao.class);
+        solicitacao = spy(new Solicitacao(cliente, new CategoriaProjeto(), new Idioma(), new Idioma(), "Teste"));
         when(solicitacao.getId()).thenReturn(solicitacaoId);
         when(solicitacao.getCliente()).thenReturn(cliente);
+    }
+
+    @AfterEach
+    void fecharValidator() {
+        validatorFactory.close();
     }
 
     @Test
@@ -90,7 +104,7 @@ class OrcamentoServiceTest {
         Instant expiracao = AGORA.plusSeconds(86400);
         OrcamentoCriacaoRequest request = new OrcamentoCriacaoRequest(solicitacaoId, clienteId, expiracao);
 
-        when(solicitacoes.findById(solicitacaoId)).thenReturn(Optional.of(solicitacao));
+        when(solicitacoes.buscarPorIdComLock(solicitacaoId)).thenReturn(Optional.of(solicitacao));
         when(clientes.findById(clienteId)).thenReturn(Optional.of(cliente));
         when(orcamentos.save(any(Orcamento.class))).thenAnswer(inv -> {
             Orcamento o = inv.getArgument(0);
@@ -107,6 +121,56 @@ class OrcamentoServiceTest {
         assertEquals(clienteId, resposta.clienteId());
         assertEquals(solicitacaoId, resposta.solicitacaoId());
         assertTrue(resposta.itens().isEmpty());
+        assertEquals(StatusSolicitacao.AGUARDANDO_APROVACAO, solicitacao.getStatus());
+    }
+
+    @Test
+    void naoCriaOutroOrcamentoParaSolicitacaoAntigaAindaPendente() {
+        when(solicitacoes.buscarPorIdComLock(solicitacaoId)).thenReturn(Optional.of(solicitacao));
+        when(clientes.findById(clienteId)).thenReturn(Optional.of(cliente));
+        when(orcamentos.existsBySolicitacaoId(solicitacaoId)).thenReturn(true);
+
+        assertThrows(OrcamentoInvalidoException.class, () -> service.criar(
+                new OrcamentoCriacaoRequest(solicitacaoId, clienteId, AGORA.plusSeconds(3600))));
+
+        assertEquals(StatusSolicitacao.PENDENTE_ORCAMENTO, solicitacao.getStatus());
+        verify(orcamentos, never()).save(any());
+    }
+
+    @Test
+    void naoCriaOrcamentoParaSolicitacaoForaDePendente() {
+        when(solicitacoes.buscarPorIdComLock(solicitacaoId)).thenReturn(Optional.of(solicitacao));
+        when(clientes.findById(clienteId)).thenReturn(Optional.of(cliente));
+        for (StatusSolicitacao status : List.of(StatusSolicitacao.AGUARDANDO_APROVACAO,
+                StatusSolicitacao.ORCAMENTO_REJEITADO, StatusSolicitacao.EM_EXECUCAO)) {
+            org.springframework.test.util.ReflectionTestUtils.setField(solicitacao, "status", status);
+            assertThrows(SolicitacaoInvalidaException.class, () -> service.criar(
+                    new OrcamentoCriacaoRequest(solicitacaoId, clienteId, AGORA.plusSeconds(3600))));
+        }
+        verify(orcamentos, never()).save(any());
+    }
+
+    @Test
+    void rejeitaValoresAusentesOuNaoPositivosAntesDeAlterarItens() {
+        for (BigDecimal valor : new BigDecimal[]{null, BigDecimal.ZERO, BigDecimal.ONE.negate()}) {
+            for (boolean quantidadeInvalida : new boolean[]{false, true}) {
+                var servico = new OrcamentoItensRequest.Servico("Tradução",
+                        quantidadeInvalida ? valor : BigDecimal.ONE, UnidadeCobranca.PALAVRA,
+                        quantidadeInvalida ? BigDecimal.ONE : valor);
+                var request = new OrcamentoItensRequest(List.of(new OrcamentoItensRequest.Item(
+                        1, idiomaOrigemId, idiomaDestinoId, List.of(servico))));
+
+                assertThrows(OrcamentoInvalidoException.class,
+                        () -> service.substituirItens(UUID.randomUUID(), request));
+            }
+        }
+        assertThrows(OrcamentoInvalidoException.class,
+                () -> service.substituirItens(UUID.randomUUID(), new OrcamentoItensRequest(List.of())));
+        var semServicos = new OrcamentoItensRequest(List.of(new OrcamentoItensRequest.Item(
+                1, idiomaOrigemId, idiomaDestinoId, List.of())));
+        assertThrows(OrcamentoInvalidoException.class,
+                () -> service.substituirItens(UUID.randomUUID(), semServicos));
+        verifyNoInteractions(orcamentos, idiomas);
     }
 
     @Test
@@ -123,7 +187,7 @@ class OrcamentoServiceTest {
     @DisplayName("RN.1: Deve lançar 404 quando solicitação não existir")
     void deveFalharQuandoSolicitacaoNaoExistir() {
         OrcamentoCriacaoRequest request = new OrcamentoCriacaoRequest(solicitacaoId, clienteId, AGORA.plusSeconds(3600));
-        when(solicitacoes.findById(solicitacaoId)).thenReturn(Optional.empty());
+        when(solicitacoes.buscarPorIdComLock(solicitacaoId)).thenReturn(Optional.empty());
 
         assertThrows(SolicitacaoNaoEncontradaException.class, () -> service.criar(request));
     }
@@ -132,7 +196,7 @@ class OrcamentoServiceTest {
     @DisplayName("RN.1: Deve lançar ReferenciaInvalidaException quando cliente não existir")
     void deveFalharQuandoClienteNaoExistir() {
         OrcamentoCriacaoRequest request = new OrcamentoCriacaoRequest(solicitacaoId, clienteId, AGORA.plusSeconds(3600));
-        when(solicitacoes.findById(solicitacaoId)).thenReturn(Optional.of(solicitacao));
+        when(solicitacoes.buscarPorIdComLock(solicitacaoId)).thenReturn(Optional.of(solicitacao));
         when(clientes.findById(clienteId)).thenReturn(Optional.empty());
 
         assertThrows(ReferenciaInvalidaException.class, () -> service.criar(request));
@@ -146,7 +210,7 @@ class OrcamentoServiceTest {
         when(solicitacao.getCliente()).thenReturn(outroCliente);
 
         OrcamentoCriacaoRequest request = new OrcamentoCriacaoRequest(solicitacaoId, clienteId, AGORA.plusSeconds(3600));
-        when(solicitacoes.findById(solicitacaoId)).thenReturn(Optional.of(solicitacao));
+        when(solicitacoes.buscarPorIdComLock(solicitacaoId)).thenReturn(Optional.of(solicitacao));
         when(clientes.findById(clienteId)).thenReturn(Optional.of(cliente));
 
         OrcamentoInvalidoException ex = assertThrows(OrcamentoInvalidoException.class, () -> service.criar(request));

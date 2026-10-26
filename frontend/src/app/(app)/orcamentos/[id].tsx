@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { coreApi, getApiErrorMessage } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
@@ -26,8 +26,9 @@ export default function OrcamentoDetalheRoute() {
   const [erroSolicitacao, setErroSolicitacao] = useState("");
   const [nomesIdiomas, setNomesIdiomas] = useState<Record<string, string>>({});
   const aguardandoOrcamento = carregando || idCarregado !== id;
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!id) return;
+    setCarregando(true);
     let ativo = true;
     buscarOrcamento(id)
       .then(async (dados) => {
@@ -52,7 +53,9 @@ export default function OrcamentoDetalheRoute() {
       .catch((e) => { if (ativo) { setErro(getApiErrorMessage(e)); setIdCarregado(id); } })
       .finally(() => { if (ativo) setCarregando(false); });
     return () => { ativo = false; };
-  }, [id]);
+  }, [id]));
+  const podeEditar = orcamento?.status === "EM_ELABORACAO";
+  const temValores = Boolean(orcamento?.itens.length && orcamento.valor_total > 0);
   const podeEnviarAoCliente =
     (usuario?.role === "ADMIN" || usuario?.role === "ATENDENTE")
     && (orcamento?.status === "EM_ELABORACAO" || orcamento?.status === "REJEITADO");
@@ -77,12 +80,14 @@ export default function OrcamentoDetalheRoute() {
     <CabecalhoTela contexto="Operacional" secao="Orçamentos" titulo="Detalhes do orçamento" descricao="Proposta e serviços cadastrados." rotaFallback="/orcamentos" compacto acoes={<Pressable onPress={() => router.push("/orcamentos")} className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-3"><Ionicons name="list-outline" size={18} color="#6f4f28"/><Text className="font-medium text-neutral-700">Listagem</Text></Pressable>} />
     {aguardandoOrcamento ? <View className="items-center rounded-xl bg-white p-10"><ActivityIndicator color="#6f4f28"/></View> : erro ? <View className="rounded-xl border border-red-200 bg-red-50 p-4"><Text className="text-sm text-red-700">{erro}</Text></View> : orcamento ? <>
       <View className="flex-row flex-wrap gap-3 rounded-2xl border border-neutral-200 bg-white p-5"><View className="w-full"><Text className="text-xs font-medium text-neutral-500">Código do orçamento</Text><Text selectable className="mt-1 text-2xl font-bold tracking-wider text-neutral-900">{codigoOrcamento(orcamento.id)}</Text></View><View className="min-w-[180px] flex-1"><Text className="text-xs text-neutral-500">Status</Text><Text className="mt-1 font-semibold text-[#6f4f28]">{statusLabel[orcamento.status] ?? orcamento.status}</Text></View><View className="min-w-[180px] flex-1"><Text className="text-xs text-neutral-500">Valor total</Text><Text className="mt-1 text-xl font-bold text-neutral-900">{moeda(orcamento.valor_total)}</Text></View><View className="min-w-[180px] flex-1"><Text className="text-xs text-neutral-500">Expira em</Text><Text className="mt-1 font-medium text-neutral-800">{data(orcamento.data_expiracao)}</Text></View><View className="min-w-[180px] flex-1"><Text className="text-xs text-neutral-500">Versão</Text><Text className="mt-1 font-medium text-neutral-800">{orcamento.versao}</Text></View></View>
+      {podeEditar ? <Pressable onPress={() => router.push({ pathname: "/orcamentos/novo", params: { orcamentoId: orcamento.id } })} className="flex-row items-center gap-2 self-start rounded-lg border border-[#6f4f28] bg-white px-5 py-3"><Ionicons name="create-outline" size={18} color="#6f4f28" /><Text className="font-semibold text-[#6f4f28]">Editar itens e valores</Text></Pressable> : null}
       {podeEnviarAoCliente ? <View className="gap-2 rounded-xl border border-neutral-200 bg-white p-4">
+        {!temValores ? <Text className="text-sm text-amber-700">Preencha os itens e valores antes de enviar o orçamento ao cliente.</Text> : null}
         {erroEnvio ? <Text className="text-sm text-red-700">{erroEnvio}</Text> : null}
         {mensagemEnvio ? <Text className="text-sm text-green-700">{mensagemEnvio}</Text> : null}
         <Pressable
           accessibilityRole="button"
-          disabled={enviando}
+          disabled={enviando || !temValores}
           onPress={() => void enviarAoCliente()}
           className="flex-row items-center justify-center gap-2 self-start rounded-lg bg-[#6f4f28] px-5 py-3 disabled:opacity-50"
         >

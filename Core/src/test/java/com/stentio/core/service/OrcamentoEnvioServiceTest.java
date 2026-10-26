@@ -14,6 +14,7 @@ import com.stentio.core.model.OrcamentoItem;
 import com.stentio.core.model.OrcamentoItemServico;
 import com.stentio.core.model.Solicitacao;
 import com.stentio.core.model.StatusOrcamento;
+import com.stentio.core.model.StatusSolicitacao;
 import com.stentio.core.repository.OrcamentoEmailOutboxRepository;
 import com.stentio.core.repository.OrcamentoHistoricoRepository;
 import com.stentio.core.repository.OrcamentoRepository;
@@ -170,6 +171,21 @@ class OrcamentoEnvioServiceTest {
         assertNotEquals(TokenOrcamento.hash(previousToken), orcamento.getTokenHash());
         assertEquals(TokenOrcamento.hash(response.tokenAprovacao().toString()), orcamento.getTokenHash());
         assertNull(orcamento.getTokenUtilizadoEm());
+        verify(outbox).save(any(OrcamentoEmailOutbox.class));
+    }
+
+    @Test
+    void reenviarOrcamentoRejeitadoVoltaSolicitacaoParaAguardandoAprovacao() {
+        Solicitacao solicitacao = new Solicitacao(cliente, new CategoriaProjeto(),
+                new Idioma(), new Idioma(), "Teste de reenvio");
+        solicitacao.atualizarStatusDoOrcamento(StatusOrcamento.REJEITADO);
+        orcamento.setSolicitacao(solicitacao);
+        orcamento.setStatus(StatusOrcamento.REJEITADO);
+
+        service.enviarParaAprovacao(orcamento.getId());
+
+        assertEquals(StatusSolicitacao.AGUARDANDO_APROVACAO, solicitacao.getStatus());
+        assertEquals(StatusOrcamento.AGUARDANDO_APROVACAO, orcamento.getStatus());
         verify(outbox).save(any(OrcamentoEmailOutbox.class));
     }
 

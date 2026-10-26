@@ -90,6 +90,21 @@ public class Solicitacao {
         this.dataRecebimento = LocalDateTime.now();
     }
 
+    public void iniciarOrcamento() {
+        if (status != StatusSolicitacao.PENDENTE_ORCAMENTO) {
+            throw new SolicitacaoInvalidaException("A solicitação não está pendente de orçamento");
+        }
+        status = StatusSolicitacao.AGUARDANDO_APROVACAO;
+    }
+
+    public void atualizarStatusDoOrcamento(StatusOrcamento statusOrcamento) {
+        status = switch (statusOrcamento) {
+            case EM_ELABORACAO, AGUARDANDO_APROVACAO -> StatusSolicitacao.AGUARDANDO_APROVACAO;
+            case REJEITADO -> StatusSolicitacao.ORCAMENTO_REJEITADO;
+            case APROVADO -> StatusSolicitacao.EM_EXECUCAO;
+        };
+    }
+
     // RN.3: um ou mais arquivos. Cada chamada anexa um arquivo já gravado no storage.
     public void anexarArquivo(ArquivoArmazenado dados) {
         arquivos.add(new ArquivoSolicitacao(this, Objects.requireNonNull(dados)));

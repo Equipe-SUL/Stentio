@@ -102,6 +102,9 @@ public class OrcamentoEnvioService {
         registro.setOrigem("ATENDENTE");
 
         orcamento.setStatus(StatusOrcamento.AGUARDANDO_APROVACAO);
+        if (orcamento.getSolicitacao() != null) {
+            orcamento.getSolicitacao().atualizarStatusDoOrcamento(orcamento.getStatus());
+        }
         orcamento.setTokenHash(TokenOrcamento.hash(token.toString()));
         orcamento.setTokenUtilizadoEm(null);
         orcamento.setDataExpiracao(expiracao);
