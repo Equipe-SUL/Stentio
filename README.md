@@ -37,7 +37,6 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
 <h4 align="center">
       <img title="Java" alt="Java" src="https://skillicons.dev/icons?i=java" />
       <img title="Spring Boot" alt="Spring Boot" src="https://skillicons.dev/icons?i=springboot" />
-      <img title="Gradle" alt="Gradle" src="https://skillicons.dev/icons?i=gradle" />
       <img title="PostgreSQL" alt="PostgreSQL" src="https://skillicons.dev/icons?i=postgresql" />
       <img title="MongoDB" alt="MongoDB" src="https://skillicons.dev/icons?i=mongodb" />
       <img title="RabbitMQ" alt="RabbitMQ" src="https://skillicons.dev/icons?i=rabbitmq" />
@@ -49,10 +48,10 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
       <img src="https://skillicons.dev/icons?i=null">
       <img title="Docker" alt="Docker" src="https://skillicons.dev/icons?i=docker" />
       <img title="Git" alt="Git" src="https://skillicons.dev/icons?i=git" />
-      <img title="GitHub" alt="GitHub" src="https://skillicons.dev/icons?i=github" />
       <img title="Jira" alt="Jira" src="https://skillicons.dev/icons?i=jira" />
       <img title="VS Code" alt="VS Code" src="https://skillicons.dev/icons?i=vscode" />
       <img title="IntelliJ IDEA" alt="IntelliJ IDEA" src="https://skillicons.dev/icons?i=intellij" />
+      <img title="GitHub" alt="GitHub" src="https://skillicons.dev/icons?i=androidstudio" />
 </h4>
 
 ---
