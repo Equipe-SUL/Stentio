@@ -36,7 +36,7 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
 ## 💻 Tecnologias <a id="tecnologias"></a>
 <h4 align="center">
       <img title="Java" alt="Java" src="https://skillicons.dev/icons?i=java" />
-      <img title="Spring Boot" alt="Spring Boot" src="https://skillicons.dev/icons?i=springboot" />
+      <img title="Spring Boot" alt="Spring Boot" src="https://skillicons.dev/icons?i=spring" />
       <img title="PostgreSQL" alt="PostgreSQL" src="https://skillicons.dev/icons?i=postgresql" />
       <img title="MongoDB" alt="MongoDB" src="https://skillicons.dev/icons?i=mongodb" />
       <img title="RabbitMQ" alt="RabbitMQ" src="https://skillicons.dev/icons?i=rabbitmq" />
