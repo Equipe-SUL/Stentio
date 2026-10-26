@@ -1,0 +1,26 @@
+[project]
+name = "import-service"
+version = "0.2.0"
+description = "Payload data loader by Fatec Students"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "asyncpg>=0.32.0",
+    "fastapi[standard]>=0.152.0",
+    "loguru>=0.7.3",
+    "email-validator>=2.3.0",
+    "pydantic-settings>=2.10.0",
+    "polars>=2.0.0",
+    "sqlalchemy[asyncio]>=2.1.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "aiosqlite>=0.21.0",
+]
+
+[tool.pytest]
+minversion = "9.0"
+addopts = ["-ra"]
+pythonpath = ["."]
