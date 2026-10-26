@@ -37,6 +37,8 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
 <h4 align="center">
       <img title="Java" alt="Java" src="https://skillicons.dev/icons?i=java" />
       <img title="Spring Boot" alt="Spring Boot" src="https://skillicons.dev/icons?i=spring" />
+      <img title="Spring" alt="Spring" src="https://skillicons.dev/icons?i=spring" />
+      <img title="Gradle" alt="Gradle" src="https://skillicons.dev/icons?i=gradle" />
       <img title="PostgreSQL" alt="PostgreSQL" src="https://skillicons.dev/icons?i=postgresql" />
       <img title="MongoDB" alt="MongoDB" src="https://skillicons.dev/icons?i=mongodb" />
       <img title="RabbitMQ" alt="RabbitMQ" src="https://skillicons.dev/icons?i=rabbitmq" />
@@ -52,6 +54,7 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
       <img title="VS Code" alt="VS Code" src="https://skillicons.dev/icons?i=vscode" />
       <img title="IntelliJ IDEA" alt="IntelliJ IDEA" src="https://skillicons.dev/icons?i=intellij" />
       <img title="Android Studiod" alt="Android Studio" src="https://skillicons.dev/icons?i=androidstudio" />
+      <img title="IntelliJ IDEA" alt="IntelliJ IDEA" src="https://skillicons.dev/icons?i=idea" />
 </h4>
 
 ---
@@ -85,6 +88,7 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 | 3 | US-003 | 🔴 ALTA | Como Administrador, quero cadastrar tipos de serviço, categorias de projeto e idiomas disponíveis, para que sirvam de base nos orçamentos, ordens de serviço e cadastros de recursos em todo o sistema. | 5 | E6 | 1 | ✔️ |
 | 4 | US-004 | 🔴 ALTA | Como Administrador, quero cadastrar recursos associando seus pares de idiomas e valores individuais, para viabilizar a alocação e o cálculo de custo nas ordens de serviço. | 5 | E6 | 1 | ✔️ |
 | 5 | US-005 | 🟠 MÉDIA | Como Administrador, quero cadastrar tabelas de preço associando tipo de serviço, par de idiomas e valor unitário, para que o sistema sugira automaticamente os valores ao montar um orçamento. | 8 | E6 | 1 | 🛠️ |
+| 6 | US-006 | 🟠 MÉDIA | Como Administrador, quero cadastrar e gerenciar templates de e-mail com placeholders dinâmicos, para padronizar e automatizar as comunicações com clientes e recursos sem depender de alterações de código. | 3 | E6 | 1 | 🔲 Não iniciada |
 | 7 | US-007 | 🔴 ALTA | Como Atendente, quero cadastrar manualmente uma solicitação de tradução vinculando um cliente (novo ou existente), para registrar demandas que chegam por e-mail, telefone ou outros canais de forma estruturada no sistema. | 8 | E2 · E6 | 1 | ✔️ |
 | 8 | US-008 | 🔴 ALTA | Como Atendente, quero elaborar um orçamento com os itens de serviço necessários e enviá-lo por e-mail ao cliente com um link de aprovação, para que o cliente possa aprovar ou recusar de forma autônoma. | 8 | E2 | 1 | ✔️ |
 | 9 | US-009 | 🟠 MÉDIA | Como Atendente, quero editar um orçamento recusado pelo cliente e reenviar para aprovação, para viabilizar negociações sem precisar criar um novo orçamento do zero. | 0 | E2 | 2 | ✔️ |
