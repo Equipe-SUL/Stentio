@@ -49,7 +49,6 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
       <img title="Docker" alt="Docker" src="https://skillicons.dev/icons?i=docker" />
       <img title="Git" alt="Git" src="https://skillicons.dev/icons?i=git" />
       <img title="GitHub" alt="GitHub" src="https://skillicons.dev/icons?i=github" />
-      <img title="Jira" alt="Jira" src="https://skillicons.dev/icons?i=jira" />
       <img title="VS Code" alt="VS Code" src="https://skillicons.dev/icons?i=vscode" />
       <img title="IntelliJ IDEA" alt="IntelliJ IDEA" src="https://skillicons.dev/icons?i=intellij" />
       <img title="Android Studiod" alt="Android Studio" src="https://skillicons.dev/icons?i=androidstudio" />
@@ -86,10 +85,9 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 | 3 | US-003 | 🔴 ALTA | Como Administrador, quero cadastrar tipos de serviço, categorias de projeto e idiomas disponíveis, para que sirvam de base nos orçamentos, ordens de serviço e cadastros de recursos em todo o sistema. | 5 | E6 | 1 | ✔️ |
 | 4 | US-004 | 🔴 ALTA | Como Administrador, quero cadastrar recursos associando seus pares de idiomas e valores individuais, para viabilizar a alocação e o cálculo de custo nas ordens de serviço. | 5 | E6 | 1 | ✔️ |
 | 5 | US-005 | 🟠 MÉDIA | Como Administrador, quero cadastrar tabelas de preço associando tipo de serviço, par de idiomas e valor unitário, para que o sistema sugira automaticamente os valores ao montar um orçamento. | 8 | E6 | 1 | 🛠️ |
-| 6 | US-006 | 🟠 MÉDIA | Como Administrador, quero cadastrar e gerenciar templates de e-mail com placeholders dinâmicos, para padronizar e automatizar as comunicações com clientes e recursos sem depender de alterações de código. | 3 | E6 | 1 | 🔲 Não iniciada |
-| 7 | US-007 | 🔴 ALTA | Como Atendente, quero cadastrar manualmente uma solicitação de tradução vinculando um cliente (novo ou existente), para registrar demandas que chegam por e-mail, telefone ou outros canais de forma estruturada no sistema. | 8 | E2 · E6 | 1 | 🔲 Não iniciada |
-| 8 | US-008 | 🔴 ALTA | Como Atendente, quero elaborar um orçamento com os itens de serviço necessários e enviá-lo por e-mail ao cliente com um link de aprovação, para que o cliente possa aprovar ou recusar de forma autônoma. | 8 | E2 | 1 | 🔲 Não iniciada |
-| 9 | US-009 | 🟠 MÉDIA | Como Atendente, quero editar um orçamento recusado pelo cliente e reenviar para aprovação, para viabilizar negociações sem precisar criar um novo orçamento do zero. | 0 | E2 | 2 | 🔲 Não iniciada |
+| 7 | US-007 | 🔴 ALTA | Como Atendente, quero cadastrar manualmente uma solicitação de tradução vinculando um cliente (novo ou existente), para registrar demandas que chegam por e-mail, telefone ou outros canais de forma estruturada no sistema. | 8 | E2 · E6 | 1 | ✔️ |
+| 8 | US-008 | 🔴 ALTA | Como Atendente, quero elaborar um orçamento com os itens de serviço necessários e enviá-lo por e-mail ao cliente com um link de aprovação, para que o cliente possa aprovar ou recusar de forma autônoma. | 8 | E2 | 1 | ✔️ |
+| 9 | US-009 | 🟠 MÉDIA | Como Atendente, quero editar um orçamento recusado pelo cliente e reenviar para aprovação, para viabilizar negociações sem precisar criar um novo orçamento do zero. | 0 | E2 | 2 | ✔️ |
 | 10 | US-010 | 🔴 ALTA | Como Gestor de Projetos, quero criar, editar e reutilizar modelos de workflow, para agilizar a definição de etapas ao abrir novas ordens de serviço. | 0 | E6 | 2 | 🔲 Não iniciada |
 | 11 | US-011 | 🔴 ALTA | Como Gestor de Projetos, quero que ao aprovar um orçamento e uma Ordem de Serviço seja criada automaticamente, e que eu possa definir suas etapas aplicando um modelo de workflow ou montando manualmente, para iniciar o planejamento da produção. | 0 | E3 | 2 | 🛠️ |
 | 12 | US-012 | 🔴 ALTA | Como Gestor de Projetos, quero selecionar e alocar um recurso a cada etapa da OS verificando compatibilidade de idiomas e tipo de serviço, para garantir que cada etapa seja atribuída ao profissional adequado antes de iniciar a execução. | 0 | E3 | 3 | 🔲 Não iniciada |
