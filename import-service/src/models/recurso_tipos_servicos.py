@@ -2,7 +2,6 @@ from sqlalchemy import Column, ForeignKey, Table, Uuid
 
 from src.models.base import Base
 
-
 recurso_tipos_servico = Table(
     "recursos_tipos_servico",
     Base.metadata,

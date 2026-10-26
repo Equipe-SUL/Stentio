@@ -20,14 +20,14 @@ IMPORT_LOCK_KEY = 1937010277
 
 
 async def persist_plan(session, plan: ImportPlan):
-    report = dict(
-        recursos_criados=0,
-        recursos_reutilizados=0,
-        servicos_criados=0,
-        servicos_reutilizados=0,
-        vinculos_criados=0,
-        vinculos_existentes=0,
-    )
+    report = {
+        "recursos_criados": 0,
+        "recursos_reutilizados": 0,
+        "servicos_criados": 0,
+        "servicos_reutilizados": 0,
+        "vinculos_criados": 0,
+        "vinculos_existentes": 0,
+    }
     async with session.begin():
         if session.bind.dialect.name == "postgresql":
             await session.execute(
