@@ -69,7 +69,7 @@ export function SolicitacaoDetalhesModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 items-center justify-center bg-black/50 p-4">
-        <View className="w-full max-w-2xl max-h-[90%] rounded-2xl bg-white shadow-xl overflow-hidden flex-col">
+        <View className="w-full max-w-2xl h-[90%] max-h-[90%] rounded-2xl bg-white shadow-xl overflow-hidden flex-col">
           {/* Cabeçalho do modal */}
           <View className="flex-row items-center justify-between border-b border-neutral-200 px-6 py-4 bg-neutral-50">
             <View className="flex-1 mr-4">
