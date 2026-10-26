@@ -58,7 +58,7 @@ export function montarFormularioCsv(
       type: arquivo.mimeType ?? "text/csv",
     } as unknown as Blob);
   }
-  if (separador !== "auto") form.append("separador", separador);
+  form.append("separador", separador);
   return form;
 }
 
@@ -84,7 +84,7 @@ export async function validarRecursos(
   progresso: (valor: number) => void,
 ): Promise<PreviaImportacao> {
   const { data } = await importApi.post<PreviaImportacao>(
-    "/api/v1/importacoes/recursos/validar",
+    "/upload-csv/validar",
     montarFormularioCsv(arquivo, separador),
     {
       onUploadProgress: ({ loaded, total }) => {
@@ -92,7 +92,7 @@ export async function validarRecursos(
       },
     },
   );
-  return data;
+  return conferirPrevia(data);
 }
 
 export async function importarRecursos(
@@ -100,63 +100,131 @@ export async function importarRecursos(
   separador: Separador,
 ): Promise<RelatorioImportacao> {
   const { data } = await importApi.post<RelatorioImportacao>(
-    "/api/v1/importacoes/recursos",
+    "/upload-csv",
     montarFormularioCsv(arquivo, separador),
-    // O Core processa sequencialmente. Um timeout curto perde o relatório de um
-    // lote ainda em execução. Não há retry automático de chamadas de gravação.
+    // Aguarda a confirmação da transação inteira. Não repete gravações automaticamente.
     { timeout: 0 },
   );
-  return data;
+  return conferirRelatorio(data);
 }
+
+const AVISO_INDETERMINADO =
+  " O resultado da gravação não pôde ser confirmado. Confira os cadastros antes de reenviar.";
 
 export function extrairFalhaImportacao(
   error: unknown,
   gravando = false,
 ): FalhaImportacao {
   if (isAxiosError(error)) {
-    const body = error.response?.data;
-    const detail = body?.detail;
-    const falha: FalhaImportacao = {
-      mensagem:
-        typeof detail === "string"
-          ? detail
-          : typeof detail?.mensagem === "string"
-            ? detail.mensagem
-            : "",
-      codigo: typeof detail?.codigo === "string" ? detail.codigo : undefined,
-      linha: typeof detail?.linha === "number" ? detail.linha : undefined,
-      campo: typeof detail?.campo === "string" ? detail.campo : undefined,
-      relatorio: body?.relatorio,
-    };
-    if (!falha.mensagem) {
-      const status = error.response?.status;
-      falha.mensagem =
+    const detail = error.response?.data?.detail;
+    const status = error.response?.status;
+    let mensagem =
+      typeof detail === "string"
+        ? detail
+        : typeof detail?.mensagem === "string"
+          ? detail.mensagem
+          : "";
+    if (!mensagem) {
+      mensagem =
         status === 401
           ? "Sua sessão expirou. Entre novamente no Stentio."
           : status === 403
             ? "Você não tem permissão para importar recursos."
             : status === 413
               ? "O arquivo ultrapassa o limite de upload do servidor."
-              : !error.response
-                ? "Não foi possível obter uma resposta do serviço de importação."
-                : `Não foi possível concluir a solicitação (HTTP ${status}).`;
+              : status === 409
+                ? "O arquivo está em conflito com os cadastros existentes."
+                : status === 503
+                  ? "O serviço não conseguiu confirmar a importação no banco."
+                  : !error.response
+                    ? "Não foi possível obter uma resposta do serviço de importação."
+                    : `Não foi possível concluir a solicitação (HTTP ${status}).`;
     }
-    if (
-      gravando &&
-      !falha.relatorio &&
-      ![400, 401, 403, 413, 422].includes(error.response?.status ?? 0)
-    ) {
-      falha.mensagem +=
-        " O resultado da gravação é indeterminado. Confira os recursos no sistema antes de reenviar.";
-    }
-    return falha;
+    const resultado = !gravando
+      ? undefined
+      : [400, 401, 403, 409, 413, 422].includes(status ?? 0)
+        ? "nao_gravado"
+        : "indeterminado";
+    if (resultado === "indeterminado") mensagem += AVISO_INDETERMINADO;
+    return {
+      mensagem,
+      resultado,
+      codigo: typeof detail?.codigo === "string" ? detail.codigo : undefined,
+      linha: typeof detail?.linha === "number" ? detail.linha : undefined,
+      campo: typeof detail?.campo === "string" ? detail.campo : undefined,
+    };
   }
   return {
     mensagem:
-      error instanceof Error
+      (error instanceof Error
         ? error.message
-        : "Não foi possível concluir a solicitação.",
+        : "Não foi possível concluir a solicitação.") +
+      (gravando ? AVISO_INDETERMINADO : ""),
+    resultado: gravando ? "indeterminado" : undefined,
   };
+}
+
+function numero(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0;
+}
+
+export function conferirPrevia(data: PreviaImportacao): PreviaImportacao {
+  if (
+    data?.status !== "Validado" ||
+    typeof data.filename !== "string" ||
+    ![
+      data.total_linhas,
+      data.total_recursos,
+      data.total_servicos,
+      data.total_vinculos,
+    ].every(numero) ||
+    data.total_recursos < 1 ||
+    !Array.isArray(data.amostra_recursos) ||
+    !data.amostra_recursos.every(
+      (item) =>
+        item &&
+        typeof item.nome === "string" &&
+        typeof item.email === "string" &&
+        typeof item.ativo === "boolean" &&
+        (item.telefone === null || typeof item.telefone === "string") &&
+        Array.isArray(item.servicos) &&
+        item.servicos.every((s) => typeof s === "string"),
+    )
+  ) {
+    throw new Error(
+      "A resposta de validação não corresponde ao contrato de recursos e serviços. Confira a versão do Import Service.",
+    );
+  }
+  return data;
+}
+
+export function conferirRelatorio(
+  data: RelatorioImportacao,
+): RelatorioImportacao {
+  if (
+    data?.status !== "Concluido" ||
+    typeof data.filename !== "string" ||
+    ![
+      data.total_linhas,
+      data.total_recursos,
+      data.total_servicos,
+      data.recursos_criados,
+      data.recursos_reutilizados,
+      data.servicos_criados,
+      data.servicos_reutilizados,
+      data.vinculos_criados,
+      data.vinculos_existentes,
+    ].every(numero) ||
+    data.total_recursos < 1 ||
+    data.recursos_criados + data.recursos_reutilizados !==
+      data.total_recursos ||
+    data.servicos_criados + data.servicos_reutilizados !== data.total_servicos
+  ) {
+    throw new Error(
+      "O serviço respondeu fora do contrato esperado para a confirmação da importação.",
+    );
+  }
+  return data;
 }
 
 export function verificarArquivo(

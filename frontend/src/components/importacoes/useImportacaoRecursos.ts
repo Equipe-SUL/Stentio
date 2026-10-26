@@ -23,7 +23,7 @@ export function useImportacaoRecursos() {
     useState<ConfiguracaoImportacao | null>(null);
   const [erroConfiguracao, setErroConfiguracao] = useState("");
   const [arquivo, setArquivo] = useState<ArquivoCsv | null>(null);
-  const [separador, setSeparador] = useState<Separador>("auto");
+  const [separador, setSeparador] = useState<Separador>(";");
   const [etapa, setEtapa] = useState<EtapaImportacao>("arquivo");
   const [previa, setPrevia] = useState<PreviaImportacao | null>(null);
   const [relatorio, setRelatorio] = useState<RelatorioImportacao | null>(null);
@@ -164,7 +164,7 @@ export function useImportacaoRecursos() {
     } catch (error) {
       const falha = extrairFalhaImportacao(error, true);
       setErro(falha);
-      setRelatorio(falha.relatorio ?? null);
+      setRelatorio(null);
     } finally {
       setEtapa("resultado");
       ocupado.current = false;
@@ -175,7 +175,7 @@ export function useImportacaoRecursos() {
     if (ocupado.current) return;
     tentativaRealizada.current = false;
     setArquivo(null);
-    setSeparador("auto");
+    setSeparador(";");
     setRelatorio(null);
     limparPrevia();
   }

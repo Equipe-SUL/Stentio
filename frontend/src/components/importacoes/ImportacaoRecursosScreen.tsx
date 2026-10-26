@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -19,6 +19,12 @@ import { formatarBytes } from "../../lib/importacaoService";
 
 export function ImportacaoRecursosScreen() {
   const fluxo = useImportacaoRecursos();
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (fluxo.etapa === "importando" || fluxo.etapa === "resultado") {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }
+  }, [fluxo.etapa]);
   const router = useRouter();
   const [confirmar, setConfirmar] = useState(false);
   const [largura, setLargura] = useState(0);
@@ -33,6 +39,7 @@ export function ImportacaoRecursosScreen() {
     fluxo.etapa === "validando" || fluxo.etapa === "importando";
   return (
     <ScrollView
+      ref={scrollRef}
       className="flex-1 bg-[#fbfaf8]"
       contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
@@ -94,7 +101,7 @@ export function ImportacaoRecursosScreen() {
                     Importação de profissionais
                   </Text>
                   <Text className="text-xs text-zinc-500 mt-1">
-                    Recursos, serviços e preços
+                    Recursos e tipos de serviço
                   </Text>
                 </View>
               </View>
@@ -198,7 +205,7 @@ export function ImportacaoRecursosScreen() {
                     </Text>
                     <Text className="text-xs leading-5 text-zinc-500">
                       {fluxo.etapa === "importando"
-                        ? "Aguarde o relatório sem sair desta tela. Cada profissional é salvo separadamente."
+                        ? "Aguarde a confirmação sem sair desta tela. O arquivo inteiro é salvo em uma única transação."
                         : "Todas as linhas serão verificadas. Nenhum cadastro será gravado nesta etapa."}
                     </Text>
                   </View>
@@ -235,9 +242,10 @@ export function ImportacaoRecursosScreen() {
                 <PreviaRecursos previa={fluxo.previa} />
                 <View className="rounded-xl bg-amber-50 border border-amber-200 p-4">
                   <Text className="text-sm leading-5 text-amber-900">
-                    A validação ainda não gravou cadastros. Ao confirmar, o
-                    sistema poderá importar parte do arquivo e recusar outros
-                    recursos. Confira o relatório ao final.
+                    A validação ainda não consultou o banco nem gravou
+                    cadastros. Na importação, serviços serão criados ou
+                    reutilizados. Conflitos recusam o arquivo inteiro e
+                    preservam os cadastros existentes.
                   </Text>
                 </View>
                 <Pressable
@@ -265,8 +273,9 @@ export function ImportacaoRecursosScreen() {
                 ) : (
                   <View className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                     <Text className="text-sm leading-5 text-amber-900">
-                      O serviço não retornou um relatório. Confira a mensagem
-                      acima antes de iniciar outra importação.
+                      {fluxo.erro?.resultado === "nao_gravado"
+                        ? "Importação não concluída. Nenhuma alteração desta tentativa foi confirmada. Corrija o arquivo ou o conflito indicado antes de importar novamente."
+                        : "Confirmação indisponível. Confira os cadastros no sistema antes de reenviar o arquivo."}
                     </Text>
                   </View>
                 )}
@@ -316,9 +325,11 @@ export function ImportacaoRecursosScreen() {
               Confirmar importação
             </Text>
             <Text className="text-sm leading-6 text-zinc-600">
-              Você está prestes a enviar {fluxo.previa?.total_recursos} recursos
-              para cadastro. Recursos em conflito não serão alterados. Uma falha
-              poderá ocorrer após outros cadastros já terem sido salvos.
+              Você está prestes a importar {fluxo.previa?.total_recursos}{" "}
+              recursos e {fluxo.previa?.total_vinculos} vínculos com serviços. O
+              arquivo será processado em uma única transação. Dados conflitantes
+              impedem a importação inteira, sem sobrescrever cadastros
+              existentes.
             </Text>
             <View className="flex-row flex-wrap justify-end gap-3 pt-2">
               <Pressable

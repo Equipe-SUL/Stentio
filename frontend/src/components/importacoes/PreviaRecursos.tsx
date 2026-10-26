@@ -2,44 +2,39 @@ import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { DataTable } from "../usuarios/DataTable";
 import type { ColumnDef } from "../usuarios/types";
-import type { PreviaImportacao } from "./types";
+import type { PreviaImportacao, RecursoPrevia } from "./types";
 
-type Amostra = PreviaImportacao["amostra_recursos"][number] & {
-  totalPrecos: number;
-};
-const columns: ColumnDef<Amostra>[] = [
+const columns: ColumnDef<RecursoPrevia>[] = [
   {
-    key: "dados",
+    key: "nome",
     header: "Profissional",
-    render: ({ dados }) => (
-      <View className="min-w-0 gap-1">
-        <Text className="text-sm font-semibold text-zinc-900">
-          {dados.nome}
-        </Text>
+    render: (item) => (
+      <View className="gap-1 min-w-0">
+        <Text className="text-sm font-semibold text-zinc-900">{item.nome}</Text>
         <Text className="text-xs text-zinc-500" selectable>
-          {dados.email}
+          {item.email}
+        </Text>
+        <Text className="text-xs text-zinc-500">
+          {item.telefone ?? "Sem telefone"}
         </Text>
       </View>
     ),
   },
   {
-    key: "linhas",
-    header: "Linhas do CSV",
-    width: 120,
-    render: ({ linhas }) => (
-      <Text className="text-sm text-zinc-600">{linhas.join(", ")}</Text>
+    key: "ativo",
+    header: "Status",
+    width: 90,
+    render: ({ ativo }) => (
+      <Text className="text-sm text-zinc-600">
+        {ativo ? "Ativo" : "Inativo"}
+      </Text>
     ),
   },
   {
-    key: "totalPrecos",
-    header: "Preços",
-    width: 125,
-    render: ({ dados }) => (
-      <Text className="text-sm text-zinc-600">
-        {dados.precos.length} {dados.precos.length === 1 ? "preço" : "preços"}
-        {"\n"}
-        {dados.tiposServicoIds.length} serviço(s)
-      </Text>
+    key: "servicos",
+    header: "Serviços",
+    render: ({ servicos }) => (
+      <Text className="text-sm text-zinc-600">{servicos.join(", ")}</Text>
     ),
   },
 ];
@@ -54,24 +49,26 @@ export function PreviaRecursos({ previa }: { previa: PreviaImportacao }) {
             Arquivo validado
           </Text>
           <Text className="text-sm leading-5 text-emerald-800">
-            Estrutura e dados locais conferidos. Idiomas, serviços e cadastros
-            existentes serão verificados pelo sistema durante a importação.
+            Estrutura e dados locais conferidos. Conflitos com os cadastros
+            existentes serão verificados durante a importação. Nenhum dado foi
+            gravado.
           </Text>
         </View>
       </View>
       <View className="flex-row flex-wrap gap-3">
         {[
-          { valor: previa.total_linhas, label: "Linhas no arquivo" },
-          { valor: previa.total_recursos, label: "Recursos para importar" },
-        ].map((item) => (
+          ["Linhas no arquivo", previa.total_linhas],
+          ["Recursos", previa.total_recursos],
+          ["Serviços distintos", previa.total_servicos],
+          ["Vínculos", previa.total_vinculos],
+        ].map(([label, valor]) => (
           <View
-            key={item.label}
-            className="flex-1 min-w-32 rounded-xl border border-zinc-200 bg-white p-4"
+            key={label}
+            style={{ flexBasis: "45%", flexGrow: 1, minWidth: 128 }}
+            className="rounded-xl border border-zinc-200 bg-white p-4"
           >
-            <Text className="text-2xl font-bold text-zinc-900">
-              {item.valor}
-            </Text>
-            <Text className="text-xs text-zinc-500 mt-1">{item.label}</Text>
+            <Text className="text-2xl font-bold text-zinc-900">{valor}</Text>
+            <Text className="text-xs text-zinc-500 mt-1">{label}</Text>
           </View>
         ))}
       </View>
@@ -85,12 +82,9 @@ export function PreviaRecursos({ previa }: { previa: PreviaImportacao }) {
         </Text>
       </View>
       <DataTable
-        data={previa.amostra_recursos.map((item) => ({
-          ...item,
-          totalPrecos: item.dados.precos.length,
-        }))}
+        data={previa.amostra_recursos}
         columns={columns}
-        keyExtractor={(item) => item.dados.email}
+        keyExtractor={(item) => item.email}
         scrollEnabled={false}
         mobileBreakpoint={580}
       />

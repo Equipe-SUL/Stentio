@@ -95,7 +95,6 @@ export function ArquivoCsvField({
         <View className="flex-row flex-wrap gap-2">
           {(
             [
-              { valor: "auto", texto: "Automático" },
               { valor: ";", texto: "Ponto e vírgula (;)" },
               { valor: ",", texto: "Vírgula (,)" },
             ] as const
@@ -117,7 +116,7 @@ export function ArquivoCsvField({
           ))}
         </View>
         <Text className="text-xs leading-5 text-zinc-500">
-          Se a detecção for ambígua, escolha o separador usado no arquivo.
+          Selecione o separador do arquivo. O modelo usa ponto e vírgula (;).
         </Text>
       </View>
     </View>

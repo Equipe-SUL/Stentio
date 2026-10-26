@@ -4,24 +4,22 @@ import { Ionicons } from "@expo/vector-icons";
 import type { ConfiguracaoImportacao } from "./types";
 
 const COLUNAS = [
-  ["nome", "Nome do profissional."],
-  ["email", "Identifica e agrupa o profissional."],
-  ["telefone", "Opcional. Com DDD, se informado."],
-  ["tipos_servico_ids", "UUIDs dos serviços, separados por |."],
-  ["idioma_origem_id", "UUID do idioma de origem."],
-  ["idioma_destino_id", "UUID do idioma de destino."],
-  ["unidade", "PALAVRA ou HORA."],
-  ["valor", "Valor positivo, até 4 casas decimais."],
+  ["ativo", "Status do profissional: 1 para ativo ou 0 para inativo."],
+  ["e-mail", "E-mail válido. Identifica e agrupa o profissional."],
+  ["nome", "Nome do profissional, até 255 caracteres."],
+  ["telefone", "Opcional. Até 20 caracteres; mantenha como texto."],
+  ["tipo_servico", "Nome do serviço, até 255 caracteres."],
+  ["descricao_servico", "Opcional. Descrição do serviço, até 500 caracteres."],
 ];
 const MODELO =
-  "nome;email;telefone;tipos_servico_ids;idioma_origem_id;idioma_destino_id;unidade;valor\r\nAna Exemplo;ana@example.com;;00000000-0000-0000-0000-000000000001;00000000-0000-0000-0000-000000000002;00000000-0000-0000-0000-000000000003;PALAVRA;0,25\r\n";
+  "ativo;e-mail;nome;telefone;tipo_servico;descricao_servico\r\n1;ana@example.com;Ana;01199990000;Tradução;\r\n1;ana@example.com;Ana;01199990000;Revisão;\r\n1;bruno@example.com;Bruno;;Tradução;\r\n";
 function baixarModelo() {
   const url = URL.createObjectURL(
     new Blob(["\uFEFF", MODELO], { type: "text/csv;charset=utf-8" }),
   );
   const link = document.createElement("a");
   link.href = url;
-  link.download = "recursos-modelo.csv";
+  link.download = "recursos-servicos.csv";
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -48,8 +46,8 @@ export function OrientacoesCsv({
       </Text>
       <View className="gap-3">
         <Text className="text-sm leading-5 text-zinc-600">
-          Uma linha representa um preço. Repita os dados do profissional para
-          adicionar outros pares de idiomas ou unidades.
+          Uma linha representa um vínculo entre profissional e serviço. Repita o
+          mesmo e-mail para associar outros serviços ao profissional.
         </Text>
         {configuracao ? (
           <Text className="text-sm leading-5 text-zinc-600">
@@ -63,8 +61,8 @@ export function OrientacoesCsv({
           Antes de importar
         </Text>
         <Text className="text-xs leading-5 text-amber-900">
-          Idiomas e tipos de serviço precisam existir. Cadastros em conflito não
-          são sobrescritos. Cada profissional é salvo separadamente.
+          Serviços existentes são reutilizados e os ausentes são criados.
+          Conflitos recusam o arquivo inteiro; cadastros não são sobrescritos.
         </Text>
       </View>
       {Platform.OS === "web" ? (
@@ -81,9 +79,9 @@ export function OrientacoesCsv({
         </Pressable>
       ) : null}
       <Text className="text-xs leading-5 text-zinc-500">
-        O exemplo contém UUIDs fictícios. Substitua pelos identificadores
-        cadastrados no sistema. O layout é provisório até a confirmação do
-        arquivo do cliente.
+        O exemplo representa 2 recursos, 2 serviços e 3 vínculos. Use dados
+        fictícios no teste. O layout é provisório até o alinhamento com o
+        cliente.
       </Text>
       <Pressable
         onPress={() => setExpandido(!expandido)}

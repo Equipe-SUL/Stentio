@@ -1,7 +1,7 @@
 import type { DocumentPickerAsset } from "expo-document-picker";
 
 export type ArquivoCsv = DocumentPickerAsset;
-export type Separador = "auto" | "," | ";";
+export type Separador = "," | ";";
 export type EtapaImportacao =
   "arquivo" | "validando" | "revisao" | "importando" | "resultado";
 
@@ -11,60 +11,36 @@ export interface ConfiguracaoImportacao {
   max_linhas: number;
 }
 
+export interface RecursoPrevia {
+  nome: string;
+  email: string;
+  telefone: string | null;
+  ativo: boolean;
+  servicos: string[];
+}
+
 export interface PreviaImportacao {
+  status: "Validado";
   filename: string;
   total_linhas: number;
   total_recursos: number;
-  validacao: "LOCAL";
-  amostra_recursos: {
-    linhas: number[];
-    dados: {
-      nome: string;
-      email: string;
-      telefone: string | null;
-      tiposServicoIds: string[];
-      precos: {
-        idiomaOrigemId: string;
-        idiomaDestinoId: string;
-        unidade: "PALAVRA" | "HORA";
-        valor: string;
-      }[];
-    };
-  }[];
-}
-
-export type StatusRecurso =
-  | "IMPORTADO"
-  | "CONFLITO"
-  | "REJEITADO"
-  | "INDETERMINADO"
-  | "NAO_PROCESSADO"
-  | "FALHA_CONEXAO";
-export interface ResultadoRecurso {
-  email: string;
-  linhas: number[];
-  status: StatusRecurso;
-  mensagem?: string;
-  id?: string;
+  total_servicos: number;
+  total_vinculos: number;
+  amostra_recursos: RecursoPrevia[];
 }
 
 export interface RelatorioImportacao {
+  status: "Concluido";
   filename: string;
-  status:
-    | "CONCLUIDA"
-    | "CONCLUIDA_COM_CONFLITOS"
-    | "PARCIAL"
-    | "FALHOU"
-    | "INDETERMINADA";
   total_linhas: number;
   total_recursos: number;
-  importados: number;
-  conflitos: number;
-  rejeitados: number;
-  indeterminados: number;
-  nao_processados: number;
-  falhas_conexao: number;
-  resultados: ResultadoRecurso[];
+  total_servicos: number;
+  recursos_criados: number;
+  recursos_reutilizados: number;
+  servicos_criados: number;
+  servicos_reutilizados: number;
+  vinculos_criados: number;
+  vinculos_existentes: number;
 }
 
 export interface FalhaImportacao {
@@ -72,5 +48,5 @@ export interface FalhaImportacao {
   codigo?: string;
   linha?: number;
   campo?: string;
-  relatorio?: RelatorioImportacao;
+  resultado?: "nao_gravado" | "indeterminado";
 }
