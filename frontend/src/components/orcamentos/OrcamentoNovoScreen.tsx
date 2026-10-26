@@ -5,10 +5,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { coreApi, getApiErrorMessage } from "../../lib/api";
 import { CabecalhoTela } from "../navegacao/CabecalhoTela";
-import { listarSolicitacoes } from "../solicitacoes/solicitacoesApi";
+import { buscarSolicitacao, listarSolicitacoes } from "../solicitacoes/solicitacoesApi";
 import type { SolicitacaoResponse } from "../solicitacoes/types";
 import { SelectField } from "../solicitacoes/SelectField";
-import { codigoOrcamento, criarCabecalho, salvarItens, type OrcamentoItemInput, type UnidadeCobranca } from "./orcamentosApi";
+import { buscarOrcamento, codigoOrcamento, criarCabecalho, salvarItens, type OrcamentoItemInput, type UnidadeCobranca } from "./orcamentosApi";
 
 interface Idioma { id: string; nome: string; codigoIso: string; }
 interface TipoServico { id: string; nome: string; ativo: boolean; }
@@ -57,7 +57,7 @@ function SeletorData({ value, onChange }: { value: string; onChange: (data: stri
 
 export function OrcamentoNovoScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ solicitacaoId?: string }>();
+  const params = useLocalSearchParams<{ solicitacaoId?: string; orcamentoId?: string }>();
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoResponse[]>([]);
   const [solicitacaoId, setSolicitacaoId] = useState(params.solicitacaoId ?? "");
   const solicitacao = solicitacoes.find((s) => s.id === solicitacaoId);
@@ -65,6 +65,7 @@ export function OrcamentoNovoScreen() {
   const [tipos, setTipos] = useState<TipoServico[]>([]);
   const [dataExpiracao, setDataExpiracao] = useState(hojeMaisSete());
   const [orcamentoId, setOrcamentoId] = useState("");
+  const [etapaItens, setEtapaItens] = useState(false);
   const [itens, setItens] = useState<ItemForm[]>([novoItem()]);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -72,55 +73,85 @@ export function OrcamentoNovoScreen() {
 
   useEffect(() => {
     let ativo = true;
+    setCarregando(true);
+    setOrcamentoId("");
+    setEtapaItens(false);
+    setErro("");
     Promise.all([
-      listarSolicitacoes(),
+      params.orcamentoId ? buscarOrcamento(params.orcamentoId) : Promise.resolve(null),
+      params.orcamentoId ? Promise.resolve([]) : listarSolicitacoes(),
       coreApi.get<{ content: Idioma[] }>("/api/v1/idiomas", { params: { ativo: true, size: 100 } }),
       coreApi.get<{ content: TipoServico[] }>("/api/v1/tipos-servico", { params: { ativo: true, size: 100 } }),
-    ]).then(([sols, idi, serv]) => {
+    ]).then(async ([orcamento, sols, idi, serv]) => {
+      if (orcamento && orcamento.status !== "EM_ELABORACAO") {
+        if (ativo) setErro("Somente orçamentos em elaboração podem ser editados.");
+        return;
+      }
+      const vinculada = orcamento ? await buscarSolicitacao(orcamento.solicitacao_id) : null;
       if (!ativo) return;
-      const disponiveis = sols.filter((s) => s.status === "PENDENTE_ORCAMENTO");
+      const disponiveis = vinculada ? [vinculada] : sols.filter((s) => s.status === "PENDENTE_ORCAMENTO");
       setSolicitacoes(disponiveis);
       setIdiomas(idi.data.content ?? []);
       setTipos(serv.data.content ?? []);
-      const escolha = params.solicitacaoId
+      const escolha = vinculada ?? (params.solicitacaoId
         ? disponiveis.find((s) => s.id === params.solicitacaoId)
-        : disponiveis[0];
+        : disponiveis[0]);
       setSolicitacaoId(escolha?.id ?? "");
-      if (escolha) setItens([novoItem(escolha.idiomaOrigem.id, escolha.idiomaDestino.id)]);
+      if (orcamento) {
+        setOrcamentoId(orcamento.id);
+        setEtapaItens(true);
+      }
+      if (orcamento?.itens.length) {
+        setItens(orcamento.itens.map((item) => ({
+          origem: item.idioma_origem_id, destino: item.idioma_destino_id,
+          servicos: item.servicos.map((servico) => ({
+            tipo: servico.tipo_servico, quantidade: String(servico.quantidade),
+            unidade: servico.unidade, valor: String(servico.valor_unitario),
+          })),
+        })));
+      } else if (escolha) setItens([novoItem(escolha.idiomaOrigem.id, escolha.idiomaDestino.id)]);
     }).catch((e) => { if (ativo) setErro(getApiErrorMessage(e)); }).finally(() => { if (ativo) setCarregando(false); });
     return () => { ativo = false; };
-  }, [params.solicitacaoId]);
+  }, [params.solicitacaoId, params.orcamentoId]);
 
 
   const total = useMemo(() => itens.reduce((soma, item) => soma + item.servicos.reduce((sub, serv) => sub + numerico(serv.quantidade) * numerico(serv.valor), 0), 0), [itens]);
+  const itensValidos = itens.length > 0 && itens.every((item) => item.origem && item.destino && item.origem !== item.destino && item.servicos.length > 0 && item.servicos.every((s) => s.tipo.trim() && positivo(s.quantidade) && positivo(s.valor)));
   const opcoesSolicitacao = solicitacoes.map((s) => ({ value: s.id, label: `${s.cliente.nomeEmpresa} · ${s.categoriaProjeto.nome} · ${s.idiomaOrigem.codigoIso.toUpperCase()} → ${s.idiomaDestino.codigoIso.toUpperCase()}` }));
   const opcoesIdioma = idiomas.map((idioma) => ({ value: idioma.id, label: `${idioma.nome} (${idioma.codigoIso.toUpperCase()})` }));
   const opcoesTipoServico = tipos.map((tipo) => ({ value: tipo.nome, label: tipo.nome }));
   const mudarItem = (index: number, patch: Partial<ItemForm>) => setItens((atual) => atual.map((item, i) => i === index ? { ...item, ...patch } : item));
   const mudarServico = (itemIndex: number, servicoIndex: number, patch: Partial<ServicoForm>) => setItens((atual) => atual.map((item, i) => i === itemIndex ? { ...item, servicos: item.servicos.map((serv, j) => j === servicoIndex ? { ...serv, ...patch } : serv) } : item));
 
-  const iniciar = async () => {
+  const iniciar = () => {
     if (!solicitacao) return;
-    setErro(""); setSalvando(true);
-    try {
-      const expiracao = new Date(`${dataExpiracao}T23:59:59.000Z`);
-      if (Number.isNaN(expiracao.getTime()) || expiracao.getTime() <= Date.now()) { setErro("A data de expiração deve ser futura."); return; }
-      const criado = await criarCabecalho(solicitacao.id, solicitacao.cliente.id, expiracao.toISOString());
-      setOrcamentoId(criado.id);
-    } catch (e) { setErro(getApiErrorMessage(e)); }
-    finally { setSalvando(false); }
+    setErro("");
+    const expiracao = new Date(`${dataExpiracao}T23:59:59.000Z`);
+    if (Number.isNaN(expiracao.getTime()) || expiracao.getTime() <= Date.now()) { setErro("A data de expiração deve ser futura."); return; }
+    setEtapaItens(true);
   };
 
   const submeter = async () => {
+    if (salvando || carregando || !solicitacao) return;
     setErro("");
-    const validos = itens.length > 0 && itens.every((item) => item.origem && item.destino && item.origem !== item.destino && item.servicos.length > 0 && item.servicos.every((s) => s.tipo && positivo(s.quantidade) && positivo(s.valor)));
-    if (!validos) { setErro("Revise os idiomas e preencha todos os serviços com quantidade e valor maiores que zero."); return; }
+    if (!itensValidos) { setErro("Revise os idiomas e preencha todos os serviços com quantidade e valor maiores que zero."); return; }
     const payload: OrcamentoItemInput[] = itens.map((item, idx) => ({
       ordem: idx + 1, idioma_origem_id: item.origem, idioma_destino_id: item.destino,
       servicos: item.servicos.map((serv) => ({ tipo_servico: serv.tipo, quantidade: numerico(serv.quantidade), unidade: serv.unidade, valor_unitario: numerico(serv.valor) })),
     }));
     setSalvando(true);
-    try { await salvarItens(orcamentoId, payload); router.replace(`/orcamentos/${orcamentoId}`); }
+    try {
+      let id = orcamentoId;
+      if (!id) {
+        const expiracao = new Date(`${dataExpiracao}T23:59:59.000Z`);
+        if (Number.isNaN(expiracao.getTime()) || expiracao.getTime() <= Date.now()) { setErro("A data de expiração deve ser futura."); return; }
+        const criado = await criarCabecalho(solicitacao.id, solicitacao.cliente.id, expiracao.toISOString());
+        id = criado.id;
+        setOrcamentoId(id);
+      }
+      await salvarItens(id, payload);
+      router.replace(`/orcamentos/${id}`);
+    }
     catch (e) { setErro(getApiErrorMessage(e)); }
     finally { setSalvando(false); }
   };
@@ -130,7 +161,7 @@ export function OrcamentoNovoScreen() {
       <CabecalhoTela contexto="Operacional" secao="Orçamentos" titulo={orcamentoId ? "Elaborar orçamento" : "Novo orçamento"} descricao="Selecione a solicitação e monte a proposta com os serviços e valores." rotaFallback="/orcamentos" compacto />
       {carregando ? <View className="items-center rounded-xl bg-white p-10"><ActivityIndicator color="#6f4f28" /></View> : null}
       {erro ? <View className="rounded-lg border border-red-200 bg-red-50 p-3"><Text className="text-sm text-red-700">{erro}</Text></View> : null}
-      {!orcamentoId ? <View className="gap-4 rounded-2xl border border-neutral-200 bg-white p-5">
+      {!carregando && (!params.orcamentoId || orcamentoId) ? !etapaItens ? <View className="gap-4 rounded-2xl border border-neutral-200 bg-white p-5">
         <Text className="text-lg font-semibold text-neutral-900">1. Cabeçalho da proposta</Text>
         <Text className="text-sm text-neutral-600">Escolha a solicitação que originou este orçamento.</Text>
         {solicitacoes.length === 0 && !carregando ? <Text className="text-sm text-neutral-500">Não há solicitações pendentes de orçamento.</Text> : null}
@@ -147,12 +178,12 @@ export function OrcamentoNovoScreen() {
           disabled={carregando || solicitacoes.length === 0}
         />
         <SeletorData value={dataExpiracao} onChange={setDataExpiracao} />
-        <Pressable disabled={!solicitacao || salvando || carregando} onPress={() => void iniciar()} className="flex-row items-center justify-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3 disabled:opacity-50">{salvando ? <ActivityIndicator color="white" /> : null}<Text className="font-semibold text-white">Criar cabeçalho e continuar</Text></Pressable>
+        <Pressable disabled={!solicitacao || salvando || carregando} onPress={iniciar} className="flex-row items-center justify-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3 disabled:opacity-50"><Text className="font-semibold text-white">Continuar para itens e valores</Text></Pressable>
       </View> : <>
         <View className="w-full items-center overflow-hidden rounded-xl border border-green-200 bg-green-50 px-4 py-3">
-          <Text className="mb-2 text-xs font-medium text-green-700">Cabeçalho criado</Text>
+          <Text className="mb-2 text-xs font-medium text-green-700">{orcamentoId ? "Orçamento em elaboração" : "Solicitação selecionada"}</Text>
           <ScrollView horizontal className="w-full" contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }} showsHorizontalScrollIndicator>
-            <Text selectable numberOfLines={1} style={{ flexShrink: 0 }} className="text-sm font-semibold text-green-800">{codigoOrcamento(orcamentoId)} - {solicitacao?.cliente.nomeEmpresa ?? "Solicitação"}</Text>
+            <Text selectable numberOfLines={1} style={{ flexShrink: 0 }} className="text-sm font-semibold text-green-800">{orcamentoId ? `${codigoOrcamento(orcamentoId)} - ` : ""}{solicitacao?.cliente.nomeEmpresa ?? "Solicitação"}</Text>
           </ScrollView>
         </View>
         <View className="gap-4 rounded-2xl border border-neutral-200 bg-white p-5">
@@ -173,9 +204,9 @@ export function OrcamentoNovoScreen() {
           </View>)}
           <Pressable onPress={() => setItens((atual) => [...atual, novoItem()])} className="self-start rounded-lg border border-neutral-300 bg-white px-4 py-2.5"><Text className="text-sm font-medium text-neutral-700">+ Adicionar par de idiomas</Text></Pressable>
           <View className="flex-row items-center justify-between rounded-xl bg-[#f4e9df] p-4"><Text className="font-semibold text-neutral-800">Total estimado</Text><Text className="text-lg font-bold text-[#6f4f28]">{dinheiro(total)}</Text></View>
-          <Pressable disabled={salvando || itens.some((i) => !i.origem || i.origem === i.destino || !i.servicos.length || i.servicos.some((s) => !s.tipo || !positivo(s.quantidade) || !positivo(s.valor)))} onPress={() => void submeter()} className="flex-row items-center justify-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3 disabled:opacity-50">{salvando ? <ActivityIndicator color="white" /> : null}<Text className="font-semibold text-white">Salvar orçamento</Text></Pressable>
+          <Pressable disabled={salvando || !itensValidos} onPress={() => void submeter()} className="flex-row items-center justify-center gap-2 rounded-lg bg-[#6f4f28] px-5 py-3 disabled:opacity-50">{salvando ? <ActivityIndicator color="white" /> : null}<Text className="font-semibold text-white">Salvar orçamento</Text></Pressable>
         </View>
-      </>}
+      </> : null}
     </View>
   </ScrollView>;
 }

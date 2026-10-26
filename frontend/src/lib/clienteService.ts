@@ -14,6 +14,20 @@ export interface Cliente {
   cpfCnpj: string;
 }
 
+export function formatarCpfCnpj(valor: string): string {
+  const digitos = valor.replace(/\D/g, "");
+
+  if (digitos.length === 11) {
+    return digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  }
+
+  if (digitos.length === 14) {
+    return digitos.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  }
+
+  return valor;
+}
+
 // Telefone é o único campo opcional: o Core aceita vazio e normaliza para
 // null na entidade, então ele volta vazio na listagem.
 export const camposCliente: FieldDef<Cliente>[] = [
@@ -40,6 +54,7 @@ export const camposCliente: FieldDef<Cliente>[] = [
     label: "CPF ou CNPJ",
     type: "text",
     placeholder: "Somente números",
+    formatDisplay: (valor) => formatarCpfCnpj(String(valor)),
   },
   {
     key: "telefone",

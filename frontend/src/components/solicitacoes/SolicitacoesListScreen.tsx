@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { CabecalhoTela } from "../navegacao/CabecalhoTela";
 import { DataTable } from "../usuarios/DataTable";
@@ -21,16 +22,16 @@ import { SolicitacaoDetalhesModal } from "./SolicitacaoDetalhesModal";
 type FiltroStatusSolicitacao =
   | "TODOS"
   | "PENDENTE_ORCAMENTO"
-  | "EM_ANDAMENTO"
-  | "FINALIZADA"
-  | "CANCELADA";
+  | "AGUARDANDO_APROVACAO"
+  | "ORCAMENTO_REJEITADO"
+  | "EM_EXECUCAO";
 
 const OPCOES_FILTRO: { valor: FiltroStatusSolicitacao; rotulo: string }[] = [
   { valor: "TODOS", rotulo: "Todas" },
   { valor: "PENDENTE_ORCAMENTO", rotulo: "Pendente Orçamento" },
-  { valor: "EM_ANDAMENTO", rotulo: "Em Andamento" },
-  { valor: "FINALIZADA", rotulo: "Finalizada" },
-  { valor: "CANCELADA", rotulo: "Cancelada" },
+  { valor: "AGUARDANDO_APROVACAO", rotulo: "Aguardando aprovação" },
+  { valor: "ORCAMENTO_REJEITADO", rotulo: "Orçamento rejeitado" },
+  { valor: "EM_EXECUCAO", rotulo: "Em execução" },
 ];
 
 function formatarData(isoString?: string): string {
@@ -71,9 +72,13 @@ export function SolicitacoesListScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
+  useFocusEffect(useCallback(() => {
+    void carregar();
+    if (Platform.OS !== "web") return;
+    const atualizarAoVoltar = () => { void carregar(); };
+    window.addEventListener("focus", atualizarAoVoltar);
+    return () => window.removeEventListener("focus", atualizarAoVoltar);
+  }, [carregar]));
 
   // Filtragem no cliente por termo e status
   const solicitacoesFiltradas = useMemo(() => {

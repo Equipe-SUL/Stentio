@@ -44,6 +44,10 @@ class OrcamentoPublicoServiceTest {
         orcamento.setDataExpiracao(agora.plusSeconds(3600));
         orcamento.setTokenHash(TokenOrcamento.hash(token));
         orcamento.setValorTotal(new BigDecimal("1500.00"));
+        Solicitacao solicitacao = new Solicitacao(mock(Cliente.class), new CategoriaProjeto(),
+                new Idioma(), new Idioma(), "Teste de decisão");
+        solicitacao.iniciarOrcamento();
+        orcamento.setSolicitacao(solicitacao);
         OrcamentoItemServico servico = new OrcamentoItemServico();
         servico.setTipoServico("Tradução Juramentada");
         servico.setQuantidade(new BigDecimal("5000"));
@@ -96,6 +100,7 @@ class OrcamentoPublicoServiceTest {
         orcamento.setDataExpiracao(agora.minusSeconds(1));
         assertThrows(LinkOrcamentoInvalidoException.class, () -> service.aprovar(token));
         assertEquals(StatusOrcamento.AGUARDANDO_APROVACAO, orcamento.getStatus());
+        assertEquals(StatusSolicitacao.AGUARDANDO_APROVACAO, orcamento.getSolicitacao().getStatus());
         verifyNoInteractions(historico, outbox);
     }
 
@@ -104,6 +109,7 @@ class OrcamentoPublicoServiceTest {
         prepararDecisao();
         var resposta = service.aprovar(token);
         assertEquals(StatusOrcamento.APROVADO, resposta.status());
+        assertEquals(StatusSolicitacao.EM_EXECUCAO, orcamento.getSolicitacao().getStatus());
         assertEquals(agora, orcamento.getTokenUtilizadoEm());
         var registro = ArgumentCaptor.forClass(OrcamentoHistorico.class);
         verify(historico).save(registro.capture());
@@ -124,6 +130,7 @@ class OrcamentoPublicoServiceTest {
     void rejeitaGravaMotivoNoHistoricoEEvento() {
         prepararDecisao();
         assertEquals(StatusOrcamento.REJEITADO, service.rejeitar(token, "  Valor acima do orçamento  ").status());
+        assertEquals(StatusSolicitacao.ORCAMENTO_REJEITADO, orcamento.getSolicitacao().getStatus());
         var registro = ArgumentCaptor.forClass(OrcamentoHistorico.class);
         verify(historico).save(registro.capture());
         assertEquals("Valor acima do orçamento", registro.getValue().getMotivo());
@@ -131,6 +138,13 @@ class OrcamentoPublicoServiceTest {
         verify(outbox).save(pendente.capture());
         assertEquals("orcamento.rejeitado", pendente.getValue().getRoutingKey());
         assertEquals("Valor acima do orçamento", mapper.readTree(pendente.getValue().getPayload()).get("motivo").asText());
+    }
+
+    @Test
+    void orcamentoLegadoSemSolicitacaoContinuaAceitandoDecisao() {
+        prepararDecisao();
+        orcamento.setSolicitacao(null);
+        assertEquals(StatusOrcamento.APROVADO, service.aprovar(token).status());
     }
 
     @Test

@@ -4,12 +4,7 @@ import { getToken } from "./auth";
 import { instrumentarHttp } from "./httpDebug";
 
 const DEFAULT_API_URL =
-  Platform.OS === "web"
-    ? "/"
-    : Platform.OS === "android"
-      ? "http://10.0.2.2:8081"
-      : "http://localhost:8081";
-
+  Platform.OS === "android" ? "http://10.0.2.2:8081" : "/";
 
 function resolveApiUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;

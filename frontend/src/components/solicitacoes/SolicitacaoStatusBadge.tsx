@@ -2,9 +2,9 @@ import { Text, View } from "react-native";
 
 export type StatusSolicitacaoTipo =
   | "PENDENTE_ORCAMENTO"
-  | "EM_ANDAMENTO"
-  | "CANCELADA"
-  | "FINALIZADA"
+  | "AGUARDANDO_APROVACAO"
+  | "ORCAMENTO_REJEITADO"
+  | "EM_EXECUCAO"
   | string;
 
 const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = {
@@ -13,18 +13,18 @@ const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = 
     bg: "bg-amber-50 border border-amber-200",
     text: "text-amber-700",
   },
-  EM_ANDAMENTO: {
-    label: "Em Andamento",
+  AGUARDANDO_APROVACAO: {
+    label: "Aguardando aprovação",
     bg: "bg-blue-50 border border-blue-200",
     text: "text-blue-700",
   },
-  FINALIZADA: {
-    label: "Finalizada",
+  EM_EXECUCAO: {
+    label: "Em execução",
     bg: "bg-emerald-50 border border-emerald-200",
     text: "text-emerald-700",
   },
-  CANCELADA: {
-    label: "Cancelada",
+  ORCAMENTO_REJEITADO: {
+    label: "Orçamento rejeitado",
     bg: "bg-red-50 border border-red-200",
     text: "text-red-700",
   },

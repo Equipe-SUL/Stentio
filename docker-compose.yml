@@ -77,13 +77,12 @@ services:
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:8081,http://localhost:8082,http://localhost:19006}
       SEED_TEST_DATA_ENABLED: ${SEED_TEST_DATA_ENABLED:-false}
 
-      ORCAMENTO_URL_CONSULTA_PUBLICA: ${ORCAMENTO_URL_CONSULTA_PUBLICA:-http://localhost/orcamento}
-      APP_ARQUIVOS_DIRETORIO: /app/uploads
-
       # Link que vai no e-mail de aprovação do orçamento: a tela pública da US-15, servida
       # pelo nginx do front. O cliente é externo, então em qualquer ambiente que não seja a
       # máquina do dev isto precisa ser o endereço público.
       ORCAMENTO_URL_CONSULTA_PUBLICA: ${ORCAMENTO_URL_CONSULTA_PUBLICA:-http://localhost/orcamento}
+      APP_ARQUIVOS_DIRETORIO: /app/uploads
+
     ports:
       - "${CORE_SERVER_PORT:-8082}:8080"
     volumes:

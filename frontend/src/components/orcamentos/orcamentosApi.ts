@@ -29,3 +29,12 @@ export async function salvarItens(id: string, itens: OrcamentoItemInput[]) {
   const { data } = await coreApi.post<OrcamentoDetalhe>(`/api/v1/orcamentos/${id}/itens`, { itens });
   return data;
 }
+
+export async function enviarOrcamentoAoCliente(id: string) {
+  const { data } = await coreApi.post<{
+    id: string;
+    status: StatusOrcamento;
+    mensagem: string;
+  }>(`/api/v1/orcamentos/${id}/enviar-aprovacao`);
+  return data;
+}
