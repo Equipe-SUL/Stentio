@@ -36,6 +36,7 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
 ## 💻 Tecnologias <a id="tecnologias"></a>
 <h4 align="center">
       <img title="Java" alt="Java" src="https://skillicons.dev/icons?i=java" />
+      <img title="Spring Boot" alt="Spring Boot" src="https://skillicons.dev/icons?i=spring" />
       <img title="Spring" alt="Spring" src="https://skillicons.dev/icons?i=spring" />
       <img title="Gradle" alt="Gradle" src="https://skillicons.dev/icons?i=gradle" />
       <img title="PostgreSQL" alt="PostgreSQL" src="https://skillicons.dev/icons?i=postgresql" />
@@ -51,6 +52,8 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
       <img title="Git" alt="Git" src="https://skillicons.dev/icons?i=git" />
       <img title="GitHub" alt="GitHub" src="https://skillicons.dev/icons?i=github" />
       <img title="VS Code" alt="VS Code" src="https://skillicons.dev/icons?i=vscode" />
+      <img title="IntelliJ IDEA" alt="IntelliJ IDEA" src="https://skillicons.dev/icons?i=intellij" />
+      <img title="Android Studiod" alt="Android Studio" src="https://skillicons.dev/icons?i=androidstudio" />
       <img title="IntelliJ IDEA" alt="IntelliJ IDEA" src="https://skillicons.dev/icons?i=idea" />
 </h4>
 
@@ -61,7 +64,7 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 
 | Serviço | Responsabilidade | Porta |
 | :------ | :---------------- | :----: |
-| **front** | Interface web e mobile (Expo / React Native Web) | 8080 |
+| **front** | Interface web e mobile (Expo / React Native Web) | 80 |
 | **auth** | Autenticação, usuários, sessão e controle de acesso por perfil (JWT) | 8081 |
 | **core** | Domínio de negócio: clientes, recursos, catálogos, tabelas de preço e solicitações | 8082 |
 | **email-service** | Envio de e-mails, configuração SMTP e dados da empresa | 8083 |
@@ -86,12 +89,12 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 | 4 | US-004 | 🔴 ALTA | Como Administrador, quero cadastrar recursos associando seus pares de idiomas e valores individuais, para viabilizar a alocação e o cálculo de custo nas ordens de serviço. | 5 | E6 | 1 | ✔️ |
 | 5 | US-005 | 🟠 MÉDIA | Como Administrador, quero cadastrar tabelas de preço associando tipo de serviço, par de idiomas e valor unitário, para que o sistema sugira automaticamente os valores ao montar um orçamento. | 8 | E6 | 1 | 🛠️ |
 | 6 | US-006 | 🟠 MÉDIA | Como Administrador, quero cadastrar e gerenciar templates de e-mail com placeholders dinâmicos, para padronizar e automatizar as comunicações com clientes e recursos sem depender de alterações de código. | 3 | E6 | 1 | 🔲 Não iniciada |
-| 7 | US-007 | 🔴 ALTA | Como Atendente, quero cadastrar manualmente uma solicitação de tradução vinculando um cliente (novo ou existente), para registrar demandas que chegam por e-mail, telefone ou outros canais de forma estruturada no sistema. | 8 | E2 · E6 | 1 | ⚒️ |
-| 8 | US-008 | 🔴 ALTA | Como Atendente, quero elaborar um orçamento com os itens de serviço necessários e enviá-lo por e-mail ao cliente com um link de aprovação, para que o cliente possa aprovar ou recusar de forma autônoma. | 8 | E2 | 1 | 🔲 Não iniciada |
-| 9 | US-009 | 🟠 MÉDIA | Como Atendente, quero editar um orçamento recusado pelo cliente e reenviar para aprovação, para viabilizar negociações sem precisar criar um novo orçamento do zero. | 0 | E2 | 2 | 🔲 Não iniciada |
+| 7 | US-007 | 🔴 ALTA | Como Atendente, quero cadastrar manualmente uma solicitação de tradução vinculando um cliente (novo ou existente), para registrar demandas que chegam por e-mail, telefone ou outros canais de forma estruturada no sistema. | 8 | E2 · E6 | 1 | ✔️ |
+| 8 | US-008 | 🔴 ALTA | Como Atendente, quero elaborar um orçamento com os itens de serviço necessários e enviá-lo por e-mail ao cliente com um link de aprovação, para que o cliente possa aprovar ou recusar de forma autônoma. | 8 | E2 | 1 | ✔️ |
+| 9 | US-009 | 🟠 MÉDIA | Como Atendente, quero editar um orçamento recusado pelo cliente e reenviar para aprovação, para viabilizar negociações sem precisar criar um novo orçamento do zero. | 0 | E2 | 2 | ✔️ |
 | 10 | US-010 | 🔴 ALTA | Como Gestor de Projetos, quero criar, editar e reutilizar modelos de workflow, para agilizar a definição de etapas ao abrir novas ordens de serviço. | 0 | E6 | 2 | 🔲 Não iniciada |
-| 11 | US-011 | 🔴 ALTA | Como Gestor de Projetos, quero que ao aprovar um orçamento e uma Ordem de Serviço seja criada automaticamente, e que eu possa definir suas etapas aplicando um modelo de workflow ou montando manualmente, para iniciar o planejamento da produção. | 0 | E3 | 2 | 🔲 Não iniciada |
-| 12 | US-012 | 🔴 ALTA | Como Gestor de Projetos, quero selecionar e alocar um recurso a cada etapa da OS verificando compatibilidade de idiomas e tipo de serviço, para garantir que cada etapa seja atribuída ao profissional adequado antes de iniciar a execução. | 0 | E3 | 2 | 🔲 Não iniciada |
+| 11 | US-011 | 🔴 ALTA | Como Gestor de Projetos, quero que ao aprovar um orçamento e uma Ordem de Serviço seja criada automaticamente, e que eu possa definir suas etapas aplicando um modelo de workflow ou montando manualmente, para iniciar o planejamento da produção. | 0 | E3 | 2 | 🛠️ |
+| 12 | US-012 | 🔴 ALTA | Como Gestor de Projetos, quero selecionar e alocar um recurso a cada etapa da OS verificando compatibilidade de idiomas e tipo de serviço, para garantir que cada etapa seja atribuída ao profissional adequado antes de iniciar a execução. | 0 | E3 | 3 | 🔲 Não iniciada |
 | 13 | US-013 | 🔴 ALTA | Como Recurso, quero receber um e-mail com link exclusivo para aceitar ou rejeitar um serviço alocado e, após conclusão, fazer o upload do arquivo entregue, sem precisar criar conta ou senha no sistema. | 0 | E4 | 3 | 🔲 Não iniciada |
 | 14 | US-014 | 🟠 MÉDIA | Como Gestor de Projetos, quero que ao registrar a entrega de uma etapa o sistema avance automaticamente para a próxima etapa do workflow notificando o recurso alocado, para reduzir a intervenção manual no roteamento entre etapas. | 0 | E4 | 3 | 🔲 Não iniciada |
 | 15 | US-015 | 🔴 ALTA | Como Gestor de Projetos, quero revisar todos os arquivos entregues nas etapas concluídas, validar o pacote final e enviar os documentos traduzidos ao cliente por e-mail, para encerrar formalmente a Ordem de Serviço. | 0 | E4 | 3 | 🔲 Não iniciada |
@@ -181,11 +184,17 @@ Acompanhe a subida com `docker compose ps` e os logs com `docker compose logs -f
 
 | Serviço | URL |
 | :------ | :-- |
-| Frontend | http://localhost:8080 |
+| Frontend | http://localhost |
 | Auth (API) | http://localhost:8081 |
 | Core (API) | http://localhost:8082 |
 | email-service (API) | http://localhost:8083 |
 | RabbitMQ (painel) | http://localhost:15672 |
+
+Para ter um seed de teste, use no PowerShell:
+
+```powershell
+$env:SEED_TEST_DATA_ENABLED="true"; docker compose up -d --build core
+```
 
 ### 4. Rodar os serviços fora do Docker (opcional)
 

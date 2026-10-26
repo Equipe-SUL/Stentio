@@ -39,6 +39,8 @@ export interface FieldDef<T> {
   required?: boolean;
   // Obrigatório quando type = "select".
   options?: OpcaoSelect[];
+  // Ajusta apenas o valor mostrado na listagem, sem alterar o valor do formulário.
+  formatDisplay?: (value: T[keyof T]) => string;
   // Altura em linhas quando type = "textarea".
   linhas?: number;
 }

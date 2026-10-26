@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "expo-router";
 import { api } from "./api";
 import { clearToken, setToken } from "./auth";
 
@@ -38,11 +39,13 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+  const paginaPublica = usePathname() === "/orcamento";
   // undefined = ainda validando a sessão; null = sem sessão.
   const [usuario, setUsuario] = useState<UsuarioLogado | null | undefined>(undefined);
   const carregando = usuario === undefined;
 
   useEffect(() => {
+    if (paginaPublica) return;
     let ativo = true;
     // Web: valida pelo cookie HttpOnly. Nativo: o interceptor manda o Bearer.
     api
@@ -56,7 +59,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [paginaPublica]);
 
   const entrar = useCallback(
     async (email: string, senha: string, persistir: boolean) => {

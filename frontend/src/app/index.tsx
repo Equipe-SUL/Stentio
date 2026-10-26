@@ -3,9 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Pressable, Activit
 import Svg, { Defs, Pattern, Rect, Circle, G } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, type Href } from 'expo-router';
 import { getApiErrorMessage } from '../lib/api';
 import { useSession } from '../lib/session';
+import { homeRouteForRole } from '../lib/routePermissions';
 
 const languagesListA = [
   "Hallo, Willkommen", "مرحبا بك", "你好，歡迎", "안녕하세요, 환영합니다",
@@ -242,8 +243,8 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      await entrar(email, password, rememberSession);
-      router.replace('/admin');
+      const perfil = await entrar(email, password, rememberSession);
+      router.replace(homeRouteForRole(perfil.role) as Href);
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error));
     } finally {
@@ -251,8 +252,8 @@ export default function LoginScreen() {
     }
   };
 
-  if (!carregando && usuario?.role === 'ADMIN') {
-    return <Redirect href="/admin" />;
+  if (!carregando && usuario) {
+    return <Redirect href={homeRouteForRole(usuario.role) as Href} />;
   }
 
   return (

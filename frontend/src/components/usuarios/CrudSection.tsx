@@ -80,7 +80,7 @@ function renderFieldValue<T>(item: T, field: FieldDef<T>) {
 
   return (
     <Text className="text-sm text-neutral-800" numberOfLines={1}>
-      {String(valor)}
+      {field.formatDisplay ? field.formatDisplay(valor) : String(valor)}
     </Text>
   );
 }

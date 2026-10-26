@@ -1,0 +1,423 @@
+{
+  "info": {
+    "name": "Stentio - Orçamentos Públicos",
+    "description": "Executar seed-orcamentos-dev.sql antes de cada rodada; a coleção consome os tokens demonstrativos. Não requer JWT.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "token_aprovar",
+      "value": "6bbd9908-4783-4991-a4f9-b0fc1807115a"
+    },
+    {
+      "key": "token_rejeitar",
+      "value": "6bbd9908-4783-4991-a4f9-b0fc1807115b"
+    },
+    {
+      "key": "token_expirado",
+      "value": "6bbd9908-4783-4991-a4f9-b0fc1807115c"
+    },
+    {
+      "key": "token_utilizado",
+      "value": "6bbd9908-4783-4991-a4f9-b0fc1807115d"
+    },
+    {
+      "key": "token_rascunho",
+      "value": "6bbd9908-4783-4991-a4f9-b0fc1807115e"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Consultar orçamento (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/public/orcamentos?token={{token_aprovar}}",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Consultar novamente antes da decisão (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/public/orcamentos?token={{token_aprovar}}",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Aprovar orçamento (200)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/public/orcamentos/aprovar",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"token\": \"{{token_aprovar}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Repetir aprovação (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/public/orcamentos/aprovar",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"token\": \"{{token_aprovar}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Resposta de erro\", () => pm.expect(pm.response.json().status).to.eql(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Consultar depois da decisão (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/public/orcamentos?token={{token_aprovar}}",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Resposta de erro\", () => pm.expect(pm.response.json().status).to.eql(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Rejeitar sem motivo (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/public/orcamentos/rejeitar",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"token\": \"{{token_rejeitar}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Resposta de erro\", () => pm.expect(pm.response.json().status).to.eql(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Rejeitar com motivo (200)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/public/orcamentos/rejeitar",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"token\": \"{{token_rejeitar}}\", \"motivo\": \"Valor acima do limite disponível\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Aprovar token expirado (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/public/orcamentos/aprovar",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"token\": \"{{token_expirado}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Resposta de erro\", () => pm.expect(pm.response.json().status).to.eql(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Consultar token expirado (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/public/orcamentos?token={{token_expirado}}",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Resposta de erro\", () => pm.expect(pm.response.json().status).to.eql(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Consultar token utilizado (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/public/orcamentos?token={{token_utilizado}}",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Resposta de erro\", () => pm.expect(pm.response.json().status).to.eql(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Consultar token malformado (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/public/orcamentos?token=invalid",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Resposta de erro\", () => pm.expect(pm.response.json().status).to.eql(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 - Consultar sem token (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/public/orcamentos",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Resposta de erro\", () => pm.expect(pm.response.json().status).to.eql(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 - Consultar token inexistente (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/public/orcamentos?token=09a63d24-1a3e-4db5-bf28-f342aa3ccbac",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Resposta de erro\", () => pm.expect(pm.response.json().status).to.eql(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 - Consultar orçamento rascunho (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/v1/public/orcamentos?token={{token_rascunho}}",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Resposta de erro\", () => pm.expect(pm.response.json().status).to.eql(400));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
