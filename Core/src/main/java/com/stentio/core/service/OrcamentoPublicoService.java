@@ -178,6 +178,9 @@ public class OrcamentoPublicoService {
         registro.setDataDecisao(agora);
 
         orcamento.setStatus(decisao);
+        if (orcamento.getSolicitacao() != null) {
+            orcamento.getSolicitacao().atualizarStatusDoOrcamento(decisao);
+        }
         orcamento.setTokenUtilizadoEm(agora);
         orcamentos.save(orcamento);
         historico.save(registro);

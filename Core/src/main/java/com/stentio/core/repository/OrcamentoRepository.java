@@ -14,6 +14,8 @@ import java.util.UUID;
 public interface OrcamentoRepository extends JpaRepository<Orcamento, UUID>, JpaSpecificationExecutor<Orcamento> {
     Optional<Orcamento> findByTokenHash(String tokenHash);
 
+    boolean existsBySolicitacaoId(UUID solicitacaoId);
+
     // Trava a linha do orçamento, sem join de coleção: compatível com PostgreSQL.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from Orcamento o where o.tokenHash = :hash")

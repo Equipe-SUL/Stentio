@@ -52,6 +52,7 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
       <img title="VS Code" alt="VS Code" src="https://skillicons.dev/icons?i=vscode" />
       <img title="IntelliJ IDEA" alt="IntelliJ IDEA" src="https://skillicons.dev/icons?i=intellij" />
       <img title="Android Studiod" alt="Android Studio" src="https://skillicons.dev/icons?i=androidstudio" />
+      <img title="IntelliJ IDEA" alt="IntelliJ IDEA" src="https://skillicons.dev/icons?i=idea" />
 </h4>
 
 ---

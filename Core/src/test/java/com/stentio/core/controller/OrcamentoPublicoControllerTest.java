@@ -5,6 +5,7 @@ import com.stentio.core.dto.*;
 import com.stentio.core.exception.*;
 import com.stentio.core.model.StatusOrcamento;
 import com.stentio.core.service.OrcamentoPublicoService;
+import com.stentio.core.service.ArquivoStorageService;
 import com.stentio.core.service.TokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OrcamentoPublicoControllerTest {
     @Autowired MockMvc mvc;
     @MockitoBean OrcamentoPublicoService service;
+    @MockitoBean ArquivoStorageService arquivoStorageService;
     @MockitoBean TokenService tokenService;
     private final String token = "6bbd9908-4783-4991-a4f9-b0fc1807115a";
     private final String path = "/api/v1/public/orcamentos";

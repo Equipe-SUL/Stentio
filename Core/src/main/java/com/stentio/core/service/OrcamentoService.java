@@ -21,6 +21,7 @@ import com.stentio.core.repository.IdiomaRepository;
 import com.stentio.core.repository.OrcamentoRepository;
 import com.stentio.core.repository.OrcamentoSpecifications;
 import com.stentio.core.repository.SolicitacaoRepository;
+import jakarta.validation.Validator;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -58,19 +59,22 @@ public class OrcamentoService {
     private final IdiomaRepository idiomas;
     private final CalculoOrcamentoService calculo;
     private final Clock clock;
+    private final Validator validator;
 
     public OrcamentoService(OrcamentoRepository orcamentos,
                             SolicitacaoRepository solicitacoes,
                             ClienteRepository clientes,
                             IdiomaRepository idiomas,
                             CalculoOrcamentoService calculo,
-                            Clock clock) {
+                            Clock clock,
+                            Validator validator) {
         this.orcamentos = orcamentos;
         this.solicitacoes = solicitacoes;
         this.clientes = clientes;
         this.idiomas = idiomas;
         this.calculo = calculo;
         this.clock = clock;
+        this.validator = validator;
     }
 
     // CA.1: nasce EM_ELABORACAO, versão 1 e total zero.
@@ -82,13 +86,18 @@ public class OrcamentoService {
         }
 
         // RN.1: a solicitação (US-09) e o cliente precisam existir.
-        Solicitacao solicitacao = solicitacoes.findById(request.solicitacaoId())
+        Solicitacao solicitacao = solicitacoes.buscarPorIdComLock(request.solicitacaoId())
                 .orElseThrow(() -> new SolicitacaoNaoEncontradaException(request.solicitacaoId()));
         Cliente cliente = clientes.findById(request.clienteId())
                 .orElseThrow(() -> new ReferenciaInvalidaException("Cliente", request.clienteId()));
         if (!solicitacao.getCliente().getId().equals(cliente.getId())) {
             throw new OrcamentoInvalidoException(MENSAGEM_SOLICITACAO_DE_OUTRO_CLIENTE);
         }
+        // Também bloqueia solicitações antigas cujo status não foi atualizado ao criar o orçamento.
+        if (orcamentos.existsBySolicitacaoId(solicitacao.getId())) {
+            throw new OrcamentoInvalidoException("A solicitação já possui um orçamento. Continue pelo orçamento existente.");
+        }
+        solicitacao.iniciarOrcamento();
 
         Orcamento orcamento = new Orcamento();
         orcamento.setSolicitacao(solicitacao);
@@ -150,7 +159,13 @@ public class OrcamentoService {
                 .orElseThrow(() -> new OrcamentoNaoEncontradoException(id));
     }
 
-    private static void validarItens(OrcamentoItensRequest request) {
+    private void validarItens(OrcamentoItensRequest request) {
+        // Reutiliza as restrições do DTO também para chamadas diretas ao serviço.
+        var erros = validator.validate(request);
+        if (!erros.isEmpty()) {
+            throw new OrcamentoInvalidoException(erros.stream()
+                    .map(erro -> erro.getMessage()).distinct().sorted().collect(Collectors.joining("; ")));
+        }
         Set<Integer> ordens = new HashSet<>();
         for (OrcamentoItensRequest.Item item : request.itens()) {
             // RN.2 / CA.2

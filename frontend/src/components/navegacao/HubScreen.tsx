@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { homeRouteForRole } from "../../lib/routePermissions";
+import { useSession } from "../../lib/session";
 
 // A largura do card é medida com onLayout, e não calculada a partir da largura
 // da janela: o container tem max-w, mx-auto, padding responsivo e safe area, e
@@ -43,8 +45,10 @@ export function HubScreen({
   itens,
 }: HubScreenProps) {
   const router = useRouter();
+  const { usuario } = useSession();
   const { width: larguraJanela } = useWindowDimensions();
   const [larguraGrid, setLarguraGrid] = useState(0);
+  const rotaInicial = usuario ? homeRouteForRole(usuario.role) : "/admin";
 
   const colunas =
     larguraJanela >= COLUNAS_3_BREAKPOINT
@@ -81,7 +85,7 @@ export function HubScreen({
           <View className="flex-1 min-w-0 flex-row items-center gap-3">
             <TouchableOpacity
               onPress={() =>
-                router.canGoBack() ? router.back() : router.push("/admin")
+                router.canGoBack() ? router.back() : router.push(rotaInicial as Href)
               }
               className="p-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm active:bg-zinc-100"
               accessibilityLabel="Voltar"
