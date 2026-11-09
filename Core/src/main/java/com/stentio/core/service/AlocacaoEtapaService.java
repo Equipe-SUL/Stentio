@@ -10,6 +10,7 @@ import com.stentio.core.model.Recurso;
 import com.stentio.core.model.Solicitacao;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
 import com.stentio.core.repository.RecursoRepository;
+import com.stentio.core.support.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,9 +41,14 @@ public class AlocacaoEtapaService {
 
     // CA.3 e CA.4, Cenário 1
     @Transactional
-    public AlocacaoEtapaResponse alocar(UUID ordemServicoId, UUID etapaId, AlocacaoEtapaRequest requisicao) {
+    public AlocacaoEtapaResponse alocar(UUID ordemServicoId, UUID etapaId,
+                                        AlocacaoEtapaRequest requisicao, UsuarioAutenticado ator) {
         EtapaOrdemServico etapa = etapas.buscarParaAlocacao(ordemServicoId, etapaId)
                 .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
+
+        // RN.3 antes de qualquer validação de compatibilidade: se nem pode trocar, de nada
+        // adianta saber se o recurso serviria.
+        etapa.garantirQuePodeTrocarRecurso(ator.administrador());
 
         Recurso recurso = recursos.buscarComCompetencias(requisicao.recursoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(requisicao.recursoId()));

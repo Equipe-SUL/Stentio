@@ -116,6 +116,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // US-012 RN.3: falta perfil para trocar o recurso de uma etapa já iniciada.
+    @ExceptionHandler(AlocacaoNaoPermitidaException.class)
+    public ResponseEntity<ErroResponse> handleAlocacaoNaoPermitida(AlocacaoNaoPermitidaException ex) {
+        return responder(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
     @ExceptionHandler(EtapaNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleEtapaNaoEncontrada(EtapaNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());

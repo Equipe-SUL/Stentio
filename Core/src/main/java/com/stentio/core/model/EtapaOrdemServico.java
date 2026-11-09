@@ -1,6 +1,7 @@
 package com.stentio.core.model;
 
 import com.stentio.core.exception.AlocacaoInvalidaException;
+import com.stentio.core.exception.AlocacaoNaoPermitidaException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -115,6 +116,18 @@ public class EtapaOrdemServico {
      */
     public boolean iniciada() {
         return false;
+    }
+
+    /**
+     * US-012 RN.3: depois que o profissional começa, trocar quem está no trabalho deixa de
+     * ser decisão do gestor. Enquanto a etapa não começou, realocar é livre — corrigir uma
+     * escolha errada é o uso normal da tela.
+     */
+    public void garantirQuePodeTrocarRecurso(boolean administrador) {
+        if (iniciada() && !administrador) {
+            throw new AlocacaoNaoPermitidaException(
+                    "A etapa " + nome + " já está em andamento; trocar o recurso exige perfil administrativo");
+        }
     }
 
     private static String normalizar(String nome) {
