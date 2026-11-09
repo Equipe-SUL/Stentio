@@ -6,15 +6,18 @@ import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.exception.RecursoNaoEncontradoException;
 import com.stentio.core.model.EtapaOrdemServico;
+import com.stentio.core.model.HistoricoEtapa;
 import com.stentio.core.model.Recurso;
 import com.stentio.core.model.Solicitacao;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
+import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.repository.RecursoRepository;
 import com.stentio.core.support.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -29,13 +32,16 @@ public class AlocacaoEtapaService {
 
     private final EtapaOrdemServicoRepository etapas;
     private final RecursoRepository recursos;
+    private final HistoricoEtapaRepository historico;
     private final Clock clock;
 
     public AlocacaoEtapaService(EtapaOrdemServicoRepository etapas,
                                 RecursoRepository recursos,
+                                HistoricoEtapaRepository historico,
                                 Clock clock) {
         this.etapas = etapas;
         this.recursos = recursos;
+        this.historico = historico;
         this.clock = clock;
     }
 
@@ -55,8 +61,17 @@ public class AlocacaoEtapaService {
 
         garantirCompetencia(etapa, recurso);
 
-        etapa.alocar(recurso, requisicao.dataLimiteEntrega(), clock.instant());
+        // Lido antes de alocar: depois da troca, quem estava no lugar já se perdeu.
+        Recurso anterior = etapa.getRecurso();
+
+        Instant agora = clock.instant();
+        etapa.alocar(recurso, requisicao.dataLimiteEntrega(), agora);
         etapas.save(etapa);
+
+        // CA.4: o histórico entra na mesma transação da alocação. Em transações separadas,
+        // uma falha aqui deixaria a etapa alocada sem rastro de quem a alocou.
+        historico.save(new HistoricoEtapa(
+                etapa, anterior, recurso, etapa.getDataLimiteEntrega(), ator.email(), agora));
 
         return AlocacaoEtapaResponse.de(etapa);
     }
