@@ -104,6 +104,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    // US-011 RN.1 e RN.2: sequência de etapas malformada.
+    @ExceptionHandler(EtapasInvalidasException.class)
+    public ResponseEntity<ErroResponse> handleEtapasInvalidas(EtapasInvalidasException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @ExceptionHandler(SolicitacaoNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleSolicitacaoNaoEncontrada(SolicitacaoNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
