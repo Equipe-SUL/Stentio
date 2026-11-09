@@ -11,9 +11,12 @@ import java.util.UUID;
 
 public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemServico, UUID> {
 
+    // O recurso entra como left join fetch porque a resposta mostra o nome de quem está
+    // alocado: sem isso seria uma consulta por etapa, e com open-in-view desligado nem isso.
     @Query("""
             select e from EtapaOrdemServico e
               join fetch e.tipoServico
+              left join fetch e.recurso
              where e.ordemServico.id = :ordemServicoId
              order by e.ordem asc
             """)

@@ -110,6 +110,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // US-012 RN.1 e RN.2: recurso incompatível com a etapa. Cenário 2 pede exatamente 400.
+    @ExceptionHandler(AlocacaoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleAlocacaoInvalida(AlocacaoInvalidaException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     // US-011 RN.3: conflito com o estado atual da OS, não erro de entrada.
     @ExceptionHandler(EtapasBloqueadasException.class)
     public ResponseEntity<ErroResponse> handleEtapasBloqueadas(EtapasBloqueadasException ex) {
