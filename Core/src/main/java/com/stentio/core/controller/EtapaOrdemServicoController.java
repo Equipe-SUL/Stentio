@@ -6,6 +6,7 @@ import com.stentio.core.service.EtapaOrdemServicoService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -47,5 +48,11 @@ public class EtapaOrdemServicoController {
             @PathVariable("osId") UUID osId,
             @PathVariable("modeloId") UUID modeloId) {
         return ResponseEntity.ok(etapaOrdemServicoService.aplicarModelo(osId, modeloId));
+    }
+
+    @GetMapping
+    @Operation(summary = "Lista as etapas da ordem de serviço na ordem de execução")
+    public ResponseEntity<EtapasOrdemServicoResponse> listar(@PathVariable("osId") UUID osId) {
+        return ResponseEntity.ok(etapaOrdemServicoService.listar(osId));
     }
 }

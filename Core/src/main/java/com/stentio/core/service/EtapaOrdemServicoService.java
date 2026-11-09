@@ -102,6 +102,12 @@ public class EtapaOrdemServicoService {
         return substituirSequencia(ordem, novas);
     }
 
+    @Transactional(readOnly = true)
+    public EtapasOrdemServicoResponse listar(UUID ordemServicoId) {
+        OrdemServico ordem = buscarOrdem(ordemServicoId);
+        return mapper.paraResposta(ordem, etapas.listarPorOrdemServico(ordemServicoId));
+    }
+
     private EtapasOrdemServicoResponse substituirSequencia(OrdemServico ordem, List<EtapaOrdemServico> novas) {
         etapas.apagarPorOrdemServico(ordem.getId());
         List<EtapaOrdemServico> gravadas = etapas.saveAll(novas);
