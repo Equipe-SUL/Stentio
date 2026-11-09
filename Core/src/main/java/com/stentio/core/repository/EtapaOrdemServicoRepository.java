@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemServico, UUID> {
@@ -24,6 +25,27 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
 
     // RN.3: basta uma etapa alocada para a sequência ficar congelada.
     boolean existsByOrdemServicoIdAndRecursoIsNotNull(UUID ordemServicoId);
+
+    /**
+     * US-012: a etapa com tudo o que a alocação precisa conferir. O par de idiomas da RN.1
+     * mora na solicitação da OS, não na etapa, então a consulta desce até lá — com
+     * open-in-view desligado, buscar depois lançaria LazyInitializationException.
+     *
+     * <p>Filtra por OS e etapa juntas: assim um id de etapa de outra ordem de serviço não
+     * é alocado por engano através da rota errada.
+     */
+    @Query("""
+            select e from EtapaOrdemServico e
+              join fetch e.tipoServico
+              join fetch e.ordemServico o
+              join fetch o.solicitacao s
+              join fetch s.idiomaOrigem
+              join fetch s.idiomaDestino
+             where e.id = :etapaId
+               and o.id = :ordemServicoId
+            """)
+    Optional<EtapaOrdemServico> buscarParaAlocacao(@Param("ordemServicoId") UUID ordemServicoId,
+                                                   @Param("etapaId") UUID etapaId);
 
     /**
      * Apaga a sequência antiga antes de gravar a nova. É delete em massa de propósito: se
