@@ -19,6 +19,9 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
             """)
     List<EtapaOrdemServico> listarPorOrdemServico(@Param("ordemServicoId") UUID ordemServicoId);
 
+    // RN.3: basta uma etapa alocada para a sequência ficar congelada.
+    boolean existsByOrdemServicoIdAndRecursoIsNotNull(UUID ordemServicoId);
+
     /**
      * Apaga a sequência antiga antes de gravar a nova. É delete em massa de propósito: se
      * fosse pela coleção da entidade, o Hibernate emitiria os INSERT antes dos DELETE e a

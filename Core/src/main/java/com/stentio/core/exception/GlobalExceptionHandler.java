@@ -110,6 +110,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // US-011 RN.3: conflito com o estado atual da OS, não erro de entrada.
+    @ExceptionHandler(EtapasBloqueadasException.class)
+    public ResponseEntity<ErroResponse> handleEtapasBloqueadas(EtapasBloqueadasException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(ModeloWorkflowNaoEncontradoException.class)
     public ResponseEntity<ErroResponse> handleModeloWorkflowNaoEncontrado(ModeloWorkflowNaoEncontradoException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());

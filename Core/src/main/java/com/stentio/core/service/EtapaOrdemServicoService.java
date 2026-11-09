@@ -2,6 +2,7 @@ package com.stentio.core.service;
 
 import com.stentio.core.dto.EtapasOrdemServicoRequest;
 import com.stentio.core.dto.EtapasOrdemServicoResponse;
+import com.stentio.core.exception.EtapasBloqueadasException;
 import com.stentio.core.exception.EtapasInvalidasException;
 import com.stentio.core.exception.ModeloWorkflowNaoEncontradoException;
 import com.stentio.core.exception.OrdemServicoNaoEncontradaException;
@@ -30,8 +31,8 @@ import java.util.UUID;
  * clonada de um modelo (CA.2).
  *
  * <p>Os dois caminhos terminam no mesmo lugar: substituem a sequência inteira. Guardar
- * essa substituição em um método só garante que as regras valham igual nos dois, em vez
- * de cada entrada reimplementar a validação do seu jeito.
+ * essa substituição em um método só garante que as regras RN.1 a RN.3 valham igual nos
+ * dois, em vez de cada entrada reimplementar a validação do seu jeito.
  */
 @Service
 public class EtapaOrdemServicoService {
@@ -58,6 +59,7 @@ public class EtapaOrdemServicoService {
     @Transactional
     public EtapasOrdemServicoResponse definirManualmente(UUID ordemServicoId, EtapasOrdemServicoRequest requisicao) {
         OrdemServico ordem = buscarOrdem(ordemServicoId);
+        garantirQueNaoFoiAlocada(ordemServicoId);
 
         List<EtapasOrdemServicoRequest.Etapa> pedidas = requisicao.etapas();
         SequenciaEtapas.validarOrdens(pedidas.stream().map(EtapasOrdemServicoRequest.Etapa::ordem).toList());
@@ -78,6 +80,7 @@ public class EtapaOrdemServicoService {
     @Transactional
     public EtapasOrdemServicoResponse aplicarModelo(UUID ordemServicoId, UUID modeloId) {
         OrdemServico ordem = buscarOrdem(ordemServicoId);
+        garantirQueNaoFoiAlocada(ordemServicoId);
 
         ModeloWorkflow modelo = modelos.findWithEtapasById(modeloId)
                 .orElseThrow(() -> new ModeloWorkflowNaoEncontradoException(modeloId));
@@ -118,6 +121,14 @@ public class EtapaOrdemServicoService {
 
     private OrdemServico buscarOrdem(UUID id) {
         return ordens.findById(id).orElseThrow(() -> new OrdemServicoNaoEncontradaException(id));
+    }
+
+    // RN.3
+    private void garantirQueNaoFoiAlocada(UUID ordemServicoId) {
+        if (etapas.existsByOrdemServicoIdAndRecursoIsNotNull(ordemServicoId)) {
+            throw new EtapasBloqueadasException(
+                    "A sequência já tem etapa alocada a um recurso e não pode ser alterada");
+        }
     }
 
     private Map<UUID, TipoServico> carregarTiposServico(Set<UUID> ids) {
