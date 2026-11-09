@@ -1,6 +1,26 @@
--- US-011: estruturação das etapas da Ordem de Serviço.
+-- US-011: estruturação das etapas da Ordem de Serviço e os modelos de workflow.
 -- Referência do que o Hibernate gera com ddl-auto: update, para conferência e para
 -- bancos que já existem. Em ambiente novo as tabelas sobem sozinhas.
+
+-- ---------------------------------------------------------------- modelos de workflow
+
+CREATE TABLE IF NOT EXISTS modelos_workflow (
+    id          UUID PRIMARY KEY,
+    nome        VARCHAR(120) NOT NULL,
+    descricao   VARCHAR(500),
+    ativo       BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT uk_modelos_workflow_nome UNIQUE (nome)
+);
+
+CREATE TABLE IF NOT EXISTS modelos_workflow_etapas (
+    id                   UUID PRIMARY KEY,
+    modelo_id            UUID NOT NULL REFERENCES modelos_workflow (id),
+    tipo_servico_id      UUID NOT NULL REFERENCES tipos_servico (id),
+    nome                 VARCHAR(120) NOT NULL,
+    ordem                INTEGER NOT NULL,
+    prazo_estimado_horas INTEGER NOT NULL,
+    CONSTRAINT uk_modelos_workflow_etapas_ordem UNIQUE (modelo_id, ordem)
+);
 
 -- ---------------------------------------------------------------- etapas da OS
 

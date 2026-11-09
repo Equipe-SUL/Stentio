@@ -110,6 +110,11 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(ModeloWorkflowNaoEncontradoException.class)
+    public ResponseEntity<ErroResponse> handleModeloWorkflowNaoEncontrado(ModeloWorkflowNaoEncontradoException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
     @ExceptionHandler(SolicitacaoNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleSolicitacaoNaoEncontrada(SolicitacaoNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
