@@ -3,13 +3,17 @@ package com.stentio.core.service;
 import com.stentio.core.dto.EtapasOrdemServicoRequest;
 import com.stentio.core.dto.EtapasOrdemServicoResponse;
 import com.stentio.core.exception.EtapasInvalidasException;
+import com.stentio.core.exception.ModeloWorkflowNaoEncontradoException;
 import com.stentio.core.exception.OrdemServicoNaoEncontradaException;
 import com.stentio.core.mapper.EtapaOrdemServicoMapper;
 import com.stentio.core.model.EtapaOrdemServico;
+import com.stentio.core.model.ModeloWorkflow;
+import com.stentio.core.model.ModeloWorkflowEtapa;
 import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.SequenciaEtapas;
 import com.stentio.core.model.TipoServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
+import com.stentio.core.repository.ModeloWorkflowRepository;
 import com.stentio.core.repository.OrdemServicoRepository;
 import com.stentio.core.repository.TipoServicoRepository;
 import org.springframework.stereotype.Service;
@@ -22,26 +26,30 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * US-011: define a sequência de etapas de uma ordem de serviço.
+ * US-011: define a sequência de etapas de uma ordem de serviço, montada à mão (CA.3) ou
+ * clonada de um modelo (CA.2).
  *
- * <p>A substituição fica em um método próprio porque a aplicação de modelo (CA.2) vai
- * terminar no mesmo lugar — assim as regras valem igual nos dois caminhos, em vez de
- * cada entrada reimplementar a validação do seu jeito.
+ * <p>Os dois caminhos terminam no mesmo lugar: substituem a sequência inteira. Guardar
+ * essa substituição em um método só garante que as regras valham igual nos dois, em vez
+ * de cada entrada reimplementar a validação do seu jeito.
  */
 @Service
 public class EtapaOrdemServicoService {
 
     private final OrdemServicoRepository ordens;
     private final EtapaOrdemServicoRepository etapas;
+    private final ModeloWorkflowRepository modelos;
     private final TipoServicoRepository tiposServico;
     private final EtapaOrdemServicoMapper mapper;
 
     public EtapaOrdemServicoService(OrdemServicoRepository ordens,
                                     EtapaOrdemServicoRepository etapas,
+                                    ModeloWorkflowRepository modelos,
                                     TipoServicoRepository tiposServico,
                                     EtapaOrdemServicoMapper mapper) {
         this.ordens = ordens;
         this.etapas = etapas;
+        this.modelos = modelos;
         this.tiposServico = tiposServico;
         this.mapper = mapper;
     }
@@ -61,6 +69,34 @@ public class EtapaOrdemServicoService {
                 .sorted(java.util.Comparator.comparing(EtapasOrdemServicoRequest.Etapa::ordem))
                 .map(e -> new EtapaOrdemServico(ordem, e.ordem(), e.nome(),
                         catalogo.get(e.tipoServicoId()), e.prazoEstimadoHoras()))
+                .toList();
+
+        return substituirSequencia(ordem, novas);
+    }
+
+    // CA.2
+    @Transactional
+    public EtapasOrdemServicoResponse aplicarModelo(UUID ordemServicoId, UUID modeloId) {
+        OrdemServico ordem = buscarOrdem(ordemServicoId);
+
+        ModeloWorkflow modelo = modelos.findWithEtapasById(modeloId)
+                .orElseThrow(() -> new ModeloWorkflowNaoEncontradoException(modeloId));
+        if (Boolean.FALSE.equals(modelo.getAtivo())) {
+            throw new ModeloWorkflowNaoEncontradoException(
+                    "Modelo de workflow inativo e por isso indisponível: " + modelo.getNome());
+        }
+
+        List<ModeloWorkflowEtapa> molde = modelo.getEtapas();
+        if (molde.isEmpty()) {
+            throw new EtapasInvalidasException("O modelo " + modelo.getNome() + " não tem etapas cadastradas");
+        }
+        // O modelo foi validado ao ser salvo, mas um tipo de serviço pode ter sido desativado
+        // desde então: revalidar aqui evita clonar uma sequência que já nasce inconsistente.
+        garantirTiposAtivos(molde.stream().map(ModeloWorkflowEtapa::getTipoServico).toList());
+
+        List<EtapaOrdemServico> novas = molde.stream()
+                .map(m -> new EtapaOrdemServico(ordem, m.getOrdem(), m.getNome(),
+                        m.getTipoServico(), m.getPrazoEstimadoHoras()))
                 .toList();
 
         return substituirSequencia(ordem, novas);

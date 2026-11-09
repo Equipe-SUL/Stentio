@@ -39,4 +39,13 @@ public class EtapaOrdemServicoController {
             @RequestBody @Valid EtapasOrdemServicoRequest request) {
         return ResponseEntity.ok(etapaOrdemServicoService.definirManualmente(osId, request));
     }
+
+    // CA.2
+    @PostMapping("/aplicar-modelo/{modeloId}")
+    @Operation(summary = "Clona as etapas de um modelo de workflow para a ordem de serviço")
+    public ResponseEntity<EtapasOrdemServicoResponse> aplicarModelo(
+            @PathVariable("osId") UUID osId,
+            @PathVariable("modeloId") UUID modeloId) {
+        return ResponseEntity.ok(etapaOrdemServicoService.aplicarModelo(osId, modeloId));
+    }
 }
