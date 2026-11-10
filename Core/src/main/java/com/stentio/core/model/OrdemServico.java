@@ -40,4 +40,12 @@ public class OrdemServico {
         this.orcamento = orcamento;
         this.solicitacao = orcamento.getSolicitacao();
     }
+
+    /**
+     * US-011: definir a sequência de etapas tira a OS da espera e a coloca em planejamento.
+     * É idempotente de propósito — remontar as etapas não deve mudar nada no status.
+     */
+    public void planejar() {
+        this.status = StatusOrdemServico.EM_PLANEJAMENTO;
+    }
 }

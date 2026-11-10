@@ -104,6 +104,23 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    // US-011 RN.1 e RN.2: sequência de etapas malformada.
+    @ExceptionHandler(EtapasInvalidasException.class)
+    public ResponseEntity<ErroResponse> handleEtapasInvalidas(EtapasInvalidasException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // US-011 RN.3: conflito com o estado atual da OS, não erro de entrada.
+    @ExceptionHandler(EtapasBloqueadasException.class)
+    public ResponseEntity<ErroResponse> handleEtapasBloqueadas(EtapasBloqueadasException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(ModeloWorkflowNaoEncontradoException.class)
+    public ResponseEntity<ErroResponse> handleModeloWorkflowNaoEncontrado(ModeloWorkflowNaoEncontradoException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
     @ExceptionHandler(SolicitacaoNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleSolicitacaoNaoEncontrada(SolicitacaoNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
