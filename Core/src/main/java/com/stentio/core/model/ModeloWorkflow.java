@@ -55,14 +55,26 @@ public class ModeloWorkflow {
     }
 
     /**
-     * Troca a sequência inteira em vez de mexer item a item. Alterar no lugar evita o
-     * problema conhecido do Hibernate de executar o INSERT antes do DELETE quando a
-     * coleção é esvaziada e repovoada na mesma transação.
+     * Troca a sequência inteira em vez de mexer item a item.
+     *
+     * Atenção ao substituir uma sequência já persistida: esvaziar e repovoar na mesma
+     * transação faz o Hibernate executar o INSERT antes do DELETE dos filhos órfãos, e a
+     * unique {@code uk_modelos_workflow_etapas_ordem} estoura. Quem atualiza precisa chamar
+     * {@link #limparEtapas()} e dar flush antes de repovoar — ver
+     * {@code ModeloWorkflowService.substituir}.
      */
     public void definirEtapas(List<ModeloWorkflowEtapa> novas) {
         SequenciaEtapas.validarOrdens(novas.stream().map(ModeloWorkflowEtapa::getOrdem).toList());
         this.etapas.clear();
         this.etapas.addAll(novas);
+    }
+
+    /**
+     * Esvazia a coleção para que o DELETE dos filhos órfãos seja executado no próximo flush,
+     * liberando as ordens antes de a nova sequência ser inserida.
+     */
+    public void limparEtapas() {
+        this.etapas.clear();
     }
 
     public List<ModeloWorkflowEtapa> getEtapas() {

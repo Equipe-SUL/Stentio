@@ -60,8 +60,14 @@ public class ModeloWorkflowService {
         if (modelos.existsByNomeIgnoreCaseAndIdNot(requisicao.nome().strip(), id)) {
             throw new EtapasInvalidasException("Já existe um modelo com esse nome");
         }
+        // Valida antes de tocar na coleção: um pedido inválido não chega a apagar nada.
+        List<ModeloWorkflowEtapa> novas = montarEtapas(modelo, requisicao.etapas());
         modelo.renomear(requisicao.nome(), requisicao.descricao());
-        modelo.definirEtapas(montarEtapas(modelo, requisicao.etapas()));
+        // Sem o flush o Hibernate insere as novas etapas antes de apagar as órfãs e a
+        // unique (modelo_id, ordem) estoura mesmo quando a sequência não muda.
+        modelo.limparEtapas();
+        modelos.flush();
+        modelo.definirEtapas(novas);
         return mapper.paraModelo(modelos.save(modelo));
     }
 
