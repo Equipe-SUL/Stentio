@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
   useWindowDimensions,
+  type ScrollViewInstance,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -44,7 +45,7 @@ export function ChatbotWidget({ role }: { role: Role }) {
   const [carregandoHistorico, setCarregandoHistorico] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
-  const listaRef = useRef<ScrollView>(null);
+  const listaRef = useRef<ScrollViewInstance | null>(null);
   const historicoCarregado = useRef(false);
 
   useEffect(() => {
@@ -233,7 +234,7 @@ export function ChatbotWidget({ role }: { role: Role }) {
 }
 
 const styles = StyleSheet.create({
-  anchor: { ...StyleSheet.absoluteFillObject, zIndex: 100, pointerEvents: "box-none" },
+  anchor: { ...StyleSheet.absoluteFill, zIndex: 100, pointerEvents: "box-none" },
   launcher: {
     position: "absolute", right: 24, bottom: 24, width: 58, height: 58,
     borderRadius: 29, alignItems: "center", justifyContent: "center",
