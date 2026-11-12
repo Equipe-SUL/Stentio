@@ -48,7 +48,7 @@ public class OrcamentoEmailService {
                 corpo.html(),
                 arquivos.carregados(),
                 logoInline ? new MensagemEmail.ImagemInline(OrcamentoEmailRenderer.CID_LOGO,
-                        empresa.getLogo(), empresa.getLogoContentType()) : null));
+                        empresa != null ? empresa.getLogo() : null, empresa != null ? empresa.getLogoContentType() : null) : null));
     }
 
     /**
