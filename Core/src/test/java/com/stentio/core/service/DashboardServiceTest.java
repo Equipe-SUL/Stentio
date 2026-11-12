@@ -16,11 +16,13 @@ import java.time.Clock;
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DashboardServiceTest {
+
+    private static final Instant AGORA = Instant.parse("2026-10-20T18:00:00Z");
 
     @Mock
     private OrcamentoRepository orcamentos;
@@ -39,13 +41,13 @@ class DashboardServiceTest {
     @BeforeEach
     void setUp() {
         dashboardService = new DashboardService(orcamentos, ordensServico, etapas, clock);
-        when(clock.instant()).thenReturn(Instant.parse("2026-10-20T18:00:00Z"));
+        when(clock.instant()).thenReturn(AGORA);
         when(orcamentos.countByStatus(StatusOrcamento.EM_ELABORACAO)).thenReturn(5L);
         when(orcamentos.countByStatus(StatusOrcamento.AGUARDANDO_APROVACAO)).thenReturn(3L);
         when(orcamentos.countByStatus(StatusOrcamento.APROVADO)).thenReturn(68L);
         when(orcamentos.countByStatus(StatusOrcamento.REJEITADO)).thenReturn(32L);
         when(ordensServico.countByStatus(StatusOrdemServico.EM_PLANEJAMENTO)).thenReturn(12L);
-        when(etapas.countByDataLimiteEntregaBeforeAndRecursoIsNotNull(any(Instant.class))).thenReturn(2L);
+        when(etapas.countByDataLimiteEntregaBeforeAndRecursoIsNotNull(AGORA)).thenReturn(2L);
     }
 
     @Test
@@ -57,5 +59,6 @@ class DashboardServiceTest {
         assertEquals(12, resumo.totalOsEmAndamento());
         assertEquals(2, resumo.totalEtapasAtrasadas());
         assertEquals(68.0, resumo.taxaConversaoOrcamentos());
+        verify(etapas).countByDataLimiteEntregaBeforeAndRecursoIsNotNull(AGORA);
     }
 }

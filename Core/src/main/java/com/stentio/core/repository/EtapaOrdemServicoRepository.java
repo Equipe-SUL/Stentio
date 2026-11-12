@@ -49,12 +49,16 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
                                                    @Param("etapaId") UUID etapaId);
 
     /**
+     * Conta etapas alocadas cujo prazo explícito já venceu. Até a US-014 registrar a
+     * entrega do arquivo final, etapas vencidas são consideradas não entregues.
+     */
+    long countByDataLimiteEntregaBeforeAndRecursoIsNotNull(Instant dataLimiteEntrega);
+
+    /**
      * Apaga a sequência antiga antes de gravar a nova. É delete em massa de propósito: se
      * fosse pela coleção da entidade, o Hibernate emitiria os INSERT antes dos DELETE e a
      * constraint de (os_id, ordem) estouraria ao reordenar as etapas.
      */
-    long countByDataLimiteEntregaBeforeAndRecursoIsNotNull(Instant dataLimiteEntrega);
-
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from EtapaOrdemServico e where e.ordemServico.id = :ordemServicoId")
     void apagarPorOrdemServico(@Param("ordemServicoId") UUID ordemServicoId);
