@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -52,6 +53,8 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
      * fosse pela coleção da entidade, o Hibernate emitiria os INSERT antes dos DELETE e a
      * constraint de (os_id, ordem) estouraria ao reordenar as etapas.
      */
+    long countByDataLimiteEntregaBeforeAndRecursoIsNotNull(Instant dataLimiteEntrega);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from EtapaOrdemServico e where e.ordemServico.id = :ordemServicoId")
     void apagarPorOrdemServico(@Param("ordemServicoId") UUID ordemServicoId);

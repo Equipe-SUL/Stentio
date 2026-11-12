@@ -1,6 +1,7 @@
 package com.stentio.core.repository;
 
 import com.stentio.core.model.Orcamento;
+import com.stentio.core.model.StatusOrcamento;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -13,6 +14,8 @@ import java.util.UUID;
 
 public interface OrcamentoRepository extends JpaRepository<Orcamento, UUID>, JpaSpecificationExecutor<Orcamento> {
     Optional<Orcamento> findByTokenHash(String tokenHash);
+
+    long countByStatus(StatusOrcamento status);
 
     boolean existsBySolicitacaoId(UUID solicitacaoId);
 
