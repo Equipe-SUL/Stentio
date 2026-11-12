@@ -120,8 +120,8 @@ class OrcamentoPublicoServiceTest {
         verify(outbox).save(pendente.capture());
         var evento = mapper.readTree(pendente.getValue().getPayload());
         assertEquals("orcamento.aprovado", pendente.getValue().getRoutingKey());
-        assertEquals("APROVADO", evento.get("status").asText());
-        assertEquals(pendente.getValue().getId().toString(), evento.get("evento_id").asText());
+        assertEquals("APROVADO", evento.get("status").asString());
+        assertEquals(pendente.getValue().getId().toString(), evento.get("evento_id").asString());
         assertFalse(pendente.getValue().getPayload().contains(token));
         assertNull(pendente.getValue().getPublicadoEm());
     }
@@ -137,7 +137,7 @@ class OrcamentoPublicoServiceTest {
         var pendente = ArgumentCaptor.forClass(OrcamentoDecisaoOutbox.class);
         verify(outbox).save(pendente.capture());
         assertEquals("orcamento.rejeitado", pendente.getValue().getRoutingKey());
-        assertEquals("Valor acima do orçamento", mapper.readTree(pendente.getValue().getPayload()).get("motivo").asText());
+        assertEquals("Valor acima do orçamento", mapper.readTree(pendente.getValue().getPayload()).get("motivo").asString());
     }
 
     @Test

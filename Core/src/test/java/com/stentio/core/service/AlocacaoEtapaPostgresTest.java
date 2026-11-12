@@ -1,6 +1,8 @@
 package com.stentio.core.service;
 
 import com.stentio.core.dto.AlocacaoEtapaRequest;
+import com.stentio.core.dto.DashboardEtapaPendenciaProjection;
+import com.stentio.core.dto.DashboardOrcamentoPendenciaProjection;
 import com.stentio.core.dto.EtapaOrdemServicoResponse;
 import com.stentio.core.dto.EtapasOrdemServicoRequest;
 import com.stentio.core.dto.EtapasOrdemServicoResponse;
@@ -21,7 +23,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -61,6 +65,7 @@ class AlocacaoEtapaPostgresTest {
 
     @Autowired AlocacaoEtapaService alocacao;
     @Autowired EtapaOrdemServicoService etapasService;
+    @Autowired EtapaOrdemServicoRepository etapas;
     @Autowired ClienteRepository clientes;
     @Autowired CategoriaProjetoRepository categorias;
     @Autowired IdiomaRepository idiomas;
@@ -195,6 +200,70 @@ class AlocacaoEtapaPostgresTest {
     }
 
     // ------------------------------------------------------------------ testes
+
+    @Test
+    @DisplayName("A contagem inclui somente etapas alocadas com prazo estritamente vencido")
+    void contaEtapasAtrasadasAlocadasSemCarregarEntidades() {
+        Instant agora = Instant.parse("2030-01-01T00:00:00Z");
+        List<EtapaOrdemServicoResponse> etapasDaOrdem = etapasService.definirManualmente(osId,
+                new EtapasOrdemServicoRequest(List.of(
+                        new EtapasOrdemServicoRequest.Etapa(1, "Tradução", traducaoId, 24),
+                        new EtapasOrdemServicoRequest.Etapa(2, "Revisão", revisaoId, 12),
+                        new EtapasOrdemServicoRequest.Etapa(3, "Entrega", traducaoId, 4),
+                        new EtapasOrdemServicoRequest.Etapa(4, "Conferência", revisaoId, 2))))
+                .etapas();
+        UUID vencida = etapasDaOrdem.get(0).id();
+        UUID noLimite = etapasDaOrdem.get(1).id();
+        UUID futura = etapasDaOrdem.get(2).id();
+        UUID naoAlocada = etapasDaOrdem.get(3).id();
+
+        alocacao.alocar(osId, vencida, new AlocacaoEtapaRequest(anaId, DAQUI_A_UM_MES), gestor);
+        alocacao.alocar(osId, noLimite, new AlocacaoEtapaRequest(danielaId, DAQUI_A_UM_MES), gestor);
+        alocacao.alocar(osId, futura, new AlocacaoEtapaRequest(anaId, DAQUI_A_UM_MES), gestor);
+
+        jdbc.update("update etapas_os set data_limite_entrega = ? where id = ?",
+                Timestamp.from(agora.minusSeconds(1)), vencida);
+        jdbc.update("update etapas_os set data_limite_entrega = ? where id = ?",
+                Timestamp.from(agora), noLimite);
+        jdbc.update("update etapas_os set data_limite_entrega = ? where id = ?",
+                Timestamp.from(agora.plusSeconds(1)), futura);
+        jdbc.update("update etapas_os set data_limite_entrega = ? where id = ?",
+                Timestamp.from(agora.minusSeconds(1)), naoAlocada);
+
+        assertEquals(1, etapas.countByDataLimiteEntregaBeforeAndRecursoIsNotNull(agora));
+    }
+
+    @Test
+    @DisplayName("As projeções de pendência consultam apenas os campos necessários")
+    void buscaProjecoesDePendenciasDeEtapaEOrcamento() {
+        Instant agora = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        UUID etapaId = montarEtapas().getFirst();
+        alocacao.alocar(osId, etapaId, new AlocacaoEtapaRequest(anaId, DAQUI_A_UM_MES), gestor);
+        jdbc.update("update etapas_os set data_limite_entrega = ? where id = ?",
+                Timestamp.from(agora.minusSeconds(1)), etapaId);
+        jdbc.update("update orcamentos set status = ?, data_expiracao = ? where id = ?",
+                StatusOrcamento.AGUARDANDO_APROVACAO.name(),
+                Timestamp.from(agora.plusSeconds(3600)),
+                orcamentoId);
+
+        DashboardEtapaPendenciaProjection etapa = etapas.buscarPendenciasDashboard(agora).stream()
+                .filter(pendencia -> pendencia.id().equals(etapaId))
+                .findFirst()
+                .orElseThrow();
+        DashboardOrcamentoPendenciaProjection orcamento = orcamentos.buscarPendenciasDashboard(List.of(
+                        StatusOrcamento.EM_ELABORACAO, StatusOrcamento.AGUARDANDO_APROVACAO))
+                .stream()
+                .filter(pendencia -> pendencia.id().equals(orcamentoId))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("Tradução", etapa.nome());
+        assertEquals(osId, etapa.ordemServicoId());
+        assertEquals(agora.minusSeconds(1), etapa.dataLimiteEntrega());
+        assertEquals(StatusOrcamento.AGUARDANDO_APROVACAO, orcamento.status());
+        assertEquals("Cliente US012", orcamento.nomeEmpresa());
+        assertEquals(agora.plusSeconds(3600), orcamento.dataExpiracao());
+    }
 
     @Test
     @DisplayName("Cenário 1 no banco: aloca, grava a data limite e deixa rastro no histórico")

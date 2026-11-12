@@ -4,7 +4,6 @@ import com.stentio.emailservice.config.RabbitMQConfig;
 import com.stentio.emailservice.dto.SendEmailRequest;
 import com.stentio.emailservice.service.EmailService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.mail.MailException;
 import org.springframework.stereotype.Component;
 
 @Component

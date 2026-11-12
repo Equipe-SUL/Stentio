@@ -1,6 +1,8 @@
 package com.stentio.core.repository;
 
+import com.stentio.core.dto.DashboardOrcamentoPendenciaProjection;
 import com.stentio.core.model.Orcamento;
+import com.stentio.core.model.StatusOrcamento;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -8,11 +10,25 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface OrcamentoRepository extends JpaRepository<Orcamento, UUID>, JpaSpecificationExecutor<Orcamento> {
     Optional<Orcamento> findByTokenHash(String tokenHash);
+
+    long countByStatus(StatusOrcamento status);
+
+    @Query("""
+            select new com.stentio.core.dto.DashboardOrcamentoPendenciaProjection(
+                o.id, o.status, o.dataExpiracao, o.criadoEm, c.nomeEmpresa)
+              from Orcamento o
+              join o.cliente c
+             where o.status in :statuses
+            """)
+    List<DashboardOrcamentoPendenciaProjection> buscarPendenciasDashboard(
+            @Param("statuses") Collection<StatusOrcamento> statuses);
 
     boolean existsBySolicitacaoId(UUID solicitacaoId);
 

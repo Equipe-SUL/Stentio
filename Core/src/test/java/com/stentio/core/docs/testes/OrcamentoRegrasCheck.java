@@ -1,3 +1,5 @@
+package com.stentio.core.docs.testes;
+
 import com.stentio.core.exception.LinkOrcamentoInvalidoException;
 import com.stentio.core.model.StatusOrcamento;
 import com.stentio.core.service.TokenOrcamento;
