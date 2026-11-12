@@ -2,6 +2,7 @@ package com.stentio.core.controller;
 
 import com.stentio.core.config.SecurityConfig;
 import com.stentio.core.dto.DashboardPendenciasResponse;
+import com.stentio.core.dto.DashboardResumoResponse;
 import com.stentio.core.exception.GlobalExceptionHandler;
 import com.stentio.core.service.DashboardService;
 import com.stentio.core.service.TokenService;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -78,6 +81,71 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$.pendencias[1].status").value("EM_ELABORACAO"))
                 .andExpect(jsonPath("$.pendencias[1].data_limite").value("2026-10-22T23:59:59Z"))
                 .andExpect(jsonPath("$.pendencias[1].link_acao").value("/orcamentos/" + orcamentoId));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@stentio.com", roles = {"ADMIN"})
+    @DisplayName("ADMIN pode acessar o resumo financeiro do dashboard")
+    void adminPodeAcessarResumo() throws Exception {
+        when(dashboardService.resumo()).thenReturn(new DashboardResumoResponse(5, 3, 12, 2, 68.5));
+
+        mockMvc.perform(get(BASE_PATH + "/resumo"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total_orcamentos_em_elaboracao").value(5))
+                .andExpect(jsonPath("$.total_orcamentos_aguardando_aprovacao").value(3))
+                .andExpect(jsonPath("$.total_os_em_andamento").value(12))
+                .andExpect(jsonPath("$.total_etapas_atrasadas").value(2))
+                .andExpect(jsonPath("$.taxa_conversao_orcamentos").value(68.5));
+    }
+
+    @Test
+    @WithMockUser(username = "gestor@stentio.com", roles = {"GESTOR_PROJETO"})
+    @DisplayName("GESTOR_PROJETO pode acessar o resumo financeiro do dashboard")
+    void gestorPodeAcessarResumo() throws Exception {
+        when(dashboardService.resumo()).thenReturn(new DashboardResumoResponse(5, 3, 12, 2, 68.5));
+
+        mockMvc.perform(get(BASE_PATH + "/resumo"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taxa_conversao_orcamentos").value(68.5));
+    }
+
+    @Test
+    @WithMockUser(username = "atendente@stentio.com", roles = {"ATENDENTE"})
+    @DisplayName("ATENDENTE não pode acessar nenhuma rota do dashboard")
+    void atendenteNaoPodeAcessarDashboard() throws Exception {
+        mockMvc.perform(get(BASE_PATH + "/resumo"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get(BASE_PATH + "/pendencias"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(dashboardService);
+    }
+
+    @Test
+    @WithMockUser(username = "financeiro@stentio.com", roles = {"FINANCEIRO"})
+    @DisplayName("FINANCEIRO sem acesso ao dashboard recebe 403")
+    void financeiroNaoPodeAcessarDashboard() throws Exception {
+        mockMvc.perform(get(BASE_PATH + "/resumo"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get(BASE_PATH + "/pendencias"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(dashboardService);
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("Usuário anônimo não pode acessar nenhuma rota do dashboard")
+    void anonimoNaoPodeAcessarDashboard() throws Exception {
+        mockMvc.perform(get(BASE_PATH + "/resumo"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get(BASE_PATH + "/pendencias"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(dashboardService);
     }
 
 }
