@@ -43,16 +43,21 @@ os ajustes já realizados no backend. Esta entrega altera somente o frontend.
 
 ## CORS e acesso ao serviço
 
-Se o frontend abre em `http://localhost` (porta 80), essa origem precisa estar
-permitida pelo Import Service. Se abre em `http://localhost:8080`, inclua essa
-origem também. No `.env` do backend, por exemplo:
+Em produção HTTPS, o frontend usa a própria origem da página e o Nginx encaminha
+`/api/v1/importacoes/configuracao` e `/upload-csv` ao Import Service. Assim, o
+navegador não faz uma chamada cross-origin nem precisa de CORS para esses endpoints.
+
+No desenvolvimento HTTP, o frontend chama o serviço diretamente na porta 8000.
+Nesse caso, a origem do frontend precisa estar permitida pelo Import Service. No
+`.env` do backend, por exemplo:
 
 ```env
 CORS_ALLOWED_ORIGINS=["http://localhost","http://localhost:8080","http://127.0.0.1","http://127.0.0.1:8080"]
 ```
 
-Reinicie o backend após alterar o `.env`.
-O client mantém a regra já utilizada de alinhar o hostname ao da página na web.
+Reinicie o backend após alterar o `.env`. O client alinha o hostname ao da página
+no desenvolvimento HTTP, e usa a origem atual da página em HTTPS para evitar
+mixed content e passar pelo proxy do Nginx.
 Em aparelho físico, configure um endereço acessível do computador; em emulador
 Android a URL padrão é `http://10.0.2.2:8000` quando não há variável definida.
 Para builds nativos, a URL do Auth também precisa ser absoluta, conforme o ambiente.

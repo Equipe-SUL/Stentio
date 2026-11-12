@@ -18,6 +18,9 @@ function resolverUrl(): string {
       : "http://localhost:8000");
   // Segue os clients de Auth/Core: o cookie HttpOnly pertence ao host da página.
   if (Platform.OS === "web" && typeof window !== "undefined") {
+    if (window.location.protocol === "https:") {
+      return window.location.origin;
+    }
     try {
       const url = new URL(configurada, window.location.origin);
       url.hostname = window.location.hostname;
