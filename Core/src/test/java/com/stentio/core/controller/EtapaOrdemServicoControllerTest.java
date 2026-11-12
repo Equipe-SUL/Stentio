@@ -8,7 +8,7 @@ import com.stentio.core.exception.EtapasBloqueadasException;
 import com.stentio.core.exception.EtapasInvalidasException;
 import com.stentio.core.exception.GlobalExceptionHandler;
 import com.stentio.core.exception.OrdemServicoNaoEncontradaException;
-import com.stentio.core.model.StatusEtapaOrdemServico;
+import com.stentio.core.model.SituacaoEtapa;
 import com.stentio.core.model.StatusOrdemServico;
 import com.stentio.core.service.EtapaOrdemServicoService;
 import com.stentio.core.service.TokenService;
@@ -64,9 +64,9 @@ class EtapaOrdemServicoControllerTest {
     private static EtapasOrdemServicoResponse resposta() {
         return new EtapasOrdemServicoResponse(OS_ID, StatusOrdemServico.EM_PLANEJAMENTO, List.of(
                 new EtapaOrdemServicoResponse(UUID.randomUUID(), 1, "Tradução Principal", TIPO_ID, "Tradução",
-                        StatusEtapaOrdemServico.PENDENTE, 24, null),
+                        SituacaoEtapa.PENDENTE, 24, null, null, null),
                 new EtapaOrdemServicoResponse(UUID.randomUUID(), 2, "Revisão Final", TIPO_ID, "Revisão",
-                        StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, 12, null)));
+                        SituacaoEtapa.AGUARDANDO_ETAPA_ANTERIOR, 12, null, null, null)));
     }
 
     @Test

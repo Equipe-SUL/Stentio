@@ -1,9 +1,11 @@
 package com.stentio.core.service;
 
+import com.stentio.core.dto.RecursoDisponivelResponse;
 import com.stentio.core.dto.RecursoFiltro;
 import com.stentio.core.dto.RecursoRequest;
 import com.stentio.core.dto.RecursoRequest.PrecoRequest;
 import com.stentio.core.dto.RecursoResponse;
+import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EmailJaCadastradoException;
 import com.stentio.core.exception.RecursoInvalidoException;
 import com.stentio.core.exception.RecursoNaoEncontradoException;
@@ -99,6 +101,34 @@ public class RecursoService {
     public Page<RecursoResponse> listar(RecursoFiltro filtro, Pageable paginacao) {
         return recursoRepository.findAll(RecursoSpecifications.filtrar(filtro), paginacao)
                 .map(recursoMapper::paraResponse);
+    }
+
+    /**
+     * US-012 CA.2: profissionais ativos aptos ao par de idiomas e ao tipo de serviço.
+     *
+     * <p>Os três vínculos são conferidos antes da consulta. Sem isso, um id errado vindo da
+     * tela devolveria lista vazia, que o gestor leria como "não há ninguém disponível" —
+     * o erro mais caro aqui é o silencioso.
+     */
+    public List<RecursoDisponivelResponse> listarDisponiveis(UUID idiomaOrigemId,
+                                                             UUID idiomaDestinoId,
+                                                             UUID tipoServicoId) {
+        if (idiomaOrigemId.equals(idiomaDestinoId)) {
+            throw new AlocacaoInvalidaException("Os idiomas de origem e destino não devem ser iguais");
+        }
+        exigirExistencia(idiomaRepository, idiomaOrigemId, "Idioma de origem");
+        exigirExistencia(idiomaRepository, idiomaDestinoId, "Idioma de destino");
+        exigirExistencia(tipoServicoRepository, tipoServicoId, "Tipo de serviço");
+
+        return recursoRepository.buscarDisponiveis(idiomaOrigemId, idiomaDestinoId, tipoServicoId).stream()
+                .map(recurso -> recursoMapper.paraDisponivel(recurso, idiomaOrigemId, idiomaDestinoId))
+                .toList();
+    }
+
+    private static void exigirExistencia(JpaRepository<?, UUID> repositorio, UUID id, String rotulo) {
+        if (!repositorio.existsById(id)) {
+            throw new AlocacaoInvalidaException(rotulo + " não encontrado: " + id);
+        }
     }
 
     private Recurso buscarEntidade(UUID id) {
