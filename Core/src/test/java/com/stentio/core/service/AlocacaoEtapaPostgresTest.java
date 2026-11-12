@@ -1,6 +1,8 @@
 package com.stentio.core.service;
 
 import com.stentio.core.dto.AlocacaoEtapaRequest;
+import com.stentio.core.dto.DashboardEtapaPendenciaProjection;
+import com.stentio.core.dto.DashboardOrcamentoPendenciaProjection;
 import com.stentio.core.dto.EtapaOrdemServicoResponse;
 import com.stentio.core.dto.EtapasOrdemServicoRequest;
 import com.stentio.core.dto.EtapasOrdemServicoResponse;
@@ -23,6 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -228,6 +231,38 @@ class AlocacaoEtapaPostgresTest {
                 Timestamp.from(agora.minusSeconds(1)), naoAlocada);
 
         assertEquals(1, etapas.countByDataLimiteEntregaBeforeAndRecursoIsNotNull(agora));
+    }
+
+    @Test
+    @DisplayName("As projeções de pendência consultam apenas os campos necessários")
+    void buscaProjecoesDePendenciasDeEtapaEOrcamento() {
+        Instant agora = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        UUID etapaId = montarEtapas().getFirst();
+        alocacao.alocar(osId, etapaId, new AlocacaoEtapaRequest(anaId, DAQUI_A_UM_MES), gestor);
+        jdbc.update("update etapas_os set data_limite_entrega = ? where id = ?",
+                Timestamp.from(agora.minusSeconds(1)), etapaId);
+        jdbc.update("update orcamentos set status = ?, data_expiracao = ? where id = ?",
+                StatusOrcamento.AGUARDANDO_APROVACAO.name(),
+                Timestamp.from(agora.plusSeconds(3600)),
+                orcamentoId);
+
+        DashboardEtapaPendenciaProjection etapa = etapas.buscarPendenciasDashboard(agora).stream()
+                .filter(pendencia -> pendencia.id().equals(etapaId))
+                .findFirst()
+                .orElseThrow();
+        DashboardOrcamentoPendenciaProjection orcamento = orcamentos.buscarPendenciasDashboard(List.of(
+                        StatusOrcamento.EM_ELABORACAO, StatusOrcamento.AGUARDANDO_APROVACAO))
+                .stream()
+                .filter(pendencia -> pendencia.id().equals(orcamentoId))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("Tradução", etapa.nome());
+        assertEquals(osId, etapa.ordemServicoId());
+        assertEquals(agora.minusSeconds(1), etapa.dataLimiteEntrega());
+        assertEquals(StatusOrcamento.AGUARDANDO_APROVACAO, orcamento.status());
+        assertEquals("Cliente US012", orcamento.nomeEmpresa());
+        assertEquals(agora.plusSeconds(3600), orcamento.dataExpiracao());
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.stentio.core.controller;
 
 import com.stentio.core.dto.DashboardResumoResponse;
+import com.stentio.core.dto.DashboardPendenciasResponse;
 import com.stentio.core.service.DashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,5 +27,11 @@ public class DashboardController {
     @Operation(summary = "Retorna os indicadores consolidados do painel central de monitoramento")
     public ResponseEntity<DashboardResumoResponse> resumo() {
         return ResponseEntity.ok(dashboardService.resumo());
+    }
+
+    @GetMapping("/pendencias")
+    @Operation(summary = "Lista pendências operacionais por data limite, da mais urgente à mais distante")
+    public ResponseEntity<DashboardPendenciasResponse> pendencias() {
+        return ResponseEntity.ok(dashboardService.pendencias());
     }
 }

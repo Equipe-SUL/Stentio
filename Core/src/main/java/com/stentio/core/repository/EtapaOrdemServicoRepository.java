@@ -1,5 +1,6 @@
 package com.stentio.core.repository;
 
+import com.stentio.core.dto.DashboardEtapaPendenciaProjection;
 import com.stentio.core.model.EtapaOrdemServico;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -53,6 +54,20 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
      * entrega do arquivo final, etapas vencidas são consideradas não entregues.
      */
     long countByDataLimiteEntregaBeforeAndRecursoIsNotNull(Instant dataLimiteEntrega);
+
+    /**
+     * Lista apenas os campos necessários às pendências do dashboard, sem carregar etapas,
+     * recursos ou ordens de serviço como entidades.
+     */
+    @Query("""
+            select new com.stentio.core.dto.DashboardEtapaPendenciaProjection(
+                e.id, e.nome, e.dataLimiteEntrega, os.id, os.criadoEm)
+              from EtapaOrdemServico e
+              join e.ordemServico os
+             where e.dataLimiteEntrega < :agora
+               and e.recurso is not null
+            """)
+    List<DashboardEtapaPendenciaProjection> buscarPendenciasDashboard(@Param("agora") Instant agora);
 
     /**
      * Apaga a sequência antiga antes de gravar a nova. É delete em massa de propósito: se
