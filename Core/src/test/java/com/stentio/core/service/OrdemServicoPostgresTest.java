@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
         "spring.datasource.username=${ORCAMENTO_TEST_DB_USER:postgres}",
         "spring.datasource.password=${ORCAMENTO_TEST_DB_PASSWORD:postgres}",
         "spring.jpa.hibernate.ddl-auto=update",
-        "spring.autoconfigure.exclude=",
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration,org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration,org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.mongo.MongoTemplateAutoConfiguration",
         "spring.data.mongodb.uri=mongodb://localhost:27017/stentio_test",
         "spring.mongodb.uri=mongodb://localhost:27017/stentio_test",
         "spring.rabbitmq.listener.simple.auto-startup=false",

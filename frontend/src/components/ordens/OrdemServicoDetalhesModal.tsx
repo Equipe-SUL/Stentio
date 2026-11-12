@@ -32,7 +32,7 @@ export function OrdemServicoDetalhesModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 items-center justify-center bg-black/60 p-4">
-        <View className="w-full max-w-3xl max-h-[92%] rounded-2xl bg-[#fbfaf8] shadow-2xl overflow-hidden flex-col border border-neutral-200">
+        <View className="w-full max-w-3xl h-[92%] max-h-[92%] rounded-2xl bg-[#fbfaf8] shadow-2xl overflow-hidden flex-col border border-neutral-200">
           {/* Cabeçalho do modal */}
           <View className="flex-row items-center justify-between border-b border-neutral-200 px-6 py-4 bg-white">
             <View className="flex-1 mr-4">

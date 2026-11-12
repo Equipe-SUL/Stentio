@@ -1,5 +1,7 @@
 package com.stentio.core.mapper;
 
+import com.stentio.core.dto.RecursoDisponivelResponse;
+import com.stentio.core.dto.RecursoDisponivelResponse.PrecoDoPar;
 import com.stentio.core.dto.RecursoResponse;
 import com.stentio.core.dto.RecursoResponse.IdiomaResumo;
 import com.stentio.core.dto.RecursoResponse.PrecoResponse;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 
 // Converte entidade em resposta. Não consulta o banco: quem resolve ids em entidades é o service.
 @Component
@@ -33,6 +36,26 @@ public class RecursoMapper {
                 paraTiposServico(recurso),
                 paraPrecos(recurso)
         );
+    }
+
+    /**
+     * US-012 CA.2. Os preços vêm filtrados pelo par consultado: na tela de alocação só
+     * interessa quanto custa aquele par, e mandar a tabela inteira de cada profissional
+     * faria a lista crescer sem necessidade.
+     */
+    public RecursoDisponivelResponse paraDisponivel(Recurso recurso, UUID idiomaOrigemId, UUID idiomaDestinoId) {
+        List<PrecoDoPar> precos = recurso.getPrecos().stream()
+                .filter(preco -> preco.getIdiomaOrigem().getId().equals(idiomaOrigemId)
+                        && preco.getIdiomaDestino().getId().equals(idiomaDestinoId))
+                .map(preco -> new PrecoDoPar(preco.getUnidade(), preco.getValor()))
+                .sorted(Comparator.comparing(PrecoDoPar::unidade))
+                .toList();
+
+        return new RecursoDisponivelResponse(
+                recurso.getId(),
+                recurso.getNome(),
+                recurso.getEmail(),
+                precos);
     }
 
     private List<TipoServicoResumo> paraTiposServico(Recurso recurso) {
