@@ -25,12 +25,15 @@ function menuParaPerfil(role: Role): MenuGroup[] {
 
   const grupos: MenuGroup[] = [{ title: "OPERACIONAL", icon: "construct-outline", items: operacional }];
 
-  if (role === "ADMIN") {
+  if (["ADMIN", "GESTOR_PROJETO"].includes(role)) {
     grupos.unshift({
       title: "PAINEL",
       icon: "grid-outline",
-      items: [{ name: "Dashboard", icon: "grid-outline" }],
+      items: [{ name: "Dashboard", icon: "grid-outline", route: "/dashboard" }],
     });
+  }
+
+  if (role === "ADMIN") {
     grupos.push({
       title: "SISTEMA",
       icon: "shield-checkmark-outline",
