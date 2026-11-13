@@ -49,15 +49,26 @@ export function OrdemServicoDetalhesModal({
 
             <View className="flex-row items-center gap-2">
               <Pressable
+                onPress={() => {
+                  onClose();
+                  router.push(`/ordens/${ordemId}/workflow`);
+                }}
+                className="flex-row items-center gap-1.5 rounded-lg border border-[#8c5230]/40 bg-[#fbf8f5] px-3 py-1.5 active:bg-[#f6efe9]"
+                accessibilityRole="button"
+                accessibilityLabel="Abrir Workflow da Ordem de Serviço"
+              >
+                <Ionicons name="git-network-outline" size={16} color="#8c5230" />
+                <Text className="text-xs font-bold text-[#8c5230]">Workflow</Text>
+              </Pressable>
+
+              <Pressable
                 onPress={handleAbrirTelaCheia}
-                className="flex-row items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 active:bg-neutral-100 mr-2"
+                className="flex-row items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 active:bg-neutral-100"
                 accessibilityRole="button"
                 accessibilityLabel="Abrir em página cheia"
               >
-                <Ionicons name="open-outline" size={16} color="#6f4f28" />
-                <Text className="text-xs font-medium text-neutral-700">
-                  Tela cheia
-                </Text>
+                <Ionicons name="open-outline" size={16} color="#525252" />
+                <Text className="text-xs font-medium text-neutral-700">Tela cheia</Text>
               </Pressable>
 
               <Pressable
