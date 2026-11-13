@@ -15,6 +15,7 @@ import { useRouter, usePathname, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { UsuarioLogado } from "../../lib/session";
+import { ChatbotWidget } from "../chatbot/ChatbotWidget";
 
 export type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -397,6 +398,7 @@ export function AppShell({
           )}
         </View>
       </View>
+      <ChatbotWidget role={usuario.role} />
     </View>
   );
 }
