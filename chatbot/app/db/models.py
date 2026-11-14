@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, Numeric, BigInteger, Integer, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Numeric, BigInteger, Integer, DateTime, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from datetime import datetime, timezone
 from db.session import Base
 import uuid
 
@@ -39,3 +40,14 @@ class OrdemServico(Base):
     status = Column(String(30))
     orcamento_id = Column(UUID(as_uuid=True), ForeignKey("orcamentos.id"))
     solicitacao_id = Column(UUID(as_uuid=True))
+
+class ChatbotMensagem(Base):
+    __tablename__ = "chatbot_mensagens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conversa_id = Column(String(100), index=True, nullable=False)
+    usuario_id = Column(String(100), index=True, nullable=False)
+    autor = Column(String(20), nullable=False)  # "USUARIO" ou "IA"
+    conteudo = Column(Text, nullable=False)
+    atalhos = Column(JSONB, default=list)
+    criada_em = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

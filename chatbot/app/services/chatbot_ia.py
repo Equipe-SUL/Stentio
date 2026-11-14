@@ -12,7 +12,7 @@ from tools.os_tools import (
 )
 
 groq_client = Groq(api_key=settings.GROQ_API_KEY)
-MODELO_GROQ = "llama-3.3-70b-versatile"
+MODELO_GROQ = "qwen/qwen3.8-27b"
 
 # Definição das ferramentas que o Groq pode decidir chamar
 TOOLS_SPEC = [
@@ -63,7 +63,12 @@ TOOLS_SPEC = [
     }
 ]
 
-def processar_pergunta_ia(mensagem_usuario: str, perfil_usuario: str, db: Session) -> Tuple[str, List[Atalho]]:
+def processar_pergunta_ia(
+    mensagem_usuario: str, 
+    perfil_usuario: str, 
+    db: Session,
+    historico_conversa: list = None
+) -> Tuple[str, List[Atalho]]:
     atalhos_acumulados: List[Atalho] = []
 
     system_prompt = f"""
@@ -77,10 +82,15 @@ def processar_pergunta_ia(mensagem_usuario: str, perfil_usuario: str, db: Sessio
     4. Nunca exponha erros técnicos, nomes de tabelas ou detalhes de banco de dados.
     """
 
-    mensagens = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": mensagem_usuario}
-    ]
+    mensagens = [{"role": "system", "content": system_prompt}]
+
+    # Injeta o histórico recente da conversa para o Groq manter o contexto
+    if historico_conversa:
+        for msg in historico_conversa:
+            role = "user" if msg.autor == "USUARIO" else "assistant"
+            mensagens.append({"role": role, "content": msg.conteudo})
+
+    mensagens.append({"role": "user", "content": mensagem_usuario})
 
     try:
         # 1ª Chamada ao Groq: decide se responde direto ou se chama uma Tool
