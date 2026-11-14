@@ -102,10 +102,10 @@ public class OrcamentoPublicoService {
             if (resposta.getBody() != null) {
                 String body = resposta.getBody();
                 JsonNode node = objectMapper.readTree(body);
-                String nome = node.path("nome").asText(null);
-                String cnpj = node.path("cnpj").asText(null);
-                String endereco = node.path("endereco").asText(null);
-                String telefone = node.path("telefone").asText(null);
+                String nome = node.path("nome").asString(null);
+                String cnpj = node.path("cnpj").asString(null);
+                String endereco = node.path("endereco").asString(null);
+                String telefone = node.path("telefone").asString(null);
                 Boolean logoDisponivel = null;
                 if (node.has("logo_disponivel")) {
                     if (!node.get("logo_disponivel").isNull()) {

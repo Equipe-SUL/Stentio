@@ -2,6 +2,12 @@ import { HubScreen, type HubItem } from "../../../components/navegacao/HubScreen
 
 const ITENS: HubItem[] = [
   {
+    nome: "Importar recursos",
+    descricao: "Importação de profissionais, serviços e preços por arquivo CSV.",
+    icon: "cloud-upload-outline",
+    route: "/importacoes",
+  },
+  {
     nome: "Usuários",
     descricao: "Cadastro, perfis de acesso e controle de permissões.",
     icon: "people-outline",

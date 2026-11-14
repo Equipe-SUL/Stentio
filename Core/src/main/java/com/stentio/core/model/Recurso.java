@@ -108,6 +108,22 @@ public class Recurso {
                 ));
     }
 
+    /**
+     * US-012 RN.1: competência no par de idiomas. O preço cadastrado para o par é a prova
+     * de competência que o sistema tem — quem não traduz aquele par não tem preço para ele.
+     * A unidade de cobrança não entra: qualquer uma serve para dizer que ele atende o par.
+     */
+    public boolean atendePar(UUID idiomaOrigemId, UUID idiomaDestinoId) {
+        return precos.stream().anyMatch(preco ->
+                preco.getIdiomaOrigem().getId().equals(idiomaOrigemId)
+                        && preco.getIdiomaDestino().getId().equals(idiomaDestinoId));
+    }
+
+    /** US-012 RN.2: especialidade compatível com o tipo de serviço da etapa. */
+    public boolean executa(UUID tipoServicoId) {
+        return tiposServico.stream().anyMatch(tipo -> tipo.getId().equals(tipoServicoId));
+    }
+
     public void ativar() {
         this.ativo = true;
     }

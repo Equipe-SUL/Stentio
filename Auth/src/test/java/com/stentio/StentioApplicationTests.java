@@ -1,4 +1,4 @@
-package com.example.stentio;
+package com.stentio;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
