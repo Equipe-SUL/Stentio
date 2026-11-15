@@ -1,6 +1,6 @@
 import { coreApi } from "../../../lib/api";
-import { storage } from "../../../lib/storage";
 import type {
+  AlocarRecursoPayload,
   CriarModeloWorkflowPayload,
   EtapaWorkflow,
   ModeloWorkflow,
@@ -14,6 +14,8 @@ const ENDPOINTS = {
   etapasOs: (osId: string) => `/api/v1/ordens-servico/${osId}/etapas`,
   aplicarModelo: (osId: string, modeloId: string) =>
     `/api/v1/ordens-servico/${osId}/etapas/aplicar-modelo/${modeloId}`,
+  alocacao: (osId: string, etapaId: string) =>
+    `/api/v1/ordens-servico/${osId}/etapas/${etapaId}/alocacao`,
   modelosWorkflow: "/api/v1/modelos-workflow",
   tiposServico: "/api/v1/tipos-servico",
   recursos: "/api/v1/recursos",
@@ -30,47 +32,6 @@ function extrairLista<T>(data: unknown): T[] {
     if (Array.isArray(primeiraLista)) return primeiraLista as T[];
   }
   return [];
-}
-
-// Chave local para persistir enriquecimentos de alocação e status caso a OS ainda não
-// tenha esses campos totalmente persistidos pelo endpoint base
-function extraStorageKey(osId: string): string {
-  return `@stentio:etapas_extras:${osId}`;
-}
-
-interface EtapaExtraInfo {
-  recurso_id?: string | null;
-  recurso_nome?: string | null;
-  status?: EtapaWorkflow["status"];
-}
-
-async function carregarExtrasLocais(osId: string): Promise<Record<string, EtapaExtraInfo>> {
-  try {
-    if (typeof window !== "undefined" && window.localStorage) {
-      const rawWeb = window.localStorage.getItem(extraStorageKey(osId));
-      if (rawWeb) return JSON.parse(rawWeb) as Record<string, EtapaExtraInfo>;
-    }
-    const raw = await storage.getItem(extraStorageKey(osId));
-    if (!raw) return {};
-    return JSON.parse(raw) as Record<string, EtapaExtraInfo>;
-  } catch {
-    return {};
-  }
-}
-
-export async function salvarExtrasLocais(
-  osId: string,
-  extras: Record<string, EtapaExtraInfo>,
-): Promise<void> {
-  try {
-    const raw = JSON.stringify(extras);
-    if (typeof window !== "undefined" && window.localStorage) {
-      window.localStorage.setItem(extraStorageKey(osId), raw);
-    }
-    await storage.setItem(extraStorageKey(osId), raw);
-  } catch (err) {
-    console.warn("Falha ao salvar metadados locais de etapas:", err);
-  }
 }
 
 /**
@@ -118,46 +79,21 @@ export function validarSequenciaEtapas(
  * Consulta a lista e árvore de etapas de uma Ordem de Serviço (GET /api/v1/ordens-servico/{os_id}/etapas)
  */
 export async function buscarWorkflowOrdem(osId: string): Promise<OrdemServicoWorkflowResponse> {
-  try {
-    const { data } = await coreApi.get<OrdemServicoWorkflowResponse>(ENDPOINTS.etapasOs(osId));
-    const extras = await carregarExtrasLocais(osId);
+  const { data } = await coreApi.get<OrdemServicoWorkflowResponse>(ENDPOINTS.etapasOs(osId));
 
-    const etapasEnriquecidas: EtapaWorkflow[] = (data.etapas || []).map((etapa, idx) => {
-      const chave = etapa.id || `ordem_${etapa.ordem}`;
-      const extra = extras[chave] || {};
+  const etapas = (data.etapas || [])
+    .map((etapa, idx) => ({
+      ...etapa,
+      status:
+        etapa.status ?? (idx === 0 ? "PENDENTE" : "AGUARDANDO_ETAPA_ANTERIOR"),
+    }))
+    .sort((a, b) => a.ordem - b.ordem);
 
-      let statusCalculado = etapa.status;
-      if (extra.status) {
-        statusCalculado = extra.status;
-      } else if (!statusCalculado) {
-        // CA.4: A primeira etapa inicia PENDENTE e as demais AGUARDANDO_ETAPA_ANTERIOR
-        statusCalculado = idx === 0 ? "PENDENTE" : "AGUARDANDO_ETAPA_ANTERIOR";
-      }
-
-      return {
-        ...etapa,
-        status: statusCalculado,
-        recurso_id: extra.recurso_id !== undefined ? extra.recurso_id : etapa.recurso_id,
-        recurso_nome: extra.recurso_nome || undefined,
-      };
-    });
-
-    return {
-      ordem_servico_id: data.ordem_servico_id || osId,
-      status_os: data.status_os || "EM_PLANEJAMENTO",
-      etapas: etapasEnriquecidas.sort((a, b) => a.ordem - b.ordem),
-    };
-  } catch (err: unknown) {
-    const axiosErr = err as { response?: { status?: number } };
-    if (axiosErr.response?.status === 404) {
-      return {
-        ordem_servico_id: osId,
-        status_os: "PENDENTE_ALOCACAO",
-        etapas: [],
-      };
-    }
-    throw err;
-  }
+  return {
+    ordem_servico_id: data.ordem_servico_id || osId,
+    status_os: data.status_os,
+    etapas,
+  };
 }
 
 /**
@@ -172,35 +108,21 @@ export async function salvarWorkflowManual(
     throw new Error(validacao.mensagem);
   }
 
-  // Prepara payload estritamente compatível
   const payload: SalvarWorkflowPayload = {
-    etapas: etapas
+    etapas: [...etapas]
       .sort((a, b) => a.ordem - b.ordem)
       .map((e, index) => ({
         ordem: index + 1,
         nome: e.nome.trim(),
         tipo_servico_id: e.tipo_servico_id,
-        tipo_servico: e.tipo_servico_nome,
         prazo_estimado_horas: Number(e.prazo_estimado_horas),
       })),
   };
 
-  const { data } = await coreApi.post<OrdemServicoWorkflowResponse>(ENDPOINTS.etapasOs(osId), payload);
-
-  // Preserva metadados locais de alocação de recurso e status
-  const extrasParaSalvar: Record<string, EtapaExtraInfo> = {};
-  etapas.forEach((e) => {
-    const chave = e.id || `ordem_${e.ordem}`;
-    if (e.recurso_id || e.status) {
-      extrasParaSalvar[chave] = {
-        recurso_id: e.recurso_id,
-        recurso_nome: e.recurso_nome,
-        status: e.status,
-      };
-    }
-  });
-  await salvarExtrasLocais(osId, extrasParaSalvar);
-
+  const { data } = await coreApi.post<OrdemServicoWorkflowResponse>(
+    ENDPOINTS.etapasOs(osId),
+    payload,
+  );
   return data;
 }
 
@@ -214,23 +136,28 @@ export async function aplicarModeloWorkflow(
   const { data } = await coreApi.post<OrdemServicoWorkflowResponse>(
     ENDPOINTS.aplicarModelo(osId, modeloId),
   );
-  // Limpa extras locais antigos ao clonar novo modelo
-  await salvarExtrasLocais(osId, {});
   return data;
+}
+
+/**
+ * Aloca um recurso a uma etapa existente (POST /api/v1/ordens-servico/{os_id}/etapas/{etapa_id}/alocacao)
+ */
+export async function alocarRecursoEtapa(
+  osId: string,
+  etapaId: string,
+  payload: AlocarRecursoPayload,
+): Promise<void> {
+  await coreApi.post(ENDPOINTS.alocacao(osId, etapaId), payload);
 }
 
 /**
  * Lista modelos de workflow pré-definidos (GET /api/v1/modelos-workflow)
  */
 export async function listarModelosWorkflow(): Promise<ModeloWorkflow[]> {
-  try {
-    const { data } = await coreApi.get<ModeloWorkflow[]>(ENDPOINTS.modelosWorkflow, {
-      params: { ativo: true },
-    });
-    return extrairLista<ModeloWorkflow>(data);
-  } catch {
-    return [];
-  }
+  const { data } = await coreApi.get<ModeloWorkflow[]>(ENDPOINTS.modelosWorkflow, {
+    params: { ativo: true },
+  });
+  return extrairLista<ModeloWorkflow>(data);
 }
 
 /**
@@ -247,7 +174,7 @@ export async function salvarNovoModeloWorkflow(
   const { data } = await coreApi.post<ModeloWorkflow>(ENDPOINTS.modelosWorkflow, {
     nome: payload.nome.trim(),
     descricao: payload.descricao?.trim() || undefined,
-    etapas: payload.etapas
+    etapas: [...payload.etapas]
       .sort((a, b) => a.ordem - b.ordem)
       .map((e, index) => ({
         ordem: index + 1,
@@ -264,35 +191,25 @@ export async function salvarNovoModeloWorkflow(
  * Lista catálogo de tipos de serviço disponíveis
  */
 export async function listarTiposServicoWorkflow(): Promise<TipoServicoOption[]> {
-  try {
-    const { data } = await coreApi.get<{ content: TipoServicoOption[] }>(ENDPOINTS.tiposServico, {
-      params: { ativo: true, size: 100 },
-    });
-    const lista = extrairLista<TipoServicoOption>(data);
-    return lista.map((t) => ({ id: t.id, nome: t.nome }));
-  } catch {
-    return [];
-  }
+  const { data } = await coreApi.get<{ content: TipoServicoOption[] }>(ENDPOINTS.tiposServico, {
+    params: { ativo: true, size: 100 },
+  });
+  return extrairLista<TipoServicoOption>(data).map((t) => ({ id: t.id, nome: t.nome }));
 }
 
 /**
  * Lista catálogo de recursos cadastrados disponíveis para alocação
  */
 export async function listarRecursosWorkflow(): Promise<RecursoOption[]> {
-  try {
-    const { data } = await coreApi.get<{ content: RecursoOption[] }>(ENDPOINTS.recursos, {
-      params: { ativo: true, size: 100 },
-    });
-    const lista = extrairLista<RecursoOption>(data);
-    return lista.map((r) => ({
-      id: r.id,
-      nome: r.nome,
-      email: r.email,
-      telefone: r.telefone,
-      ativo: r.ativo,
-      tiposServico: r.tiposServico,
-    }));
-  } catch {
-    return [];
-  }
+  const { data } = await coreApi.get<{ content: RecursoOption[] }>(ENDPOINTS.recursos, {
+    params: { ativo: true, size: 100 },
+  });
+  return extrairLista<RecursoOption>(data).map((r) => ({
+    id: r.id,
+    nome: r.nome,
+    email: r.email,
+    telefone: r.telefone,
+    ativo: r.ativo,
+    tiposServico: r.tiposServico,
+  }));
 }

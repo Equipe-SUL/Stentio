@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Pressable, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
 import type { EtapaWorkflow, TipoServicoOption } from "./types";
 
 interface EtapaContainerProps {
@@ -15,9 +16,14 @@ interface EtapaContainerProps {
   onDescer: () => void;
   onRemover: () => void;
   onAlocarRecurso: () => void;
-  onRemoverAlocacao: () => void;
-  onAlternarConclusao: () => void;
   onAtualizarCampo: (campo: keyof EtapaWorkflow, valor: any) => void;
+}
+
+function formatarData(iso?: string | null): string | null {
+  if (!iso) return null;
+  const data = new Date(iso);
+  if (Number.isNaN(data.getTime())) return null;
+  return data.toLocaleDateString("pt-BR");
 }
 
 export function EtapaContainer({
@@ -32,26 +38,24 @@ export function EtapaContainer({
   onDescer,
   onRemover,
   onAlocarRecurso,
-  onRemoverAlocacao,
-  onAlternarConclusao,
   onAtualizarCampo,
 }: EtapaContainerProps) {
-  const isConcluida = etapa.status === "CONCLUIDA";
-  const isPendente = etapa.status === "PENDENTE";
+  const isAlocada = etapa.status === "ALOCADO";
   const isAguardando = etapa.status === "AGUARDANDO_ETAPA_ANTERIOR";
 
   // Obter nome legível do tipo de serviço
   const tipoEncontrado = tiposServico.find((t) => t.id === etapa.tipo_servico_id);
   const tipoNome = etapa.tipo_servico_nome || tipoEncontrado?.nome || "Tipo não definido";
+  const dataLimite = formatarData(etapa.data_limite_entrega);
 
   // Cores do nó indicador da timeline
   let badgeNoBg = "bg-amber-100 border-amber-300 text-amber-800";
-  let statusRotulo = "Pronta / Pendente";
+  let statusRotulo = "Pendente";
   let statusBadgeBg = "bg-amber-50 border-amber-200 text-amber-800";
 
-  if (isConcluida) {
+  if (isAlocada) {
     badgeNoBg = "bg-emerald-500 border-emerald-600 text-white";
-    statusRotulo = "Concluída";
+    statusRotulo = "Alocada";
     statusBadgeBg = "bg-emerald-50 border-emerald-200 text-emerald-800";
   } else if (isAguardando) {
     badgeNoBg = "bg-neutral-100 border-neutral-300 text-neutral-500";
@@ -66,7 +70,7 @@ export function EtapaContainer({
         {/* Linha superior conectora */}
         <View
           className={`w-0.5 flex-1 ${
-            isFirst ? "bg-transparent" : isConcluida ? "bg-emerald-400" : "bg-neutral-300"
+            isFirst ? "bg-transparent" : isAlocada ? "bg-emerald-400" : "bg-neutral-300"
           }`}
           style={{ minHeight: 16 }}
         />
@@ -75,7 +79,7 @@ export function EtapaContainer({
         <View
           className={`h-9 w-9 rounded-full border-2 items-center justify-center shadow-xs z-10 ${badgeNoBg}`}
         >
-          {isConcluida ? (
+          {isAlocada ? (
             <Ionicons name="checkmark" size={18} color="#ffffff" />
           ) : (
             <Text className="text-xs font-bold font-mono">{etapa.ordem}</Text>
@@ -85,7 +89,7 @@ export function EtapaContainer({
         {/* Linha inferior conectora */}
         <View
           className={`w-0.5 flex-1 ${
-            isLast ? "bg-transparent" : isConcluida ? "bg-emerald-400" : "bg-neutral-300"
+            isLast ? "bg-transparent" : isAlocada ? "bg-emerald-400" : "bg-neutral-300"
           }`}
           style={{ minHeight: 16 }}
         />
@@ -94,11 +98,11 @@ export function EtapaContainer({
       {/* Cartão Container da Etapa */}
       <View
         className={`flex-1 mb-6 rounded-2xl border bg-white p-5 shadow-sm transition-all ${
-          isConcluida
+          isAlocada
             ? "border-emerald-200 bg-emerald-50/15"
-            : isPendente
-            ? "border-amber-200 shadow-amber-50"
-            : "border-neutral-200"
+            : isAguardando
+            ? "border-neutral-200"
+            : "border-amber-200 shadow-amber-50"
         }`}
       >
         {/* Linha 1: Cabeçalho do Container (Ordem, Nome da Etapa, Badges e Ações de Ordenação) */}
@@ -115,10 +119,11 @@ export function EtapaContainer({
             <TextInput
               value={etapa.nome}
               onChangeText={(txt) => onAtualizarCampo("nome", txt)}
+              editable={!bloqueadoPorRN3}
               placeholder="Nome da etapa (ex: Tradução Principal)..."
               placeholderTextColor="#a3a3a3"
               className={`flex-1 min-w-[200px] text-base font-bold text-neutral-900 border-b border-transparent hover:border-neutral-300 focus:border-[#8c5230] py-0.5 px-1 rounded ${
-                isConcluida ? "line-through text-neutral-500" : ""
+                bloqueadoPorRN3 ? "text-neutral-500" : ""
               }`}
             />
 
@@ -183,34 +188,29 @@ export function EtapaContainer({
           </View>
         </View>
 
-        {/* Linha 2: Configurações da Etapa (Tipo de Serviço, Prazo Estimado, Alocação e Conclusão) */}
+        {/* Linha 2: Configurações da Etapa (Tipo de Serviço, Prazo Estimado e Alocação) */}
         <View className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Seletor do Tipo de Serviço */}
           <View className="gap-1.5">
             <Text className="text-xs font-semibold text-neutral-600">Tipo de Serviço</Text>
-            <View className="rounded-xl border border-neutral-300 bg-neutral-50/60 px-3 py-2">
-              <select
-                value={etapa.tipo_servico_id}
-                onChange={(e) => onAtualizarCampo("tipo_servico_id", e.target.value)}
-                disabled={bloqueadoPorRN3}
-                style={{
-                  width: "100%",
-                  border: "none",
-                  backgroundColor: "transparent",
-                  outline: "none",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: "#262626",
-                  cursor: bloqueadoPorRN3 ? "not-allowed" : "pointer",
-                }}
+            <View
+              className={`rounded-xl border border-neutral-300 bg-neutral-50/60 px-2 ${
+                bloqueadoPorRN3 ? "opacity-60" : ""
+              }`}
+            >
+              <Picker
+                selectedValue={etapa.tipo_servico_id}
+                onValueChange={(valor) => onAtualizarCampo("tipo_servico_id", String(valor))}
+                enabled={!bloqueadoPorRN3}
+                style={{ width: "100%", fontSize: 13, color: "#262626" }}
+                dropdownIconColor="#737373"
+                accessibilityLabel="Tipo de Serviço"
               >
-                <option value="">Selecione o serviço...</option>
+                <Picker.Item label="Selecione o serviço..." value="" />
                 {tiposServico.map((tipo) => (
-                  <option key={tipo.id} value={tipo.id}>
-                    {tipo.nome}
-                  </option>
+                  <Picker.Item key={tipo.id} label={tipo.nome} value={tipo.id} />
                 ))}
-              </select>
+              </Picker>
             </View>
           </View>
 
@@ -234,6 +234,7 @@ export function EtapaContainer({
                   const num = parseInt(val.replace(/[^0-9]/g, ""), 10) || 0;
                   onAtualizarCampo("prazo_estimado_horas", num);
                 }}
+                editable={!bloqueadoPorRN3}
                 keyboardType="numeric"
                 placeholder="Ex: 24"
                 placeholderTextColor="#a3a3a3"
@@ -252,84 +253,75 @@ export function EtapaContainer({
                   <View className="h-7 w-7 rounded-full bg-emerald-100 items-center justify-center">
                     <Ionicons name="person" size={14} color="#047857" />
                   </View>
-                  <Text
-                    className="text-xs font-bold text-emerald-950 truncate flex-1"
-                    numberOfLines={1}
-                  >
-                    {etapa.recurso_nome || "Profissional Alocado"}
-                  </Text>
+                  <View className="flex-1 min-w-0">
+                    <Text
+                      className="text-xs font-bold text-emerald-950 truncate"
+                      numberOfLines={1}
+                    >
+                      {etapa.recurso_nome || "Profissional Alocado"}
+                    </Text>
+                    {dataLimite ? (
+                      <Text className="text-[11px] text-emerald-800">
+                        Entrega: {dataLimite}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
 
-                <View className="flex-row items-center gap-1">
-                  <Pressable
-                    onPress={onAlocarRecurso}
-                    className="rounded-md p-1 hover:bg-emerald-100"
-                    accessibilityLabel="Alterar recurso"
-                  >
-                    <Ionicons name="swap-horizontal" size={16} color="#065f46" />
-                  </Pressable>
-                  <Pressable
-                    onPress={onRemoverAlocacao}
-                    className="rounded-md p-1 hover:bg-red-100"
-                    accessibilityLabel="Remover alocação"
-                  >
-                    <Ionicons name="close" size={16} color="#dc2626" />
-                  </Pressable>
-                </View>
+                <Pressable
+                  onPress={onAlocarRecurso}
+                  className="rounded-md p-1 hover:bg-emerald-100"
+                  accessibilityLabel="Alterar recurso alocado"
+                >
+                  <Ionicons name="swap-horizontal" size={16} color="#065f46" />
+                </Pressable>
               </View>
             ) : (
-              <Pressable
-                onPress={onAlocarRecurso}
-                className="flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50 py-2.5 px-3 hover:bg-neutral-100 active:bg-neutral-200"
-                accessibilityRole="button"
-                accessibilityLabel="Alocar recurso para esta etapa"
-              >
-                <Ionicons name="person-add-outline" size={15} color="#6f4f28" />
-                <Text className="text-xs font-semibold text-[#6f4f28]">+ Alocar Recurso</Text>
-              </Pressable>
+              <>
+                <Pressable
+                  onPress={onAlocarRecurso}
+                  disabled={!etapa.id}
+                  className={`flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50 py-2.5 px-3 hover:bg-neutral-100 active:bg-neutral-200 ${
+                    !etapa.id ? "opacity-50" : ""
+                  }`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Alocar recurso para esta etapa"
+                >
+                  <Ionicons name="person-add-outline" size={15} color="#6f4f28" />
+                  <Text className="text-xs font-semibold text-[#6f4f28]">
+                    + Alocar Recurso
+                  </Text>
+                </Pressable>
+                {!etapa.id ? (
+                  <Text className="text-[10px] text-neutral-500">
+                    Salve o workflow antes de alocar recursos.
+                  </Text>
+                ) : null}
+              </>
             )}
           </View>
         </View>
 
-        {/* Linha 3: Barra inferior com Ação de Concluir Etapa */}
-        <View className="mt-4 pt-3 border-t border-neutral-100 flex-row items-center justify-between flex-wrap gap-2">
-          <View className="flex-row items-center gap-2">
-            <Ionicons
-              name={isConcluida ? "checkmark-circle" : "ellipse-outline"}
-              size={16}
-              color={isConcluida ? "#10b981" : "#a3a3a3"}
-            />
-            <Text className="text-xs text-neutral-500">
-              {isConcluida
-                ? "Esta etapa foi marcada como concluída"
+        {/* Linha 3: Situação da etapa */}
+        <View className="mt-4 pt-3 border-t border-neutral-100 flex-row items-center gap-2">
+          <Ionicons
+            name={
+              isAlocada
+                ? "checkmark-circle"
                 : isAguardando
-                ? "Aguardando conclusão das etapas anteriores"
-                : "Pronta para execução"}
-            </Text>
-          </View>
-
-          <Pressable
-            onPress={onAlternarConclusao}
-            className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 border transition-colors ${
-              isConcluida
-                ? "border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-700"
-                : "border-emerald-600 bg-emerald-600 active:bg-emerald-700"
-            }`}
-            accessibilityRole="button"
-          >
-            <Ionicons
-              name={isConcluida ? "arrow-undo-outline" : "checkmark-outline"}
-              size={15}
-              color={isConcluida ? "#525252" : "#ffffff"}
-            />
-            <Text
-              className={`text-xs font-semibold ${
-                isConcluida ? "text-neutral-700" : "text-white"
-              }`}
-            >
-              {isConcluida ? "Reabrir Etapa" : "Marcar como Concluída"}
-            </Text>
-          </Pressable>
+                ? "hourglass-outline"
+                : "ellipse-outline"
+            }
+            size={16}
+            color={isAlocada ? "#10b981" : isAguardando ? "#a3a3a3" : "#d97706"}
+          />
+          <Text className="text-xs text-neutral-500 flex-1">
+            {isAlocada
+              ? "Recurso alocado para a execução desta etapa"
+              : isAguardando
+              ? "Aguardando a etapa anterior para ser alocada"
+              : "Pendente de alocação de recurso"}
+          </Text>
         </View>
       </View>
     </View>

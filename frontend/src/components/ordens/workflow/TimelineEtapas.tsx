@@ -13,8 +13,6 @@ interface TimelineEtapasProps {
   onDescerEtapa: (index: number) => void;
   onRemoverEtapa: (index: number) => void;
   onAbrirAlocacao: (etapa: EtapaWorkflow) => void;
-  onRemoverAlocacao: (etapa: EtapaWorkflow) => void;
-  onAlternarConclusao: (index: number) => void;
   onAtualizarCampoEtapa: (index: number, campo: keyof EtapaWorkflow, valor: any) => void;
   onAbrirCarregarModelo: () => void;
 }
@@ -28,8 +26,6 @@ export function TimelineEtapas({
   onDescerEtapa,
   onRemoverEtapa,
   onAbrirAlocacao,
-  onRemoverAlocacao,
-  onAlternarConclusao,
   onAtualizarCampoEtapa,
   onAbrirCarregarModelo,
 }: TimelineEtapasProps) {
@@ -37,9 +33,9 @@ export function TimelineEtapas({
     (acc, e) => acc + (Number(e.prazo_estimado_horas) || 0),
     0,
   );
-  const totalConcluidas = etapas.filter((e) => e.status === "CONCLUIDA").length;
+  const totalAlocadas = etapas.filter((e) => e.status === "ALOCADO").length;
   const porcentagem =
-    etapas.length > 0 ? Math.round((totalConcluidas / etapas.length) * 100) : 0;
+    etapas.length > 0 ? Math.round((totalAlocadas / etapas.length) * 100) : 0;
 
   if (etapas.length === 0) {
     return (
@@ -122,10 +118,10 @@ export function TimelineEtapas({
 
             <View>
               <Text className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                Progresso Concluído
+                Etapas Alocadas
               </Text>
               <Text className="text-xl font-bold font-mono text-emerald-700 mt-0.5">
-                {totalConcluidas}/{etapas.length} ({porcentagem}%)
+                {totalAlocadas}/{etapas.length} ({porcentagem}%)
               </Text>
             </View>
           </View>
@@ -160,8 +156,9 @@ export function TimelineEtapas({
           <View className="mt-3 flex-row items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 p-2.5 px-3">
             <Ionicons name="lock-closed" size={16} color="#b45309" />
             <Text className="text-xs font-medium text-amber-900 flex-1">
-              <Text className="font-bold">Sequência congelada:</Text> Uma ou mais etapas já
-              possuem recursos alocados. A reordenação e exclusão estrutural estão desabilitadas.
+              <Text className="font-bold">Sequência congelada:</Text> uma ou mais etapas já
+              possuem recurso alocado. Reordenação, exclusão e edição estrutural estão
+              desabilitadas.
             </Text>
           </View>
         ) : null}
@@ -183,8 +180,6 @@ export function TimelineEtapas({
             onDescer={() => onDescerEtapa(idx)}
             onRemover={() => onRemoverEtapa(idx)}
             onAlocarRecurso={() => onAbrirAlocacao(etapa)}
-            onRemoverAlocacao={() => onRemoverAlocacao(etapa)}
-            onAlternarConclusao={() => onAlternarConclusao(idx)}
             onAtualizarCampo={(campo, valor) => onAtualizarCampoEtapa(idx, campo, valor)}
           />
         ))}

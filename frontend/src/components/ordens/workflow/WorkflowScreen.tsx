@@ -13,6 +13,7 @@ import { OrdemServicoStatusBadge } from "../OrdemServicoStatusBadge";
 import { buscarOrdemServicoPorId } from "../ordensApi";
 import type { OrdemServicoDetalhe } from "../types";
 import {
+  alocarRecursoEtapa,
   aplicarModeloWorkflow,
   buscarWorkflowOrdem,
   listarModelosWorkflow,
@@ -29,6 +30,7 @@ import { ModalSalvarModelo } from "./ModalSalvarModelo";
 import type {
   EtapaWorkflow,
   ModeloWorkflow,
+  OrdemServicoWorkflowResponse,
   RecursoOption,
   TipoServicoOption,
 } from "./types";
@@ -61,6 +63,14 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
   const [modalCarregarModeloAberto, setModalCarregarModeloAberto] = useState(false);
   const [modalSalvarModeloAberto, setModalSalvarModeloAberto] = useState(false);
 
+  // Mantém a etapa em memória e o status exibido da OS em sincronia com o backend
+  const aplicarWorkflow = (dados: OrdemServicoWorkflowResponse) => {
+    setEtapas(dados.etapas);
+    if (dados.status_os) {
+      setOrdem((prev) => (prev ? { ...prev, status: dados.status_os } : prev));
+    }
+  };
+
   // Carregamento inicial de todos os dados necessários
   useEffect(() => {
     let ativo = true;
@@ -79,7 +89,7 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
 
         if (!ativo) return;
         setOrdem(dadosOrdem);
-        setEtapas(dadosWorkflow.etapas);
+        aplicarWorkflow(dadosWorkflow);
         setTiposServico(listaTipos);
         setRecursos(listaRecursos);
         setTemAlteracoesPendentes(false);
@@ -106,7 +116,7 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
       const lista = await listarModelosWorkflow();
       setModelos(lista);
     } catch (err) {
-      console.error("Falha ao listar modelos:", err);
+      setErro(getApiErrorMessage(err));
     } finally {
       setCarregandoModelos(false);
     }
@@ -196,6 +206,7 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
     campo: keyof EtapaWorkflow,
     valor: any,
   ) => {
+    if (bloqueadoPorRN3) return;
     setEtapas((prev) => {
       const copia = [...prev];
       const alvo = { ...copia[index], [campo]: valor };
@@ -209,53 +220,53 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
     setTemAlteracoesPendentes(true);
   };
 
-  // Alternar conclusão da etapa
-  const handleAlternarConclusao = (index: number) => {
-    setEtapas((prev) => {
-      const copia = [...prev];
-      const atual = copia[index];
-      const novoStatus = atual.status === "CONCLUIDA" ? "PENDENTE" : "CONCLUIDA";
-      copia[index] = { ...atual, status: novoStatus };
+  // Abrir modal de alocação apenas para etapas já persistidas no backend
+  const handleAbrirAlocacao = (etapa: EtapaWorkflow) => {
+    if (!etapa.id) {
+      setErro("Salve o workflow antes de alocar recursos.");
+      return;
+    }
+    setModalAlocacaoEtapa(etapa);
+  };
 
-      // Se concluiu a etapa atual, destrava a próxima que estava aguardando
-      if (novoStatus === "CONCLUIDA" && index + 1 < copia.length) {
-        if (copia[index + 1].status === "AGUARDANDO_ETAPA_ANTERIOR") {
-          copia[index + 1] = { ...copia[index + 1], status: "PENDENTE" };
-        }
-      }
-      return copia;
+  // Confirmar alocação real de recurso na etapa (US-012)
+  const handleConfirmarAlocacao = async (
+    recurso: RecursoOption,
+    dataLimiteEntrega: string,
+  ) => {
+    const etapa = modalAlocacaoEtapa;
+    if (!etapa?.id) {
+      throw new Error("Salve o workflow antes de alocar recursos.");
+    }
+
+    setErro(null);
+    await alocarRecursoEtapa(ordemId, etapa.id, {
+      recurso_id: recurso.id,
+      data_limite_entrega: dataLimiteEntrega,
     });
-    setTemAlteracoesPendentes(true);
-  };
 
-  // Confirmar alocação de recurso na etapa
-  const handleConfirmarAlocacao = (recurso: RecursoOption) => {
-    if (!modalAlocacaoEtapa) return;
-    setEtapas((prev) =>
-      prev.map((e) =>
-        e.ordem === modalAlocacaoEtapa.ordem
-          ? { ...e, recurso_id: recurso.id, recurso_nome: recurso.nome }
-          : e,
-      ),
-    );
     setModalAlocacaoEtapa(null);
-    setTemAlteracoesPendentes(true);
-    setMensagemSucesso(`Recurso "${recurso.nome}" alocado na Etapa ${modalAlocacaoEtapa.ordem}.`);
-  };
-
-  // Remover alocação de recurso
-  const handleRemoverAlocacao = (etapa: EtapaWorkflow) => {
-    setEtapas((prev) =>
-      prev.map((e) =>
-        e.ordem === etapa.ordem ? { ...e, recurso_id: null, recurso_nome: null } : e,
-      ),
+    setMensagemSucesso(
+      `Recurso "${recurso.nome}" alocado na Etapa ${etapa.ordem}.`,
     );
-    setTemAlteracoesPendentes(true);
-    setMensagemSucesso(`Alocação de recurso removida da Etapa ${etapa.ordem}.`);
+
+    try {
+      const dadosAtualizados = await buscarWorkflowOrdem(ordemId);
+      aplicarWorkflow(dadosAtualizados);
+    } catch (err) {
+      setErro(getApiErrorMessage(err));
+    }
   };
 
   // Salvar workflow na API (POST /api/v1/ordens-servico/{os_id}/etapas)
   const handleSalvarWorkflow = async () => {
+    if (bloqueadoPorRN3) {
+      setErro(
+        "A sequência já possui recurso alocado e não pode mais ser alterada (RN.3).",
+      );
+      return;
+    }
+
     try {
       setSalvandoWorkflow(true);
       setErro(null);
@@ -273,8 +284,8 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
       setMensagemSucesso("Workflow da Ordem de Serviço salvo com sucesso!");
       // Recarrega árvore para garantir integridade com o backend
       const dadosAtualizados = await buscarWorkflowOrdem(ordemId);
-      setEtapas(dadosAtualizados.etapas);
-    } catch (err: any) {
+      aplicarWorkflow(dadosAtualizados);
+    } catch (err) {
       setErro(getApiErrorMessage(err));
     } finally {
       setSalvandoWorkflow(false);
@@ -283,6 +294,12 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
 
   // Aplicar modelo pré-definido (CA.2)
   const handleAplicarModelo = async (modeloId: string) => {
+    if (bloqueadoPorRN3) {
+      throw new Error(
+        "A sequência já possui recurso alocado e não pode mais ser alterada (RN.3).",
+      );
+    }
+
     try {
       setErro(null);
       await aplicarModeloWorkflow(ordemId, modeloId);
@@ -290,8 +307,8 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
       setMensagemSucesso("Modelo de workflow aplicado com sucesso na OS!");
       // Recarrega etapas clonadas do modelo
       const dadosAtualizados = await buscarWorkflowOrdem(ordemId);
-      setEtapas(dadosAtualizados.etapas);
-    } catch (err: any) {
+      aplicarWorkflow(dadosAtualizados);
+    } catch (err) {
       setErro(getApiErrorMessage(err));
       throw err;
     }
@@ -312,7 +329,7 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
         })),
       });
       setMensagemSucesso(`Modelo "${dados.nome}" salvo com sucesso para reuso!`);
-    } catch (err: any) {
+    } catch (err) {
       setErro(getApiErrorMessage(err));
       throw err;
     }
@@ -382,9 +399,9 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
               {/* Botão Salvar Workflow (CA.3) */}
               <Pressable
                 onPress={handleSalvarWorkflow}
-                disabled={salvandoWorkflow || etapas.length === 0}
+                disabled={salvandoWorkflow || etapas.length === 0 || bloqueadoPorRN3}
                 className={`flex-row items-center gap-2 rounded-xl px-4 py-2 shadow-xs transition-colors ${
-                  salvandoWorkflow || etapas.length === 0
+                  salvandoWorkflow || etapas.length === 0 || bloqueadoPorRN3
                     ? "bg-neutral-300 opacity-60"
                     : temAlteracoesPendentes
                     ? "bg-[#6f4f28] active:bg-[#5b4020]"
@@ -497,9 +514,7 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
           onSubirEtapa={handleSubirEtapa}
           onDescerEtapa={handleDescerEtapa}
           onRemoverEtapa={handleRemoverEtapa}
-          onAbrirAlocacao={(etapa) => setModalAlocacaoEtapa(etapa)}
-          onRemoverAlocacao={handleRemoverAlocacao}
-          onAlternarConclusao={handleAlternarConclusao}
+          onAbrirAlocacao={handleAbrirAlocacao}
           onAtualizarCampoEtapa={handleAtualizarCampoEtapa}
           onAbrirCarregarModelo={abrirModalCarregarModelo}
         />
@@ -507,6 +522,7 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
 
       {/* Modal para Alocar Recurso */}
       <ModalAlocarRecurso
+        key={modalAlocacaoEtapa?.id ?? "sem-etapa"}
         visible={Boolean(modalAlocacaoEtapa)}
         etapa={modalAlocacaoEtapa}
         recursos={recursos}

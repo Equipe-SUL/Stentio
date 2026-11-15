@@ -1,8 +1,7 @@
 export type StatusEtapaWorkflow =
   | "PENDENTE"
   | "AGUARDANDO_ETAPA_ANTERIOR"
-  | "EM_ANDAMENTO"
-  | "CONCLUIDA";
+  | "ALOCADO";
 
 export interface EtapaWorkflow {
   id?: string;
@@ -14,6 +13,7 @@ export interface EtapaWorkflow {
   status: StatusEtapaWorkflow;
   recurso_id?: string | null;
   recurso_nome?: string | null;
+  data_limite_entrega?: string | null;
 }
 
 export interface OrdemServicoWorkflowResponse {
@@ -43,7 +43,6 @@ export interface SalvarEtapaPayload {
   ordem: number;
   nome: string;
   tipo_servico_id: string;
-  tipo_servico?: string;
   prazo_estimado_horas: number;
 }
 
@@ -55,6 +54,11 @@ export interface CriarModeloWorkflowPayload {
   nome: string;
   descricao?: string;
   etapas: SalvarEtapaPayload[];
+}
+
+export interface AlocarRecursoPayload {
+  recurso_id: string;
+  data_limite_entrega: string;
 }
 
 export interface TipoServicoOption {
