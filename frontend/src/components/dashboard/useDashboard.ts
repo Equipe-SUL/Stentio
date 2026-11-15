@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { buscarResumo } from "./dashboardApi";
+import { buscarResumo, buscarPendencias } from "./dashboardApi";
 
 /** O cache por usuário evita mostrar dados de outra sessão. */
 export function useDashboard(usuarioId: string) {
@@ -10,5 +10,12 @@ export function useDashboard(usuarioId: string) {
     retry: 1,
   });
 
-  return { resumo };
+  const pendencias = useQuery({
+    queryKey: ["dashboard", usuarioId, "pendencias"],
+    queryFn: buscarPendencias,
+    enabled: Boolean(usuarioId),
+    retry: 1,
+  });
+
+  return { resumo, pendencias };
 }

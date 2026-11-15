@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { getApiErrorMessage } from "../../lib/api";
 import { useSession } from "../../lib/session";
 import { MetricCard } from "./MetricCard";
+import { PendenciasList } from "./PendenciasList";
 import { useDashboard } from "./useDashboard";
 
 function mensagemErro(erro: unknown): string {
@@ -18,7 +19,7 @@ function mensagemErro(erro: unknown): string {
 
 export function DashboardScreen() {
   const { usuario } = useSession();
-  const { resumo } = useDashboard(usuario?.id ?? "");
+  const { resumo, pendencias } = useDashboard(usuario?.id ?? "");
   const dados = resumo.data;
 
   return (
@@ -59,6 +60,12 @@ export function DashboardScreen() {
             {dados ? `${dados.taxa_conversao_orcamentos.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : "—"}
           </Text>
         </View>
+        <PendenciasList
+          dados={pendencias.data}
+          carregando={pendencias.isLoading}
+          erro={pendencias.isError ? mensagemErro(pendencias.error) : undefined}
+          onTentarNovamente={() => { void pendencias.refetch(); }}
+        />
       </View>
     </ScrollView>
   );
