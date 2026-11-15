@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Numeric, BigInteger, Integer, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Numeric, BigInteger, Integer, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from datetime import datetime, timezone
 from db.session import Base
@@ -51,3 +51,13 @@ class ChatbotMensagem(Base):
     conteudo = Column(Text, nullable=False)
     atalhos = Column(JSONB, default=list)
     criada_em = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ativo = Column(Boolean, default=True)
+    email = Column(String(255))
+    nome = Column(String(255))
+    role = Column(String(255))
+    senha = Column(String(255))

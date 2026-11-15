@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import uuid
 from datetime import datetime, timezone
+from core.security import obter_usuario_logado
 
 from db.session import get_db
 from db.models import ChatbotMensagem
@@ -19,13 +20,6 @@ from schemas.chatbot import (
 router = APIRouter(prefix="/api/v1/ia/chatbot", tags=["Chatbot"])
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
-
-def obter_usuario_logado(authorization: Optional[str] = Security(api_key_header)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Não autorizado")
-    
-    perfil = "ADMIN" if "ADMIN" in authorization.upper() else "TRADUTOR"
-    return {"usuario_id": "123", "perfil": perfil}
 
 
 @router.post("/mensagens", response_model=MensagemResponse)
