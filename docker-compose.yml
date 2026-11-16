@@ -206,6 +206,27 @@ services:
     profiles:
       - deploy
 
+  chatbot-service:
+    build:
+      context: ./chatbot
+      dockerfile: Dockerfile
+    container_name: stentio-chatbot-service
+    ports:
+      - "${CHATBOT_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${CORE_POSTGRES_DB:-${POSTGRES_DB:-stentio}}
+      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-changeme}@mongodb:${MONGO_PORT:-27017}/${MONGO_DB_NAME:-stentio_chatbot}?authSource=admin
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-stentio_chatbot}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      JWT_SECRET: ${JWT_SECRET:-minha-chave-secreta-super-longa-para-jwt-stentio-2026}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+    depends_on:
+      - postgres
+      - mongodb
+    networks:
+      - stentio-network
+    restart: unless-stopped
+
 volumes:
   core_uploads:
   mongo_data:
