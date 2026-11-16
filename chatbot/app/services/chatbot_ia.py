@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Tuple, List
 
 from core.config import settings
+from services.rag_service import buscar_contexto_manual
 from schemas.chatbot import Atalho
 from tools.os_tools import (
     consultar_os_no_banco,
@@ -71,15 +72,26 @@ def processar_pergunta_ia(
 ) -> Tuple[str, List[Atalho]]:
     atalhos_acumulados: List[Atalho] = []
 
-    system_prompt = f"""
-    Você é o assistente virtual inteligente do sistema TMS (Stentio).
-    O usuário logado possui o perfil de acesso (RBAC): {perfil_usuario}.
+    contexto_rag = buscar_contexto_manual(mensagem_usuario)
+    bloco_manual = ""
+    if contexto_rag:
+        bloco_manual = f"""
 
-    Regras importantes:
-    1. Responda sempre em português de forma clara, prestativa e amigável.
-    2. Se o usuário perguntar sobre OS (Ordem de Serviço), Orçamentos ou Faturamento, utilize as ferramentas (tools) disponíveis.
-    3. REGRA DE SEGURANÇA (RBAC): Se o perfil for 'TRADUTOR' e ele perguntar sobre faturamento, valores financeiros ou dados restritos de clientes, informe educadamente que o perfil dele não possui permissão para visualizar dados financeiros consolidados.
-    4. Nunca exponha erros técnicos, nomes de tabelas ou detalhes de banco de dados.
+    ### DOCUMENTAÇÃO OFICIAL DO SISTEMA (USE PARA RESPONDER DÚVIDAS OPERACIONAIS):
+    {contexto_rag}
+    """
+
+    system_prompt = f"""
+    Você é o assistente virtual oficial do sistema Stentio (TMS de tradução).
+    Perfil do usuário atual: {perfil_usuario}.
+
+    REGRAS OBRIGATÓRIAS:
+    1. Para consultas de dados reais (status de OS, orçamentos, faturamento), use as ferramentas disponíveis.
+    2. Para dúvidas sobre como usar o sistema, fluxos, permissões ou erros (ex: SMTP, aprovação de orçamento, alocação), responda com base na DOCUMENTAÇÃO OFICIAL abaixo.
+    3. Nunca invente telas ou funcionalidades que não estejam na documentação (ex: emissão de notas fiscais ou faturas ainda não existem no sistema).
+    4. Respeite estritamente o RBAC: se o perfil for TRADUTOR ou RECURSO, nunca revele valores financeiros de orçamentos ou faturamento.
+    5. Seja direto, claro e objetivo em português.
+    {bloco_manual}
     """
 
     mensagens = [{"role": "system", "content": system_prompt}]
