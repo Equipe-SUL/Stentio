@@ -41,17 +41,6 @@ class OrdemServico(Base):
     orcamento_id = Column(UUID(as_uuid=True), ForeignKey("orcamentos.id"))
     solicitacao_id = Column(UUID(as_uuid=True))
 
-class ChatbotMensagem(Base):
-    __tablename__ = "chatbot_mensagens"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    conversa_id = Column(String(100), index=True, nullable=False)
-    usuario_id = Column(String(100), index=True, nullable=False)
-    autor = Column(String(20), nullable=False)  # "USUARIO" ou "IA"
-    conteudo = Column(Text, nullable=False)
-    atalhos = Column(JSONB, default=list)
-    criada_em = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
 class Usuario(Base):
     __tablename__ = "usuarios"
 

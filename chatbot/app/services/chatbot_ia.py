@@ -85,10 +85,11 @@ def processar_pergunta_ia(
     mensagens = [{"role": "system", "content": system_prompt}]
 
     # Injeta o histórico recente da conversa para o Groq manter o contexto
+    # Injeta o histórico recente da conversa vinda do MongoDB
     if historico_conversa:
         for msg in historico_conversa:
-            role = "user" if msg.autor == "USUARIO" else "assistant"
-            mensagens.append({"role": role, "content": msg.conteudo})
+            role = "user" if msg["autor"] == "USUARIO" else "assistant"
+            mensagens.append({"role": role, "content": msg["conteudo"]})
 
     mensagens.append({"role": "user", "content": mensagem_usuario})
 
@@ -99,7 +100,8 @@ def processar_pergunta_ia(
             messages=mensagens,
             tools=TOOLS_SPEC,
             tool_choice="auto",
-            temperature=0.2
+            temperature=0.2,
+            max_tokens=500
         )
 
         resposta_msg = response.choices[0].message
@@ -139,7 +141,8 @@ def processar_pergunta_ia(
             segunda_resposta = groq_client.chat.completions.create(
                 model=MODELO_GROQ,
                 messages=mensagens,
-                temperature=0.2
+                temperature=0.2,
+                max_tokens=500
             )
             return segunda_resposta.choices[0].message.content, atalhos_acumulados
 

@@ -2,10 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.chatbot import router as chatbot_router
 from db.session import engine
-from db.models import ChatbotMensagem
 
-# Cria a tabela chatbot_mensagens no banco caso ela ainda não exista
-ChatbotMensagem.__table__.create(bind=engine, checkfirst=True)
 
 app = FastAPI(
     title="Chatbot TMS API",
