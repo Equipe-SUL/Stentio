@@ -85,22 +85,22 @@ class OrcamentoEnvioServiceTest {
         verify(outbox).save(pending.capture());
         // US-13: a outbox guarda dados estruturados; o corpo é montado no email-service.
         var payload = JsonMapper.builder().build().readTree(pending.getValue().getPayload());
-        assertEquals("cliente@example.com", payload.get("to").asText());
-        assertEquals("Maria Souza", payload.get("cliente").get("nomeRepresentante").asText());
-        assertEquals("Empresa XPTO", payload.get("cliente").get("nomeEmpresa").asText());
+        assertEquals("cliente@example.com", payload.get("to").asString());
+        assertEquals("Maria Souza", payload.get("cliente").get("nomeRepresentante").asString());
+        assertEquals("Empresa XPTO", payload.get("cliente").get("nomeEmpresa").asString());
 
         var dadosOrcamento = payload.get("orcamento");
         String codigoEsperado = "ORC-2026-"
                 + orcamento.getId().toString().substring(0, 6).toUpperCase(java.util.Locale.ROOT);
-        assertEquals(codigoEsperado, dadosOrcamento.get("codigo").asText());
+        assertEquals(codigoEsperado, dadosOrcamento.get("codigo").asString());
         assertEquals("Orçamento " + codigoEsperado + " aguardando sua aprovação",
-                payload.get("subject").asText());
+                payload.get("subject").asString());
         // O Jackson normaliza os zeros à direita ao reler o JSON, então "150.00" volta como
         // 150. O que importa é o valor, não a representação — por isso a comparação é numérica.
         assertEquals(0, new BigDecimal("150.00").compareTo(dadosOrcamento.get("valorTotal").decimalValue()));
         assertEquals("https://stentio.example/orcamento?token=" + response.tokenAprovacao(),
-                dadosOrcamento.get("linkAprovacao").asText());
-        assertEquals(response.dataExpiracao().toString(), dadosOrcamento.get("dataExpiracao").asText());
+                dadosOrcamento.get("linkAprovacao").asString());
+        assertEquals(response.dataExpiracao().toString(), dadosOrcamento.get("dataExpiracao").asString());
         // O token não aparece mais solto: existe uma única vez no payload, dentro do link.
         assertEquals(1, ocorrencias(pending.getValue().getPayload(), response.tokenAprovacao().toString()));
         // Orçamento sem solicitação vinculada não quebra o envio.
@@ -137,11 +137,11 @@ class OrcamentoEnvioServiceTest {
         var payload = JsonMapper.builder().build().readTree(pending.getValue().getPayload());
 
         var dados = payload.get("solicitacao");
-        assertEquals("Jurídico", dados.get("categoria").asText());
-        assertEquals("Português", dados.get("idiomaOrigem").asText());
-        assertEquals("Inglês", dados.get("idiomaDestino").asText());
-        assertEquals("Contrato social", dados.get("descricao").asText());
-        assertEquals(solicitacao.getDataRecebimento().toString(), dados.get("dataRecebimento").asText());
+        assertEquals("Jurídico", dados.get("categoria").asString());
+        assertEquals("Português", dados.get("idiomaOrigem").asString());
+        assertEquals("Inglês", dados.get("idiomaDestino").asString());
+        assertEquals("Contrato social", dados.get("descricao").asString());
+        assertEquals(solicitacao.getDataRecebimento().toString(), dados.get("dataRecebimento").asString());
 
         var anexos = payload.get("anexos");
         assertEquals(2, anexos.size());
@@ -150,13 +150,13 @@ class OrcamentoEnvioServiceTest {
         // now() consecutivos caírem no mesmo instante, então a conferência é por nome. A
         // ordenação em si é a mesma do OrdemServicoMapper, coberta lá.
         var nomes = new java.util.ArrayList<String>();
-        anexos.forEach(anexo -> nomes.add(anexo.get("nomeArquivo").asText()));
+        anexos.forEach(anexo -> nomes.add(anexo.get("nomeArquivo").asString()));
         assertEquals(java.util.Set.of("contrato.pdf", "anexo.docx"), new java.util.HashSet<>(nomes));
 
         var contrato = anexos.get(nomes.indexOf("contrato.pdf"));
-        assertEquals("2026/10/a.pdf", contrato.get("caminho").asText());
-        assertEquals("application/pdf", contrato.get("tipoConteudo").asText());
-        assertEquals("2026/10/b.docx", anexos.get(nomes.indexOf("anexo.docx")).get("caminho").asText());
+        assertEquals("2026/10/a.pdf", contrato.get("caminho").asString());
+        assertEquals("application/pdf", contrato.get("tipoConteudo").asString());
+        assertEquals("2026/10/b.docx", anexos.get(nomes.indexOf("anexo.docx")).get("caminho").asString());
     }
 
     @Test
