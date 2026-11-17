@@ -33,7 +33,11 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "recursos",
-        uniqueConstraints = @UniqueConstraint(name = "uk_recursos_email", columnNames = "email")
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_recursos_email", columnNames = "email"),
+                // US-023: uma conta de acesso corresponde a no máximo um perfil profissional.
+                @UniqueConstraint(name = "uk_recursos_usuario", columnNames = "usuario_id")
+        }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -55,6 +59,24 @@ public class Recurso {
     @Column(nullable = false)
     private boolean ativo = true;
 
+    /**
+     * US-023 RN.6: a conta de acesso no Auth, quando existe. Fica nulo para quem a equipe
+     * cadastrou pela US-004 — esses profissionais continuam sendo alocáveis sem nunca
+     * terem entrado no sistema, que é como a Aliança trabalha hoje.
+     *
+     * <p>Não é chave estrangeira: o usuário vive no banco do Auth, e a integridade entre
+     * os dois serviços é o JWT, não o Postgres.
+     */
+    @Column(name = "usuario_id")
+    private UUID usuarioId;
+
+    /**
+     * US-023 CA.6 e RN.5: só recurso verificado recebe etapa. Nasce falso para quem se
+     * auto-cadastra — é o pedido de entrada, não a aprovação.
+     */
+    @Column(nullable = false)
+    private boolean verificado = false;
+
     @ManyToMany
     @JoinTable(
             name = "recursos_tipos_servico",
@@ -72,6 +94,25 @@ public class Recurso {
 
     public static String normalizarEmail(String email) {
         return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /** US-023 CA.3: liga o perfil à conta que o criou. Vínculo de uma vez só. */
+    public void vincularUsuario(UUID usuarioId) {
+        this.usuarioId = usuarioId;
+    }
+
+    /** US-023 CA.6: o gestor confirma que o profissional pode receber trabalho. */
+    public void definirVerificacao(boolean verificado) {
+        this.verificado = verificado;
+    }
+
+    /**
+     * US-023 RN.5. Inativo ou não verificado não recebe etapa — as duas condições juntas,
+     * porque é esta a pergunta que a alocação faz, e quem pergunta não deve ter de lembrar
+     * de conferir as duas.
+     */
+    public boolean elegivelParaAlocacao() {
+        return ativo && verificado;
     }
 
     public void atualizarDados(String nome, String email, String telefone) {
