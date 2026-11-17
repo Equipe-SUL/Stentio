@@ -178,6 +178,8 @@ class AlocacaoEtapaPostgresTest {
 
     private UUID novoRecurso(String nome, TipoServico tipo, Idioma origem, Idioma destino) {
         Recurso recurso = new Recurso(nome, UUID.randomUUID() + "@teste.invalid", "11988887777");
+        // US-023 RN.5: sem verificação o recurso nem aparece em buscarDisponiveis.
+        recurso.definirVerificacao(true);
         recurso.definirTiposServico(List.of(tipo));
         recurso.definirPrecos(List.of(new Recurso.NovoPreco(
                 origem, destino, UnidadeCobranca.PALAVRA, new BigDecimal("0.35"))));
@@ -345,6 +347,21 @@ class AlocacaoEtapaPostgresTest {
 
         assertThrows(AlocacaoInvalidaException.class, () -> alocacao.alocar(
                 osId, primeira, new AlocacaoEtapaRequest(danielaId, DAQUI_A_UM_MES), gestor));
+
+        assertNull(jdbc.queryForObject("select recurso_id from etapas_os where id = ?", UUID.class, primeira));
+        assertEquals(0, contarHistorico(primeira));
+    }
+
+    @Test
+    @DisplayName("US-023 RN.5 no banco: recurso não verificado não é alocado nem aparece disponível")
+    void rn5NaoAlocaNemLista() {
+        UUID primeira = montarEtapas().getFirst();
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                jdbc.update("update recursos set verificado = false where id = ?", anaId));
+
+        assertThrows(AlocacaoInvalidaException.class, () -> alocacao.alocar(
+                osId, primeira, new AlocacaoEtapaRequest(anaId, DAQUI_A_UM_MES), gestor));
 
         assertNull(jdbc.queryForObject("select recurso_id from etapas_os where id = ?", UUID.class, primeira));
         assertEquals(0, contarHistorico(primeira));

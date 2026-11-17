@@ -106,6 +106,8 @@ class AlocacaoEtapaServiceTest {
 
     private Recurso recurso(String nome, TipoServico tipoHabilitado, Idioma origem, Idioma destino) {
         Recurso r = new Recurso(nome, nome.toLowerCase().replace(" ", ".") + "@traducoes.com", null);
+        // US-023 RN.5: profissional só é alocável depois de verificado pelo gestor.
+        r.definirVerificacao(true);
         r.definirTiposServico(List.of(tipoHabilitado));
         r.definirPrecos(List.of(new Recurso.NovoPreco(
                 origem, destino, UnidadeCobranca.PALAVRA, new BigDecimal("0.35"))));
@@ -210,6 +212,20 @@ class AlocacaoEtapaServiceTest {
         var erro = assertThrows(AlocacaoInvalidaException.class, () -> alocar(anaId, gestor));
 
         assertTrue(erro.getMessage().contains("inativo"));
+    }
+
+    @Test
+    @DisplayName("US-023 RN.5: recurso ainda não verificado pelo gestor não recebe etapa")
+    void recusaRecursoNaoVerificado() {
+        Recurso novato = recurso("Elisa Prado", traducao, portugues, ingles);
+        novato.definirVerificacao(false);
+        UUID elisaId = idRegistradoDe(novato);
+
+        var erro = assertThrows(AlocacaoInvalidaException.class, () -> alocar(elisaId, gestor));
+
+        assertTrue(erro.getMessage().contains("não foi verificado"));
+        assertFalse(etapa.alocada());
+        verifyNoInteractions(historico);
     }
 
     @Test
