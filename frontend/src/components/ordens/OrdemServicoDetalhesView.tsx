@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { baixarArquivoOrdemServico, buscarOrdemServicoPorId } from "./ordensApi";
@@ -38,6 +39,7 @@ export function OrdemServicoDetalhesView({
   onVoltar,
   ordemInicial,
 }: OrdemServicoDetalhesViewProps) {
+  const router = useRouter();
   const [ordem, setOrdem] = useState<OrdemServicoDetalhe | null>(ordemInicial ?? null);
   const [carregando, setCarregando] = useState(!ordemInicial);
   const [naoEncontrada, setNaoEncontrada] = useState(false);
@@ -180,13 +182,25 @@ export function OrdemServicoDetalhesView({
               </View>
             </View>
 
-            <View className="flex-row items-center gap-6 self-start md:self-auto">
+            <View className="flex-row items-center gap-4 self-start md:self-auto flex-wrap">
               <View>
                 <Text className="text-xs text-neutral-400">Data de criação</Text>
                 <Text className="text-sm font-semibold text-neutral-800 mt-0.5">
                   {formatarData(ordem.data_criacao)}
                 </Text>
               </View>
+
+              <Pressable
+                onPress={() => router.push(`/ordens/${ordem.id}/workflow`)}
+                className="flex-row items-center gap-2 rounded-xl bg-[#6f4f28] px-4 py-2.5 active:bg-[#5b4020] shadow-sm hover:opacity-95"
+                accessibilityRole="button"
+                accessibilityLabel="Acessar Workflow e etapas da OS"
+              >
+                <Ionicons name="git-network-outline" size={17} color="#ffffff" />
+                <Text className="text-xs font-bold text-white tracking-wide">
+                  Workflow
+                </Text>
+              </Pressable>
             </View>
           </View>
 
@@ -207,6 +221,66 @@ export function OrdemServicoDetalhesView({
                 {solicitacao?.id ? solicitacao.id.substring(0, 8) + "..." : "—"}
               </Text>
             </View>
+          </View>
+        </View>
+
+        {/* Card de Gestão de Workflow e Etapas (CA.1) */}
+        <View className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm gap-4">
+          <View className="flex-col md:flex-row md:items-center justify-between gap-3 border-b border-neutral-100 pb-3">
+            <View className="flex-row items-center gap-2.5">
+              <View className="h-9 w-9 rounded-xl bg-[#f6efe9] items-center justify-center border border-[#e8d7c8]">
+                <Ionicons name="git-network-outline" size={20} color="#8c5230" />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-neutral-900">
+                  Workflow & Etapas do Projeto
+                </Text>
+                <Text className="text-xs text-neutral-500">
+                  Defina o fluxo de conclusão do projeto, prazos e alocação de recursos.
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => router.push(`/ordens/${ordem.id}/workflow`)}
+              className="flex-row items-center gap-1.5 self-start md:self-auto rounded-xl border border-[#8c5230]/40 bg-[#fbf8f5] px-3.5 py-2 hover:bg-[#f6efe9] active:bg-[#ede2d6]"
+            >
+              <Ionicons name="open-outline" size={16} color="#8c5230" />
+              <Text className="text-xs font-bold text-[#8c5230]">Abrir Tela do Workflow</Text>
+            </Pressable>
+          </View>
+
+          {/* Opções CA.1: Carregar Modelo ou Adicionar Etapas Manualmente */}
+          <View className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <Pressable
+              onPress={() => router.push(`/ordens/${ordem.id}/workflow`)}
+              className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-4 hover:border-[#8c5230]/40 hover:bg-[#fdfaf8] transition-colors gap-2"
+            >
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="copy-outline" size={18} color="#8c5230" />
+                <Text className="text-sm font-bold text-neutral-900">
+                  Carregar Modelo de Workflow
+                </Text>
+              </View>
+              <Text className="text-xs text-neutral-600 leading-relaxed">
+                Clona um molde de etapas padronizado (ex: Tradução e Revisão) vinculando à OS em suas respectivas ordens numéricas.
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => router.push(`/ordens/${ordem.id}/workflow`)}
+              className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-4 hover:border-[#8c5230]/40 hover:bg-[#fdfaf8] transition-colors gap-2"
+            >
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="create-outline" size={18} color="#8c5230" />
+                <Text className="text-sm font-bold text-neutral-900">
+                  Adicionar Etapas Manualmente
+                </Text>
+              </View>
+              <Text className="text-xs text-neutral-600 leading-relaxed">
+                Adicione, remova e reordene as etapas dinamicamente em linha do tempo com cálculo de prazos e alocação de recursos.
+              </Text>
+            </Pressable>
           </View>
         </View>
 

@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { CabecalhoTela } from "../navegacao/CabecalhoTela";
@@ -45,6 +46,7 @@ function formatarData(isoString?: string): string {
 }
 
 export function OrdensListScreen() {
+  const router = useRouter();
   const [paginaDados, setPaginaDados] = useState<OrdemServicoPagina>({
     pagina: 1,
     tamanho_pagina: 10,
@@ -172,18 +174,30 @@ export function OrdensListScreen() {
     },
     {
       key: "id",
-      header: "",
-      width: 60,
+      header: "Ações",
+      width: 160,
       align: "right",
       render: (item) => (
-        <Pressable
-          onPress={() => setOrdemSelecionadaId(item.id)}
-          className="rounded-lg p-2 active:bg-neutral-200"
-          accessibilityRole="button"
-          accessibilityLabel={`Ver detalhes da OS ${item.codigo_visual}`}
-        >
-          <Ionicons name="eye-outline" size={20} color="#6f4f28" />
-        </Pressable>
+        <View className="flex-row items-center justify-end gap-2">
+          <Pressable
+            onPress={() => router.push(`/ordens/${item.id}/workflow`)}
+            className="flex-row items-center gap-1.5 rounded-lg border border-[#8c5230]/40 bg-[#fbf8f5] px-2.5 py-1.5 hover:bg-[#f6efe9] active:bg-[#ede2d6]"
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir workflow da OS ${item.codigo_visual}`}
+          >
+            <Ionicons name="git-network-outline" size={15} color="#8c5230" />
+            <Text className="text-xs font-bold text-[#8c5230]">Workflow</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setOrdemSelecionadaId(item.id)}
+            className="rounded-lg p-1.5 border border-neutral-300 bg-white hover:bg-neutral-50 active:bg-neutral-100"
+            accessibilityRole="button"
+            accessibilityLabel={`Ver detalhes da OS ${item.codigo_visual}`}
+          >
+            <Ionicons name="eye-outline" size={17} color="#525252" />
+          </Pressable>
+        </View>
       ),
     },
   ];

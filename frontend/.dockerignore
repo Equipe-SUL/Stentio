@@ -1,5 +1,6 @@
 .expo/
 node_modules/
+.env*.local
 dist/
 .git/
 npm-debug.log*
