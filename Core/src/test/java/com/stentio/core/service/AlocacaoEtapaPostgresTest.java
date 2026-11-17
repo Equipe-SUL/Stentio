@@ -98,7 +98,10 @@ class AlocacaoEtapaPostgresTest {
     @BeforeEach
     void preparar() {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            Cliente cliente = clientes.saveAndFlush(new Cliente("Empresa US012", "Cliente US012",
+            // Os dois nomes são diferentes de propósito: a projeção do dashboard devolve a
+            // empresa, e um representante chamado "Cliente ..." já fez alguém assertar o
+            // campo errado achando que era o mesmo texto.
+            Cliente cliente = clientes.saveAndFlush(new Cliente("Empresa US012", "Representante US012",
                     UUID.randomUUID() + "@teste.invalid", "11999999999", "11144477735"));
             clienteId = cliente.getId();
 
@@ -263,7 +266,9 @@ class AlocacaoEtapaPostgresTest {
         assertEquals(osId, etapa.ordemServicoId());
         assertEquals(agora.minusSeconds(1), etapa.dataLimiteEntrega());
         assertEquals(StatusOrcamento.AGUARDANDO_APROVACAO, orcamento.status());
-        assertEquals("Cliente US012", orcamento.nomeEmpresa());
+        // nomeEmpresa é o primeiro argumento do construtor de Cliente; o segundo é o
+        // representante. A projeção seleciona c.nomeEmpresa.
+        assertEquals("Empresa US012", orcamento.nomeEmpresa());
         assertEquals(agora.plusSeconds(3600), orcamento.dataExpiracao());
     }
 
