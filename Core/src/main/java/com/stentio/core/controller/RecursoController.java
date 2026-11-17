@@ -8,8 +8,11 @@ import com.stentio.core.dto.RecursoRequest;
 import com.stentio.core.dto.RecursoResponse;
 import com.stentio.core.exception.RecursoInvalidoException;
 import com.stentio.core.service.RecursoService;
+import com.stentio.core.support.UsuarioAutenticado;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
@@ -59,6 +62,23 @@ public class RecursoController {
             @PageableDefault(size = 20, sort = "nome") Pageable paginacao) {
         validarOrdenacao(paginacao.getSort());
         return new PagedModel<>(recursoService.listar(filtro, paginacao));
+    }
+
+    /**
+     * US-023 CA.2 e CA.3: o profissional cria o próprio perfil, já autenticado pela conta
+     * que acabou de abrir no Auth.
+     *
+     * <p>Mapeado antes de /{id} pelo mesmo motivo de /disponiveis — e o SecurityConfig
+     * libera este caminho para o papel RECURSO antes da regra geral de /api/v1/recursos,
+     * que é de ADMIN e GESTOR_PROJETO.
+     */
+    @PostMapping("/auto-cadastro")
+    @Operation(summary = "Cria o perfil de competências do profissional autenticado")
+    public ResponseEntity<RecursoResponse> autoCadastrar(
+            @RequestBody @Valid RecursoRequest request,
+            Authentication autenticacao) {
+        RecursoResponse criado = recursoService.autoCadastrar(request, UsuarioAutenticado.de(autenticacao));
+        return ResponseEntity.created(URI.create(BASE_PATH + "/" + criado.id())).body(criado);
     }
 
     /**

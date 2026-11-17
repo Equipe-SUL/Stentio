@@ -14,6 +14,18 @@ public interface RecursoRepository extends JpaRepository<Recurso, UUID>, JpaSpec
 
     boolean existsByEmail(String email);
 
+    // US-023: uma conta de acesso tem no máximo um perfil profissional.
+    boolean existsByUsuarioId(UUID usuarioId);
+
+    /** US-023: o perfil de quem está autenticado, resolvido pelo id do token. */
+    @Query("""
+            select distinct r from Recurso r
+              left join fetch r.tiposServico
+              left join fetch r.precos
+             where r.usuarioId = :usuarioId
+            """)
+    Optional<Recurso> buscarPorUsuario(@Param("usuarioId") UUID usuarioId);
+
     boolean existsByEmailAndIdNot(String email, UUID id);
 
     /**

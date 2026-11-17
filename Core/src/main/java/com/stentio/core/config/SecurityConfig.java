@@ -34,6 +34,7 @@ public class SecurityConfig {
 
     private static final String ROTAS_CLIENTES = "/api/v1/clientes/**";
     private static final String ROTAS_RECURSOS = "/api/v1/recursos/**";
+    private static final String ROTA_AUTO_CADASTRO_RECURSO = "/api/v1/recursos/auto-cadastro";
     private static final String ROTAS_CATEGORIAS_PROJETO = "/api/v1/categorias-projeto/**";
     private static final String ROTAS_IDIOMAS = "/api/v1/idiomas/**";
     private static final String ROTAS_TIPOS_SERVICO = "/api/v1/tipos-servico/**";
@@ -85,6 +86,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, ROTAS_CLIENTES).hasRole(Role.ADMIN.name())
                         // Qualquer usuário autenticado pode cadastrar, listar, consultar ou modificar clientes
                         .requestMatchers(ROTAS_CLIENTES).authenticated()
+                        // US-023 CA.2: o próprio profissional cria o seu perfil. Precisa vir
+                        // antes das regras gerais de /api/v1/recursos, senão cai no
+                        // ADMIN/GESTOR_PROJETO abaixo e o recurso leva 403 no próprio cadastro.
+                        .requestMatchers(HttpMethod.POST, ROTA_AUTO_CADASTRO_RECURSO)
+                        .hasRole(Role.RECURSO.name())
                         .requestMatchers(HttpMethod.GET, ROTAS_RECURSOS).authenticated()
                         .requestMatchers(ROTAS_RECURSOS).hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
                         .requestMatchers(ROTAS_CATEGORIAS_PROJETO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
