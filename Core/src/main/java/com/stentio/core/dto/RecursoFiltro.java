@@ -7,6 +7,8 @@ public record RecursoFiltro(
         UUID tipoServicoId,
         UUID idiomaOrigemId,
         UUID idiomaDestinoId,
-        Boolean ativo
+        Boolean ativo,
+        // US-023 CA.6: ?verificado=false é como o gestor acha a fila de quem está esperando.
+        Boolean verificado
 ) {
 }

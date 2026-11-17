@@ -6,6 +6,7 @@ import com.stentio.core.dto.RecursoDisponivelResponse;
 import com.stentio.core.dto.RecursoFiltro;
 import com.stentio.core.dto.RecursoRequest;
 import com.stentio.core.dto.RecursoResponse;
+import com.stentio.core.dto.VerificacaoRecursoRequest;
 import com.stentio.core.exception.RecursoInvalidoException;
 import com.stentio.core.service.RecursoService;
 import com.stentio.core.support.UsuarioAutenticado;
@@ -62,6 +63,21 @@ public class RecursoController {
             @PageableDefault(size = 20, sort = "nome") Pageable paginacao) {
         validarOrdenacao(paginacao.getSort());
         return new PagedModel<>(recursoService.listar(filtro, paginacao));
+    }
+
+    /**
+     * US-023 CA.6: o gestor confirma que o profissional pode receber trabalho.
+     *
+     * <p>Endpoint próprio, separado do PATCH de ativação: ativar e verificar são decisões
+     * diferentes, tomadas em momentos diferentes. A RN.4 ainda diz que a US-024 troca esta
+     * verificação por certificação por par de idiomas — isolada assim, ela sai inteira.
+     */
+    @PatchMapping("/{id}/verificacao")
+    @Operation(summary = "Marca o recurso como verificado, habilitando-o a receber etapas")
+    public RecursoResponse alterarVerificacao(
+            @PathVariable UUID id,
+            @RequestBody @Valid VerificacaoRecursoRequest request) {
+        return recursoService.alterarVerificacao(id, request.verificado());
     }
 
     /**

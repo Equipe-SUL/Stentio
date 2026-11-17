@@ -136,6 +136,19 @@ public class RecursoService {
         return recursoMapper.paraResponse(recurso);
     }
 
+    /**
+     * US-023 CA.6 e RN.4: a verificação mínima — um booleano, uma ação do gestor.
+     *
+     * <p>A RN.4 avisa que a US-024 substitui isto por certificação por par de idiomas.
+     * Por isso é um campo simples e um endpoint próprio: quando a substituição vier, sai
+     * inteiro, sem desembaraçar de dentro do cadastro.
+     */
+    public RecursoResponse alterarVerificacao(UUID id, boolean verificado) {
+        Recurso recurso = buscarEntidade(id);
+        recurso.definirVerificacao(verificado);
+        return recursoMapper.paraResponse(recursoRepository.save(recurso));
+    }
+
     public RecursoResponse buscarPorId(UUID id) {
         return recursoMapper.paraResponse(buscarEntidade(id));
     }
