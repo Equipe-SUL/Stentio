@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
+import { isAxiosError } from "axios";
 import {
   ActivityIndicator, Pressable, ScrollView, Text, View,
 } from "react-native";
@@ -14,7 +14,7 @@ import { useDashboard } from "./useDashboard";
 const INTERVALOS = [30, 60, 120] as const;
 
 function mensagemDeErro(erro: unknown): string {
-  if (axios.isAxiosError(erro)) {
+  if (isAxiosError(erro)) {
     if (erro.response?.status === 401) return "Sua sessão expirou. Entre novamente para visualizar o painel.";
     if (erro.response?.status === 403) return "Seu perfil não tem permissão para consultar esses dados.";
   }
@@ -26,7 +26,7 @@ export function DashboardScreen() {
   const [largura, setLargura] = useState(0);
   const [autoAtualizar, setAutoAtualizar] = useState(true);
   const [intervaloSegundos, setIntervaloSegundos] = useState<number>(60);
-  const [agora, setAgora] = useState(Date.now());
+  const [agora, setAgora] = useState(() => Date.now());
 
   const {
     resumo, pendencias, atualizar, atualizando, ultimaAtualizacao, atualizacaoAtiva,

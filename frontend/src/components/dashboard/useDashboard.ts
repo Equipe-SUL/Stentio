@@ -59,14 +59,17 @@ export function useDashboard(usuarioId: string, autoAtualizar: boolean, interval
     retry: 1,
   });
 
+  const { refetch: refetchResumo } = resumo;
+  const { refetch: refetchPendencias } = pendencias;
+
   const atualizar = useCallback(async () => {
     setAtualizandoManual(true);
     try {
-      await Promise.all([resumo.refetch(), pendencias.refetch()]);
+      await Promise.all([refetchResumo(), refetchPendencias()]);
     } finally {
       setAtualizandoManual(false);
     }
-  }, [resumo.refetch, pendencias.refetch]);
+  }, [refetchResumo, refetchPendencias]);
 
   return {
     resumo,
