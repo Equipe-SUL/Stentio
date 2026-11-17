@@ -1,6 +1,13 @@
 -- US-023: o recurso ganha conta de acesso e verificação.
--- As colunas sobem com ddl-auto: update. O UPDATE do final NÃO sobe, e sem ele a
--- alocação da US-012 para de funcionar para todo mundo que já está cadastrado.
+--
+-- RODE O ARQUIVO INTEIRO, não só o UPDATE do final:
+--
+--   docker compose exec -T postgres psql -U postgres -d stentio < schema-recurso-autocadastro.sql
+--
+-- O UPDATE sozinho falha com 'column "usuario_id" does not exist' se o Core ainda não
+-- subiu com o código novo, porque quem cria as colunas é o ddl-auto: update no boot. Os
+-- ALTER abaixo são idempotentes e resolvem a ordem nos dois sentidos — rodando antes ou
+-- depois de subir a aplicação, o resultado é o mesmo.
 
 -- ---------------------------------------------------------------- colunas novas
 

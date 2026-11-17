@@ -72,8 +72,13 @@ class PortalRecursoServiceTest {
     @Test
     @DisplayName("CA.5: lista as demandas com o par de idiomas e o código da OS")
     void listaAsDemandas() {
+        // A etapa é montada antes do when: etapaDe cria e configura mocks, e fazer isso
+        // dentro do thenReturn abriria uma configuração nova com a anterior ainda em curso.
+        // O Mockito recusa com UnfinishedStubbingException, e com razão.
+        EtapaOrdemServico etapa = etapaDe("Tradução Principal");
+
         perfilCadastrado();
-        when(etapas.listarPorRecurso(any())).thenReturn(List.of(etapaDe("Tradução Principal")));
+        when(etapas.listarPorRecurso(any())).thenReturn(List.of(etapa));
 
         List<DemandaRecursoResponse> demandas = service.minhasDemandas(maria);
 
