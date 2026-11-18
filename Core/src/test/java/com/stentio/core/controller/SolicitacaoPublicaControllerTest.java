@@ -25,8 +25,11 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -128,5 +131,35 @@ class SolicitacaoPublicaControllerTest {
                 .andExpect(jsonPath("$.id").value(solicitacaoId.toString()));
 
         verify(service).criar(any(), any());
+    }
+
+    @Test
+    void deveRetornarBadRequestQuandoIdiomasForemIguais() throws Exception {
+        UUID idiomaId = UUID.randomUUID();
+
+        mockMvc.perform(multipart(BASE_PATH)
+                        .param("nomeEmpresa", "Empresa Exemplo")
+                        .param("nomeRepresentante", "Pessoa Representante")
+                        .param("emailRepresentante", "cliente@exemplo.com")
+                        .param("cpfCnpj", "52998224725")
+                        .param("categoriaProjetoId", UUID.randomUUID().toString())
+                        .param("idiomaOrigemId", idiomaId.toString())
+                        .param("idiomaDestinoId", idiomaId.toString()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erros[0].campo").value("idiomaDestinoId"));
+
+        verify(service, never()).criar(any(), anyList());
+    }
+
+    @Test
+    void rotasPublicasNaoExpostasExigemAutenticacao() throws Exception {
+        String solicitacaoId = UUID.randomUUID().toString();
+
+        mockMvc.perform(get(BASE_PATH)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get(BASE_PATH + "/" + solicitacaoId)).andExpect(status().isUnauthorized());
+        mockMvc.perform(put(BASE_PATH + "/" + solicitacaoId)).andExpect(status().isUnauthorized());
+        mockMvc.perform(patch(BASE_PATH + "/" + solicitacaoId)).andExpect(status().isUnauthorized());
+        mockMvc.perform(delete(BASE_PATH)).andExpect(status().isUnauthorized());
+        mockMvc.perform(delete(BASE_PATH + "/" + solicitacaoId)).andExpect(status().isUnauthorized());
     }
 }
