@@ -10,8 +10,8 @@ import com.stentio.core.repository.IdiomaRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Sort;
 
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -23,11 +23,18 @@ import static org.mockito.Mockito.when;
 
 class SolicitacaoPublicaServiceTest {
 
+    private static SolicitacaoPublicaService service(
+            CategoriaProjetoRepository categorias,
+            IdiomaRepository idiomas) {
+        return new SolicitacaoPublicaService(
+                categorias, idiomas, mock(ClientePublicoService.class), mock(SolicitacaoService.class));
+    }
+
     @Test
     void deveRetornarCategoriasDisponiveisEIdiomasAtivosEmFormatoEnxuto() {
         CategoriaProjetoRepository categorias = mock(CategoriaProjetoRepository.class);
         IdiomaRepository idiomas = mock(IdiomaRepository.class);
-        SolicitacaoPublicaService service = new SolicitacaoPublicaService(categorias, idiomas);
+        SolicitacaoPublicaService service = service(categorias, idiomas);
 
         UUID categoriaId = UUID.randomUUID();
         CategoriaProjeto categoria = new CategoriaProjeto();
@@ -60,7 +67,7 @@ class SolicitacaoPublicaServiceTest {
     void deveRetornarErrosDeCampoParaCategoriaEIdiomasInexistentesOuInativos() {
         CategoriaProjetoRepository categorias = mock(CategoriaProjetoRepository.class);
         IdiomaRepository idiomas = mock(IdiomaRepository.class);
-        SolicitacaoPublicaService service = new SolicitacaoPublicaService(categorias, idiomas);
+        SolicitacaoPublicaService service = service(categorias, idiomas);
 
         UUID categoriaId = UUID.randomUUID();
         UUID idiomaOrigemId = UUID.randomUUID();
@@ -87,7 +94,7 @@ class SolicitacaoPublicaServiceTest {
     void aceitaCategoriaExistenteEIdiomasAtivos() {
         CategoriaProjetoRepository categorias = mock(CategoriaProjetoRepository.class);
         IdiomaRepository idiomas = mock(IdiomaRepository.class);
-        SolicitacaoPublicaService service = new SolicitacaoPublicaService(categorias, idiomas);
+        SolicitacaoPublicaService service = service(categorias, idiomas);
 
         UUID categoriaId = UUID.randomUUID();
         UUID idiomaOrigemId = UUID.randomUUID();

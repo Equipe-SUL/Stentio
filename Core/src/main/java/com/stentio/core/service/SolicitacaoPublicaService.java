@@ -1,7 +1,10 @@
 package com.stentio.core.service;
 
+import com.stentio.core.dto.ClienteResponse;
 import com.stentio.core.dto.SolicitacaoOpcoesResponse;
 import com.stentio.core.dto.SolicitacaoPublicaRequest;
+import com.stentio.core.dto.SolicitacaoPublicaResponse;
+import com.stentio.core.dto.SolicitacaoRequest;
 import com.stentio.core.exception.ErroResponse;
 import com.stentio.core.exception.SolicitacaoPublicaValidacaoException;
 import com.stentio.core.model.Idioma;
@@ -10,6 +13,7 @@ import com.stentio.core.repository.IdiomaRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,10 +26,18 @@ public class SolicitacaoPublicaService {
 
     private final CategoriaProjetoRepository categorias;
     private final IdiomaRepository idiomas;
+    private final ClientePublicoService clientesPublicos;
+    private final SolicitacaoService solicitacoes;
 
-    public SolicitacaoPublicaService(CategoriaProjetoRepository categorias, IdiomaRepository idiomas) {
+    public SolicitacaoPublicaService(
+            CategoriaProjetoRepository categorias,
+            IdiomaRepository idiomas,
+            ClientePublicoService clientesPublicos,
+            SolicitacaoService solicitacoes) {
         this.categorias = categorias;
         this.idiomas = idiomas;
+        this.clientesPublicos = clientesPublicos;
+        this.solicitacoes = solicitacoes;
     }
 
     public SolicitacaoOpcoesResponse obterOpcoes() {
@@ -39,6 +51,23 @@ public class SolicitacaoPublicaService {
                 .toList();
 
         return new SolicitacaoOpcoesResponse(categoriasProjeto, idiomasAtivos);
+    }
+
+    @Transactional
+    public SolicitacaoPublicaResponse criar(SolicitacaoPublicaRequest requisicao, List<MultipartFile> arquivos) {
+        validarReferencias(requisicao);
+
+        ClienteResponse cliente = clientesPublicos.buscarOuCriar(requisicao);
+        var solicitacao = solicitacoes.criar(
+                new SolicitacaoRequest(
+                        cliente.id(),
+                        requisicao.categoriaProjetoId(),
+                        requisicao.idiomaOrigemId(),
+                        requisicao.idiomaDestinoId(),
+                        requisicao.descricao()),
+                arquivos);
+
+        return new SolicitacaoPublicaResponse(solicitacao.id(), solicitacao.status());
     }
 
     public void validarReferencias(SolicitacaoPublicaRequest requisicao) {

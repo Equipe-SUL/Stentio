@@ -2,21 +2,31 @@ package com.stentio.core.controller;
 
 import com.stentio.core.config.SecurityConfig;
 import com.stentio.core.dto.SolicitacaoOpcoesResponse;
+import com.stentio.core.dto.SolicitacaoPublicaResponse;
 import com.stentio.core.exception.GlobalExceptionHandler;
+import com.stentio.core.model.StatusSolicitacao;
 import com.stentio.core.service.SolicitacaoPublicaService;
 import com.stentio.core.service.TokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -55,5 +65,68 @@ class SolicitacaoPublicaControllerTest {
                 .andExpect(jsonPath("$.idiomas[0].nome").value("Português"))
                 .andExpect(jsonPath("$.idiomas[0].codigoIso").value("pt"))
                 .andExpect(jsonPath("$.idiomas[0].ativo").doesNotExist());
+    }
+
+    @Test
+    void deveCriarSolicitacaoMultiparteSemAutenticacaoERetornarSomenteIdEStatus() throws Exception {
+        UUID solicitacaoId = UUID.randomUUID();
+        when(service.criar(any(), anyList())).thenReturn(
+                new SolicitacaoPublicaResponse(solicitacaoId, StatusSolicitacao.PENDENTE_ORCAMENTO));
+
+        mockMvc.perform(multipart(BASE_PATH)
+                        .file(new MockMultipartFile("arquivos", "contrato.pdf", "application/pdf", new byte[]{1}))
+                        .file(new MockMultipartFile("arquivos", "anexo.pdf", "application/pdf", new byte[]{2}))
+                        .param("nomeEmpresa", "Empresa Exemplo")
+                        .param("nomeRepresentante", "Pessoa Representante")
+                        .param("emailRepresentante", "cliente@exemplo.com")
+                        .param("telefone", "11999990000")
+                        .param("cpfCnpj", "52998224725")
+                        .param("categoriaProjetoId", UUID.randomUUID().toString())
+                        .param("idiomaOrigemId", UUID.randomUUID().toString())
+                        .param("idiomaDestinoId", UUID.randomUUID().toString())
+                        .param("descricao", "Tradução de contrato"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(solicitacaoId.toString()))
+                .andExpect(jsonPath("$.status").value("PENDENTE_ORCAMENTO"))
+                .andExpect(jsonPath("$.cliente").doesNotExist())
+                .andExpect(jsonPath("$.categoriaProjeto").doesNotExist())
+                .andExpect(jsonPath("$.descricao").doesNotExist())
+                .andExpect(jsonPath("$.arquivos").doesNotExist());
+
+        verify(service).criar(any(), argThat(arquivos -> arquivos != null && arquivos.size() == 2));
+    }
+
+    @Test
+    void deveInformarCamposObrigatoriosInvalidosSemChamarService() throws Exception {
+        mockMvc.perform(multipart(BASE_PATH)
+                        .param("nomeEmpresa", "Empresa Exemplo")
+                        .param("nomeRepresentante", "Pessoa Representante")
+                        .param("emailRepresentante", "cliente@exemplo.com")
+                        .param("cpfCnpj", "52998224725"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erros[*].campo", containsInAnyOrder(
+                        "categoriaProjetoId", "idiomaOrigemId", "idiomaDestinoId")));
+
+        verify(service, never()).criar(any(), anyList());
+    }
+
+    @Test
+    void deveAceitarCriacaoSemAnexos() throws Exception {
+        UUID solicitacaoId = UUID.randomUUID();
+        when(service.criar(any(), any())).thenReturn(
+                new SolicitacaoPublicaResponse(solicitacaoId, StatusSolicitacao.PENDENTE_ORCAMENTO));
+
+        mockMvc.perform(multipart(BASE_PATH)
+                        .param("nomeEmpresa", "Empresa Exemplo")
+                        .param("nomeRepresentante", "Pessoa Representante")
+                        .param("emailRepresentante", "cliente@exemplo.com")
+                        .param("cpfCnpj", "52998224725")
+                        .param("categoriaProjetoId", UUID.randomUUID().toString())
+                        .param("idiomaOrigemId", UUID.randomUUID().toString())
+                        .param("idiomaDestinoId", UUID.randomUUID().toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(solicitacaoId.toString()));
+
+        verify(service).criar(any(), any());
     }
 }
