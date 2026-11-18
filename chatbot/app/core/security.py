@@ -1,4 +1,4 @@
-from fastapi import Depends, Security, HTTPException
+from fastapi import Depends, Security, HTTPException, Request
 from fastapi.security import APIKeyHeader
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -12,18 +12,21 @@ from db.models import Usuario
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
 def obter_usuario_logado(
+    request: Request,
     authorization: Optional[str] = Security(api_key_header),
     db: Session = Depends(get_db)
 ) -> dict:
-    if not authorization:
+    # 1. Tenta ler do Header Authorization; se não vier, lê do cookie 'stentio_token'
+    raw_token = authorization or request.cookies.get("stentio_token")
+    if not raw_token:
         raise HTTPException(status_code=401, detail="Não autorizado: Token ausente.")
 
-    # Atalho para testes rápidos no Swagger sem precisar gerar token no Java
-    if authorization.upper() in ["ADMIN", "TRADUTOR"]:
-        return {"usuario_id": "usuario-teste-swagger", "perfil": authorization.upper()}
+    # Atalho para testes rápidos no Swagger (usando raw_token, nunca authorization!)
+    if raw_token.upper() in ["ADMIN", "TRADUTOR"]:
+        return {"usuario_id": "usuario-teste-swagger", "perfil": raw_token.upper()}
 
-    # Remove o prefixo "Bearer " enviado pelo client HTTP
-    token = authorization.replace("Bearer ", "").replace("bearer ", "").strip()
+    # Remove o prefixo "Bearer " caso venha no header
+    token = raw_token.replace("Bearer ", "").replace("bearer ", "").strip()
 
     try:
         payload = jwt.decode(
@@ -32,7 +35,6 @@ def obter_usuario_logado(
             algorithms=[settings.JWT_ALGORITHM]
         )
 
-        # No Spring Boot, o subject (sub) geralmente é o email ou o UUID do usuário
         identificador = payload.get("sub") or payload.get("email") or payload.get("id")
         if not identificador:
             raise HTTPException(status_code=401, detail="Token inválido: identificador ausente.")
@@ -45,11 +47,18 @@ def obter_usuario_logado(
         except ValueError:
             usuario_db = db.query(Usuario).filter(Usuario.email == str(identificador)).first()
 
-        # Valida se o usuário existe e está ativo no sistema
-        if not usuario_db or not usuario_db.ativo:
-            raise HTTPException(status_code=401, detail="Usuário inativo ou não encontrado.")
+        # Fallback: se o usuário estiver no banco do Auth separado ou já vier com role no JWT
+        if not usuario_db:
+            role_jwt = payload.get("role") or payload.get("perfil") or "TRADUTOR"
+            return {
+                "usuario_id": str(identificador),
+                "perfil": str(role_jwt).upper().replace("ROLE_", ""),
+                "nome": str(identificador)
+            }
 
-        # Normaliza o perfil vindo da coluna 'role' (ex: "ROLE_TRADUTOR" -> "TRADUTOR")
+        if not usuario_db.ativo:
+            raise HTTPException(status_code=401, detail="Usuário inativo.")
+
         perfil_formatado = (
             str(usuario_db.role).upper().replace("ROLE_", "")
             if usuario_db.role
@@ -65,5 +74,5 @@ def obter_usuario_logado(
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Sessão expirada. Faça login novamente.")
     except jwt.InvalidTokenError as e:
-        print(f"Erro ao decodificar JWT do Spring Boot: {e}")
+        print(f"Erro ao decodificar JWT: {e}")
         raise HTTPException(status_code=401, detail="Token de autenticação inválido.")
