@@ -143,10 +143,11 @@ public class RecursoService {
      * Por isso é um campo simples e um endpoint próprio: quando a substituição vier, sai
      * inteiro, sem desembaraçar de dentro do cadastro.
      */
+    @Transactional
     public RecursoResponse alterarVerificacao(UUID id, boolean verificado) {
         Recurso recurso = buscarEntidade(id);
         recurso.definirVerificacao(verificado);
-        return recursoMapper.paraResponse(recursoRepository.save(recurso));
+        return recursoMapper.paraResponse(recurso);
     }
 
     public RecursoResponse buscarPorId(UUID id) {
