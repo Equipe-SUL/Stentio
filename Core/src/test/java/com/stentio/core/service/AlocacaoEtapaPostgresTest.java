@@ -261,7 +261,7 @@ class AlocacaoEtapaPostgresTest {
         assertEquals(osId, etapa.ordemServicoId());
         assertEquals(agora.minusSeconds(1), etapa.dataLimiteEntrega());
         assertEquals(StatusOrcamento.AGUARDANDO_APROVACAO, orcamento.status());
-        assertEquals("Cliente US012", orcamento.nomeEmpresa());
+        assertEquals("Empresa US012", orcamento.nomeEmpresa());
         assertEquals(agora.plusSeconds(3600), orcamento.dataExpiracao());
     }
 
