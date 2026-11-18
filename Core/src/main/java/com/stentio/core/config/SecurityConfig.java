@@ -68,6 +68,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        // US22-T1: somente leitura das opções e criação da solicitação são públicas.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/solicitacoes/opcoes").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/public/solicitacoes").permitAll()
                         // Links de orçamento autorizam somente estas operações públicas.
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/orcamentos").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/orcamentos/arquivos/**").permitAll()
