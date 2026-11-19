@@ -1,9 +1,10 @@
 package com.stentio.core.model;
 
+import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Converter;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -56,9 +57,10 @@ public class LogAuditoria {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // columnDefinition explícita: sem ela o Hibernate gera um CHECK com os valores atuais do enum.
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, updatable = false, length = 30, columnDefinition = "varchar(30)")
+    // Conversor em vez de @Enumerated: o Hibernate gera CHECK com os valores atuais de toda
+    // coluna @Enumerated, e o ddl-auto nunca atualiza esse CHECK quando o enum ganha valor.
+    @Convert(converter = EntidadeConverter.class)
+    @Column(nullable = false, updatable = false, length = 30)
     private EntidadeAuditada entidade;
 
     @Column(name = "entidade_id", nullable = false, updatable = false)
@@ -84,8 +86,8 @@ public class LogAuditoria {
     @Column(name = "usuario_perfil", nullable = false, updatable = false, length = 40)
     private String usuarioPerfil;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "origem_acao", nullable = false, updatable = false, length = 30, columnDefinition = "varchar(30)")
+    @Convert(converter = OrigemConverter.class)
+    @Column(name = "origem_acao", nullable = false, updatable = false, length = 30)
     private OrigemAcao origemAcao;
 
     // Cabe o motivo de rejeição do orçamento (até 2000 caracteres) mais o texto fixo em volta.
@@ -115,5 +117,32 @@ public class LogAuditoria {
                 ? observacao.substring(0, TAMANHO_MAXIMO_OBSERVACAO)
                 : observacao;
         this.dataHora = Objects.requireNonNull(dataHora, "dataHora");
+    }
+
+    /** Grava o nome do enum como texto puro, sem o CHECK que o @Enumerated geraria. */
+    @Converter
+    static class EntidadeConverter implements AttributeConverter<EntidadeAuditada, String> {
+        @Override
+        public String convertToDatabaseColumn(EntidadeAuditada valor) {
+            return valor == null ? null : valor.name();
+        }
+
+        @Override
+        public EntidadeAuditada convertToEntityAttribute(String valor) {
+            return valor == null ? null : EntidadeAuditada.valueOf(valor);
+        }
+    }
+
+    @Converter
+    static class OrigemConverter implements AttributeConverter<OrigemAcao, String> {
+        @Override
+        public String convertToDatabaseColumn(OrigemAcao valor) {
+            return valor == null ? null : valor.name();
+        }
+
+        @Override
+        public OrigemAcao convertToEntityAttribute(String valor) {
+            return valor == null ? null : OrigemAcao.valueOf(valor);
+        }
     }
 }
