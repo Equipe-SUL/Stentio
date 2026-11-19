@@ -110,6 +110,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // US-023: o pedido de auto-cadastro não fecha (Cenário 2 do card pede 400).
+    @ExceptionHandler(AutoCadastroInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleAutoCadastroInvalido(AutoCadastroInvalidoException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     // US-012 RN.1 e RN.2: recurso incompatível com a etapa. Cenário 2 pede exatamente 400.
     @ExceptionHandler(AlocacaoInvalidaException.class)
     public ResponseEntity<ErroResponse> handleAlocacaoInvalida(AlocacaoInvalidaException ex) {

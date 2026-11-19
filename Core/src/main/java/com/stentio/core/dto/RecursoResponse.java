@@ -13,6 +13,8 @@ public record RecursoResponse(
         String email,
         String telefone,
         boolean ativo,
+        // US-023 CA.6: a tela de gestão precisa separar quem está pendente de verificação.
+        boolean verificado,
         List<TipoServicoResumo> tiposServico,
         List<PrecoResponse> precos
 ) {
