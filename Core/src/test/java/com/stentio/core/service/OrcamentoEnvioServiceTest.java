@@ -38,6 +38,8 @@ class OrcamentoEnvioServiceTest {
     private final OrcamentoRepository repository = mock(OrcamentoRepository.class);
     private final OrcamentoHistoricoRepository historico = mock(OrcamentoHistoricoRepository.class);
     private final OrcamentoEmailOutboxRepository outbox = mock(OrcamentoEmailOutboxRepository.class);
+    private final org.springframework.context.ApplicationEventPublisher eventos =
+            mock(org.springframework.context.ApplicationEventPublisher.class);
     private final Cliente cliente = mock(Cliente.class);
     private Orcamento orcamento;
     private OrcamentoEnvioService service;
@@ -46,7 +48,7 @@ class OrcamentoEnvioServiceTest {
     void preparar() {
         service = new OrcamentoEnvioService(repository, historico, outbox,
                 JsonMapper.builder().build(), Clock.fixed(AGORA, ZoneOffset.UTC),
-                java.time.Duration.ofDays(5), "https://stentio.example/orcamento");
+                java.time.Duration.ofDays(5), "https://stentio.example/orcamento", eventos);
         orcamento = new Orcamento();
         orcamento.setId(UUID.randomUUID());
         orcamento.setCliente(cliente);

@@ -50,6 +50,8 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class LogAuditoria {
 
+    static final int TAMANHO_MAXIMO_OBSERVACAO = 2500;
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -86,7 +88,8 @@ public class LogAuditoria {
     @Column(name = "origem_acao", nullable = false, updatable = false, length = 30, columnDefinition = "varchar(30)")
     private OrigemAcao origemAcao;
 
-    @Column(updatable = false, length = 1000)
+    // Cabe o motivo de rejeição do orçamento (até 2000 caracteres) mais o texto fixo em volta.
+    @Column(updatable = false, length = TAMANHO_MAXIMO_OBSERVACAO)
     private String observacao;
 
     /** Instant é gravado em UTC pelo driver: o front converte para o fuso de quem lê. */
@@ -106,7 +109,11 @@ public class LogAuditoria {
         this.usuarioNome = Objects.requireNonNull(usuarioNome, "usuarioNome");
         this.usuarioPerfil = Objects.requireNonNull(usuarioPerfil, "usuarioPerfil");
         this.origemAcao = Objects.requireNonNull(origemAcao, "origemAcao");
-        this.observacao = observacao;
+        // O log é gravado na transação da mudança de status: estourar a coluna desfaria a
+        // própria mudança. Cortar o excesso é melhor do que perder a operação do usuário.
+        this.observacao = observacao != null && observacao.length() > TAMANHO_MAXIMO_OBSERVACAO
+                ? observacao.substring(0, TAMANHO_MAXIMO_OBSERVACAO)
+                : observacao;
         this.dataHora = Objects.requireNonNull(dataHora, "dataHora");
     }
 }
