@@ -1,9 +1,6 @@
 package com.stentio.core.model;
 
-import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
-import jakarta.persistence.Converter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -57,11 +54,13 @@ public class LogAuditoria {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // Conversor em vez de @Enumerated: o Hibernate gera CHECK com os valores atuais de toda
-    // coluna @Enumerated, e o ddl-auto nunca atualiza esse CHECK quando o enum ganha valor.
-    @Convert(converter = EntidadeConverter.class)
+    // Texto puro, exposto como enum pelo getter. Para qualquer atributo de tipo enum — com
+    // @Enumerated ou com AttributeConverter — o Hibernate gera um CHECK com os valores atuais,
+    // e o ddl-auto nunca atualiza esse CHECK quando o enum ganha valor. Um valor novo faria o
+    // INSERT do log falhar e, por estar na mesma transação, desfaria a operação do usuário.
+    @Getter(AccessLevel.NONE)
     @Column(nullable = false, updatable = false, length = 30)
-    private EntidadeAuditada entidade;
+    private String entidade;
 
     @Column(name = "entidade_id", nullable = false, updatable = false)
     private UUID entidadeId;
@@ -86,9 +85,10 @@ public class LogAuditoria {
     @Column(name = "usuario_perfil", nullable = false, updatable = false, length = 40)
     private String usuarioPerfil;
 
-    @Convert(converter = OrigemConverter.class)
+    // Texto puro pelo mesmo motivo da coluna entidade.
+    @Getter(AccessLevel.NONE)
     @Column(name = "origem_acao", nullable = false, updatable = false, length = 30)
-    private OrigemAcao origemAcao;
+    private String origemAcao;
 
     // Cabe o motivo de rejeição do orçamento (até 2000 caracteres) mais o texto fixo em volta.
     @Column(updatable = false, length = TAMANHO_MAXIMO_OBSERVACAO)
@@ -102,7 +102,7 @@ public class LogAuditoria {
                         String statusAnterior, String statusNovo,
                         UUID usuarioId, String usuarioNome, String usuarioPerfil,
                         OrigemAcao origemAcao, String observacao, Instant dataHora) {
-        this.entidade = Objects.requireNonNull(entidade, "entidade");
+        this.entidade = Objects.requireNonNull(entidade, "entidade").name();
         this.entidadeId = Objects.requireNonNull(entidadeId, "entidadeId");
         this.referenciaLegivel = Objects.requireNonNull(referenciaLegivel, "referenciaLegivel");
         this.statusAnterior = statusAnterior;
@@ -110,7 +110,7 @@ public class LogAuditoria {
         this.usuarioId = usuarioId;
         this.usuarioNome = Objects.requireNonNull(usuarioNome, "usuarioNome");
         this.usuarioPerfil = Objects.requireNonNull(usuarioPerfil, "usuarioPerfil");
-        this.origemAcao = Objects.requireNonNull(origemAcao, "origemAcao");
+        this.origemAcao = Objects.requireNonNull(origemAcao, "origemAcao").name();
         // O log é gravado na transação da mudança de status: estourar a coluna desfaria a
         // própria mudança. Cortar o excesso é melhor do que perder a operação do usuário.
         this.observacao = observacao != null && observacao.length() > TAMANHO_MAXIMO_OBSERVACAO
@@ -119,30 +119,11 @@ public class LogAuditoria {
         this.dataHora = Objects.requireNonNull(dataHora, "dataHora");
     }
 
-    /** Grava o nome do enum como texto puro, sem o CHECK que o @Enumerated geraria. */
-    @Converter
-    static class EntidadeConverter implements AttributeConverter<EntidadeAuditada, String> {
-        @Override
-        public String convertToDatabaseColumn(EntidadeAuditada valor) {
-            return valor == null ? null : valor.name();
-        }
-
-        @Override
-        public EntidadeAuditada convertToEntityAttribute(String valor) {
-            return valor == null ? null : EntidadeAuditada.valueOf(valor);
-        }
+    public EntidadeAuditada getEntidade() {
+        return EntidadeAuditada.valueOf(entidade);
     }
 
-    @Converter
-    static class OrigemConverter implements AttributeConverter<OrigemAcao, String> {
-        @Override
-        public String convertToDatabaseColumn(OrigemAcao valor) {
-            return valor == null ? null : valor.name();
-        }
-
-        @Override
-        public OrigemAcao convertToEntityAttribute(String valor) {
-            return valor == null ? null : OrigemAcao.valueOf(valor);
-        }
+    public OrigemAcao getOrigemAcao() {
+        return OrigemAcao.valueOf(origemAcao);
     }
 }

@@ -46,7 +46,8 @@ public final class LogAuditoriaSpecifications {
     }
 
     private static Specification<LogAuditoria> daEntidade(EntidadeAuditada entidade) {
-        return (log, query, cb) -> cb.equal(log.get("entidade"), entidade);
+        // A coluna guarda o nome do enum como texto (ver LogAuditoria).
+        return (log, query, cb) -> cb.equal(log.get("entidade"), entidade.name());
     }
 
     private static Specification<LogAuditoria> doId(UUID entidadeId) {
