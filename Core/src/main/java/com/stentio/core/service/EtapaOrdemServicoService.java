@@ -2,6 +2,7 @@ package com.stentio.core.service;
 
 import com.stentio.core.dto.EtapasOrdemServicoRequest;
 import com.stentio.core.dto.EtapasOrdemServicoResponse;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.EtapasBloqueadasException;
 import com.stentio.core.exception.EtapasInvalidasException;
 import com.stentio.core.exception.ModeloWorkflowNaoEncontradoException;
@@ -12,11 +13,13 @@ import com.stentio.core.model.ModeloWorkflow;
 import com.stentio.core.model.ModeloWorkflowEtapa;
 import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.SequenciaEtapas;
+import com.stentio.core.model.StatusOrdemServico;
 import com.stentio.core.model.TipoServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
 import com.stentio.core.repository.ModeloWorkflowRepository;
 import com.stentio.core.repository.OrdemServicoRepository;
 import com.stentio.core.repository.TipoServicoRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,17 +45,20 @@ public class EtapaOrdemServicoService {
     private final ModeloWorkflowRepository modelos;
     private final TipoServicoRepository tiposServico;
     private final EtapaOrdemServicoMapper mapper;
+    private final ApplicationEventPublisher eventos;
 
     public EtapaOrdemServicoService(OrdemServicoRepository ordens,
                                     EtapaOrdemServicoRepository etapas,
                                     ModeloWorkflowRepository modelos,
                                     TipoServicoRepository tiposServico,
-                                    EtapaOrdemServicoMapper mapper) {
+                                    EtapaOrdemServicoMapper mapper,
+                                    ApplicationEventPublisher eventos) {
         this.ordens = ordens;
         this.etapas = etapas;
         this.modelos = modelos;
         this.tiposServico = tiposServico;
         this.mapper = mapper;
+        this.eventos = eventos;
     }
 
     // CA.3 e Cenário 1
@@ -73,7 +79,7 @@ public class EtapaOrdemServicoService {
                         catalogo.get(e.tipoServicoId()), e.prazoEstimadoHoras()))
                 .toList();
 
-        return substituirSequencia(ordem, novas);
+        return substituirSequencia(ordem, novas, "Etapa criada na montagem manual da sequência.");
     }
 
     // CA.2
@@ -102,7 +108,8 @@ public class EtapaOrdemServicoService {
                         m.getTipoServico(), m.getPrazoEstimadoHoras()))
                 .toList();
 
-        return substituirSequencia(ordem, novas);
+        return substituirSequencia(ordem, novas,
+                "Etapa criada pelo modelo de workflow " + modelo.getNome() + ".");
     }
 
     @Transactional(readOnly = true)
@@ -111,11 +118,21 @@ public class EtapaOrdemServicoService {
         return mapper.paraResposta(ordem, etapas.listarPorOrdemServico(ordemServicoId));
     }
 
-    private EtapasOrdemServicoResponse substituirSequencia(OrdemServico ordem, List<EtapaOrdemServico> novas) {
+    private EtapasOrdemServicoResponse substituirSequencia(OrdemServico ordem, List<EtapaOrdemServico> novas,
+                                                           String observacaoEtapa) {
         etapas.apagarPorOrdemServico(ordem.getId());
         List<EtapaOrdemServico> gravadas = etapas.saveAll(novas);
+        StatusOrdemServico statusAnterior = ordem.getStatus();
         ordem.planejar();
         ordens.save(ordem);
+
+        // US-019: remontar a sequência de uma OS já em planejamento não muda o status dela,
+        // e o listener descarta o evento. As etapas, essas sim, nascem de novo.
+        eventos.publishEvent(EventosAuditoria.ordemServico(ordem, statusAnterior,
+                "Sequência de etapas definida.", null));
+        gravadas.forEach(etapa ->
+                eventos.publishEvent(EventosAuditoria.etapa(etapa, null, observacaoEtapa, null)));
+
         return mapper.paraResposta(ordem, gravadas);
     }
 
