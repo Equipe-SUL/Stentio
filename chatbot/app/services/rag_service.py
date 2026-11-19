@@ -5,7 +5,7 @@ STOPWORDS = {
     "a", "o", "as", "os", "um", "uma", "uns", "umas", "de", "do", "da", "dos", "das",
     "em", "no", "na", "nos", "nas", "por", "para", "com", "sem", "sob", "sobre",
     "e", "ou", "mas", "que", "qual", "quais", "como", "onde", "quando", "porque",
-    "eu", "ele", "ela", "nos", "eles", "elas", "meu", "minha", "seu", "sua",
+    "eu", "ele", "ela", "eles", "elas", "meu", "minha", "seu", "sua",
     "fazer", "posso", "consigo", "sistema", "stentio", "tela", "esta", "este", "isso"
 }
 

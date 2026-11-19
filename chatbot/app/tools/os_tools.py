@@ -1,11 +1,12 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from db.models import OrdemServico, Orcamento, Cliente
-from schemas.chatbot import Atalho
-from typing import Tuple, List
 import uuid
 
-def consultar_os_no_banco(db: Session, termo_busca: str) -> Tuple[str, List[Atalho]]:
+from db.models import Cliente, Orcamento, OrdemServico
+from schemas.chatbot import Atalho
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+
+def consultar_os_no_banco(db: Session, termo_busca: str) -> tuple[str, list[Atalho]]:
     """Busca OS por UUID parcial/total ou pelo nome da empresa/cliente."""
     atalhos = []
     
@@ -45,7 +46,7 @@ def consultar_os_no_banco(db: Session, termo_busca: str) -> Tuple[str, List[Atal
     return "Ordens de Serviço encontradas:\n" + "\n".join(linhas_resposta), atalhos
 
 
-def consultar_orcamentos_no_banco(db: Session, termo_busca: str, perfil: str) -> Tuple[str, List[Atalho]]:
+def consultar_orcamentos_no_banco(db: Session, termo_busca: str, perfil: str) -> tuple[str, list[Atalho]]:
     """Busca orçamentos pelo nome do cliente ou ID, ocultando valores para Tradutores."""
     atalhos = []
     query = db.query(Orcamento, Cliente).outerjoin(Cliente, Orcamento.cliente_id == Cliente.id)
@@ -73,7 +74,7 @@ def consultar_orcamentos_no_banco(db: Session, termo_busca: str, perfil: str) ->
     return "Orçamentos encontrados:\n" + "\n".join(linhas), atalhos
 
 
-def consultar_faturamento(db: Session, perfil: str) -> Tuple[str, List[Atalho]]:
+def consultar_faturamento(db: Session, perfil: str) -> tuple[str, list[Atalho]]:
     """Calcula o faturamento somando orçamentos aprovados (bloqueado para Tradutor - Cenário 2 BDD)."""
     if perfil == "TRADUTOR":
         return "BLOQUEIO_RBAC: O perfil de Tradutor não possui permissão para visualizar dados financeiros ou de faturamento consolidado.", []

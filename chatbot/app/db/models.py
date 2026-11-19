@@ -1,8 +1,18 @@
-from sqlalchemy import Column, String, Numeric, BigInteger, Integer, DateTime, ForeignKey, Text, Boolean
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from datetime import datetime, timezone
-from db.session import Base
 import uuid
+
+from db.session import Base
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+)
+from sqlalchemy.dialects.postgresql import UUID
+
 
 class Cliente(Base):
     __tablename__ = "clientes"

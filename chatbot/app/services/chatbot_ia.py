@@ -1,15 +1,14 @@
 import json
-from groq import Groq
-from sqlalchemy.orm import Session
-from typing import Tuple, List
 
 from core.config import settings
-from services.rag_service import buscar_contexto_manual
+from groq import Groq
 from schemas.chatbot import Atalho
+from services.rag_service import buscar_contexto_manual
+from sqlalchemy.orm import Session
 from tools.os_tools import (
-    consultar_os_no_banco,
+    consultar_faturamento,
     consultar_orcamentos_no_banco,
-    consultar_faturamento
+    consultar_os_no_banco,
 )
 
 groq_client = Groq(api_key=settings.GROQ_API_KEY)
@@ -69,8 +68,8 @@ def processar_pergunta_ia(
     perfil_usuario: str, 
     db: Session,
     historico_conversa: list = None
-) -> Tuple[str, List[Atalho]]:
-    atalhos_acumulados: List[Atalho] = []
+) -> tuple[str, list[Atalho]]:
+    atalhos_acumulados: list[Atalho] = []
 
     contexto_rag = buscar_contexto_manual(mensagem_usuario)
     bloco_manual = ""

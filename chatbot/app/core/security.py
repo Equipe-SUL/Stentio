@@ -1,19 +1,19 @@
-from fastapi import Depends, Security, HTTPException, Request
-from fastapi.security import APIKeyHeader
-from sqlalchemy.orm import Session
-from typing import Optional
-import jwt
 import uuid
 
-from core.config import settings
-from db.session import get_db
+import jwt
 from db.models import Usuario
+from db.session import get_db
+from fastapi import Depends, HTTPException, Request, Security
+from fastapi.security import APIKeyHeader
+from sqlalchemy.orm import Session
+
+from core.config import settings
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
 def obter_usuario_logado(
     request: Request,
-    authorization: Optional[str] = Security(api_key_header),
+    authorization: str | None = Security(api_key_header),
     db: Session = Depends(get_db)
 ) -> dict:
     # 1. Tenta ler do Header Authorization; se não vier, lê do cookie 'stentio_token'

@@ -1,5 +1,5 @@
-from pymongo import MongoClient, ASCENDING
 from core.config import settings
+from pymongo import ASCENDING, MongoClient
 
 client = MongoClient(settings.MONGO_URI)
 mongo_db = client[settings.MONGO_DB_NAME]

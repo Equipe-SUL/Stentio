@@ -1,21 +1,20 @@
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
-from pymongo import ASCENDING, DESCENDING
-from typing import Optional
 import uuid
 from datetime import datetime, timezone
 
 from core.security import obter_usuario_logado
-from db.session import get_db
 from db.mongo import mensagens_collection
-from services.chatbot_ia import processar_pergunta_ia
+from db.session import get_db
+from fastapi import APIRouter, Depends, Query
+from pymongo import ASCENDING, DESCENDING
 from schemas.chatbot import (
-    MensagemRequest, 
-    MensagemResponse, 
-    HistoricoResponse, 
+    Atalho,
+    HistoricoResponse,
     MensagemHistorico,
-    Atalho
+    MensagemRequest,
+    MensagemResponse,
 )
+from services.chatbot_ia import processar_pergunta_ia
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/v1/ia/chatbot", tags=["Chatbot"])
 
@@ -81,7 +80,7 @@ async def processar_mensagem(
 
 @router.get("/historico", response_model=HistoricoResponse)
 async def obter_historico(
-    conversaId: Optional[str] = Query(None, description="ID da conversa (opcional)"), 
+    conversaId: str | None = Query(None, description="ID da conversa (opcional)"), 
     usuario: dict = Depends(obter_usuario_logado)
 ):
     usuario_id = str(usuario["usuario_id"])
