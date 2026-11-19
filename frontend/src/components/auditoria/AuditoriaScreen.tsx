@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -8,7 +8,8 @@ import { CabecalhoTela } from "../navegacao/CabecalhoTela";
 import { getApiErrorMessage } from "../../lib/api";
 import { useSession } from "../../lib/session";
 import { listarLogsAuditoria } from "../../lib/auditoriaService";
-import type { LogAuditoria } from "./types";
+import type { FiltrosLogsAuditoria, LogAuditoria } from "./types";
+import { AuditoriaFiltros, FILTROS_INICIAIS, type FiltrosAuditoriaUi } from "./AuditoriaFiltros";
 import { AuditoriaDetalhesModal } from "./AuditoriaDetalhesModal";
 import { formatarDataHora, formatarStatus, iniciais, NOME_ENTIDADE, NOME_ORIGEM } from "./formatacao";
 
@@ -81,13 +82,42 @@ export function AuditoriaScreen() {
   const { usuario } = useSession();
   const { width } = useWindowDimensions();
   const [pagina, setPagina] = useState(1);
+  const [filtrosUi, setFiltrosUi] = useState<FiltrosAuditoriaUi>(FILTROS_INICIAIS);
+  const [buscaAplicada, setBuscaAplicada] = useState("");
+
+  // Evita uma chamada de API a cada tecla da pesquisa.
+  useEffect(() => {
+    const timer = setTimeout(() => setBuscaAplicada(filtrosUi.busca.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [filtrosUi.busca]);
+
+  const filtrosApi = useMemo<FiltrosLogsAuditoria>(() => {
+    const filtros: FiltrosLogsAuditoria = {};
+    if (filtrosUi.entidade) filtros.entidade = filtrosUi.entidade;
+    if (filtrosUi.usuarioId) filtros.usuario_id = filtrosUi.usuarioId;
+    if (buscaAplicada) filtros.busca = buscaAplicada;
+
+    if (filtrosUi.periodo !== "todos") {
+      const fim = new Date();
+      const inicio = new Date(fim);
+      inicio.setDate(inicio.getDate() - Number(filtrosUi.periodo));
+      filtros.data_inicio = inicio.toISOString();
+      filtros.data_fim = fim.toISOString();
+    }
+    return filtros;
+  }, [filtrosUi.entidade, filtrosUi.usuarioId, filtrosUi.periodo, buscaAplicada]);
+
+  function atualizarFiltros(novos: FiltrosAuditoriaUi) {
+    setFiltrosUi(novos);
+    setPagina(1);
+  }
   const [selecionado, setSelecionado] = useState<LogAuditoria | null>(null);
   const tabelaAmpla = width >= 1440;
   const ehAdministrador = usuario?.role === "ADMIN";
 
   const consulta = useQuery({
-    queryKey: ["auditoria", "logs", usuario?.id, pagina],
-    queryFn: () => listarLogsAuditoria({ page: pagina, size: TAMANHO_PAGINA }),
+    queryKey: ["auditoria", "logs", usuario?.id, pagina, filtrosApi],
+    queryFn: () => listarLogsAuditoria({ ...filtrosApi, page: pagina, size: TAMANHO_PAGINA }),
     enabled: ehAdministrador,
     retry: 1,
     staleTime: 0,
@@ -108,6 +138,8 @@ export function AuditoriaScreen() {
           titulo="Logs de alterações"
           descricao="Acompanhe as alterações de status realizadas nos orçamentos, ordens de serviço e etapas."
         />
+
+        {ehAdministrador ? <AuditoriaFiltros filtros={filtrosUi} aoMudar={atualizarFiltros} /> : null}
 
         {!ehAdministrador ? (
           <View className="rounded-xl border border-[#edddd2] bg-white p-6">
@@ -151,7 +183,7 @@ export function AuditoriaScreen() {
               <View className="items-center gap-3 px-5 py-14">
                 <Ionicons name="receipt-outline" size={30} color="#a18e7f" />
                 <Text className="text-center font-semibold text-[#544439]">Nenhum registro de auditoria encontrado.</Text>
-                <Text className="text-center text-xs text-[#948275]">As alterações registradas aparecerão aqui.</Text>
+                <Text className="text-center text-xs text-[#948275]">Quando houver registros que correspondam aos filtros, eles aparecerão aqui.</Text>
               </View>
             ) : (
               <>
