@@ -3,6 +3,7 @@ package com.stentio.service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.stentio.dto.AutoCadastroRequestDTO;
 import com.stentio.dto.LoginRequestDTO;
 import com.stentio.dto.LoginResponseDTO;
 import com.stentio.dto.UsuarioRequestDTO;
@@ -42,6 +43,32 @@ public class UsuarioService {
 
         String token = tokenService.gerarToken(usuario);
         return new LoginResponseDTO(token, "Bearer", TokenService.EXPIRES_IN, usuario.getEmail(), usuario.getRole());
+    }
+
+    /**
+     * US-023 CA.1: cadastro feito pelo próprio profissional, por rota aberta.
+     *
+     * <p>O papel é fixado aqui, não lido do corpo. É a diferença que separa esta operação
+     * do {@link #criar}: lá o ADMIN escolhe o papel de quem está criando, e é legítimo;
+     * aqui quem chama é um desconhecido, e aceitar "role" seria entregar a criação de
+     * administradores a qualquer um com um cliente HTTP.
+     *
+     * <p>RN.1: o e-mail continua único no sistema inteiro, com a mesma verificação do
+     * cadastro interno — não existe um "espaço de nomes" separado para recursos.
+     */
+    public UsuarioResponseDTO autoCadastrarRecurso(AutoCadastroRequestDTO dto) {
+        if (usuarioRepository.existsByEmail(dto.email())) {
+            throw new EmailJaCadastradoException(dto.email());
+        }
+
+        Usuario usuario = new Usuario();
+        usuario.setNome(dto.nome());
+        usuario.setEmail(dto.email());
+        usuario.setSenha(passwordEncoder.encode(dto.senha()));
+        usuario.setRole(Role.RECURSO);
+        usuario.setAtivo(true);
+
+        return new UsuarioResponseDTO(usuarioRepository.save(usuario));
     }
 
     public UsuarioResponseDTO criar(UsuarioRequestDTO dto) {

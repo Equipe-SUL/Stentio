@@ -14,6 +14,18 @@ public interface RecursoRepository extends JpaRepository<Recurso, UUID>, JpaSpec
 
     boolean existsByEmail(String email);
 
+    // US-023: uma conta de acesso tem no máximo um perfil profissional.
+    boolean existsByUsuarioId(UUID usuarioId);
+
+    /** US-023: o perfil de quem está autenticado, resolvido pelo id do token. */
+    @Query("""
+            select distinct r from Recurso r
+              left join fetch r.tiposServico
+              left join fetch r.precos
+             where r.usuarioId = :usuarioId
+            """)
+    Optional<Recurso> buscarPorUsuario(@Param("usuarioId") UUID usuarioId);
+
     boolean existsByEmailAndIdNot(String email, UUID id);
 
     /**
@@ -23,12 +35,17 @@ public interface RecursoRepository extends JpaRepository<Recurso, UUID>, JpaSpec
      *
      * <p>O distinct é necessário porque um recurso pode ter vários preços para o mesmo par
      * (um por unidade de cobrança) e apareceria repetido.
+     *
+     * <p>US-023 RN.5: entra também o filtro de verificado. Quem se auto-cadastrou e ainda
+     * não passou pelo gestor não aparece para alocação — a lista é o que o gestor pode
+     * escolher, e oferecer alguém que a alocação depois recusaria seria pior que omitir.
      */
     @Query("""
             select distinct r from Recurso r
               join r.tiposServico t
               join r.precos p
              where r.ativo = true
+               and r.verificado = true
                and t.id = :tipoServicoId
                and p.idiomaOrigem.id = :idiomaOrigemId
                and p.idiomaDestino.id = :idiomaDestinoId

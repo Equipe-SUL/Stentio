@@ -98,7 +98,10 @@ class AlocacaoEtapaPostgresTest {
     @BeforeEach
     void preparar() {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            Cliente cliente = clientes.saveAndFlush(new Cliente("Empresa US012", "Cliente US012",
+            // Os dois nomes são diferentes de propósito: a projeção do dashboard devolve a
+            // empresa, e um representante chamado "Cliente ..." já fez alguém assertar o
+            // campo errado achando que era o mesmo texto.
+            Cliente cliente = clientes.saveAndFlush(new Cliente("Empresa US012", "Representante US012",
                     UUID.randomUUID() + "@teste.invalid", "11999999999", "11144477735"));
             clienteId = cliente.getId();
 
@@ -178,6 +181,8 @@ class AlocacaoEtapaPostgresTest {
 
     private UUID novoRecurso(String nome, TipoServico tipo, Idioma origem, Idioma destino) {
         Recurso recurso = new Recurso(nome, UUID.randomUUID() + "@teste.invalid", "11988887777");
+        // US-023 RN.5: sem verificação o recurso nem aparece em buscarDisponiveis.
+        recurso.definirVerificacao(true);
         recurso.definirTiposServico(List.of(tipo));
         recurso.definirPrecos(List.of(new Recurso.NovoPreco(
                 origem, destino, UnidadeCobranca.PALAVRA, new BigDecimal("0.35"))));
@@ -261,7 +266,9 @@ class AlocacaoEtapaPostgresTest {
         assertEquals(osId, etapa.ordemServicoId());
         assertEquals(agora.minusSeconds(1), etapa.dataLimiteEntrega());
         assertEquals(StatusOrcamento.AGUARDANDO_APROVACAO, orcamento.status());
-        assertEquals("Cliente US012", orcamento.nomeEmpresa());
+        // nomeEmpresa é o primeiro argumento do construtor de Cliente; o segundo é o
+        // representante. A projeção seleciona c.nomeEmpresa.
+        assertEquals("Empresa US012", orcamento.nomeEmpresa());
         assertEquals(agora.plusSeconds(3600), orcamento.dataExpiracao());
     }
 
@@ -345,6 +352,21 @@ class AlocacaoEtapaPostgresTest {
 
         assertThrows(AlocacaoInvalidaException.class, () -> alocacao.alocar(
                 osId, primeira, new AlocacaoEtapaRequest(danielaId, DAQUI_A_UM_MES), gestor));
+
+        assertNull(jdbc.queryForObject("select recurso_id from etapas_os where id = ?", UUID.class, primeira));
+        assertEquals(0, contarHistorico(primeira));
+    }
+
+    @Test
+    @DisplayName("US-023 RN.5 no banco: recurso não verificado não é alocado nem aparece disponível")
+    void rn5NaoAlocaNemLista() {
+        UUID primeira = montarEtapas().getFirst();
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                jdbc.update("update recursos set verificado = false where id = ?", anaId));
+
+        assertThrows(AlocacaoInvalidaException.class, () -> alocacao.alocar(
+                osId, primeira, new AlocacaoEtapaRequest(anaId, DAQUI_A_UM_MES), gestor));
 
         assertNull(jdbc.queryForObject("select recurso_id from etapas_os where id = ?", UUID.class, primeira));
         assertEquals(0, contarHistorico(primeira));
