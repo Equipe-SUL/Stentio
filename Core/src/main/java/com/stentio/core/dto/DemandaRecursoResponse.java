@@ -2,7 +2,7 @@ package com.stentio.core.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.stentio.core.model.SituacaoEtapa;
+import com.stentio.core.model.StatusEtapaOrdemServico;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -24,7 +24,7 @@ public record DemandaRecursoResponse(
         @JsonProperty("tipo_servico") String tipoServico,
         @JsonProperty("idioma_origem") String idiomaOrigem,
         @JsonProperty("idioma_destino") String idiomaDestino,
-        SituacaoEtapa situacao,
+        StatusEtapaOrdemServico status,
         @JsonProperty("prazo_estimado_horas") Integer prazoEstimadoHoras,
         @JsonProperty("data_limite_entrega") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant dataLimiteEntrega
 ) {

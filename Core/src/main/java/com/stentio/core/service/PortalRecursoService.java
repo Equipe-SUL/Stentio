@@ -74,7 +74,7 @@ public class PortalRecursoService {
                 etapa.getTipoServico().getNome(),
                 solicitacao.getIdiomaOrigem().getNome(),
                 solicitacao.getIdiomaDestino().getNome(),
-                etapa.situacao(),
+                etapa.getStatus(),
                 etapa.getPrazoEstimadoHoras(),
                 etapa.getDataLimiteEntrega());
     }

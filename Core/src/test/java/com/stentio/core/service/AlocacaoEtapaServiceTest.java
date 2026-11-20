@@ -12,7 +12,7 @@ import com.stentio.core.model.HistoricoEtapa;
 import com.stentio.core.model.Idioma;
 import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.Recurso;
-import com.stentio.core.model.SituacaoEtapa;
+import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.model.Solicitacao;
 import com.stentio.core.model.TipoServico;
 import com.stentio.core.model.UnidadeCobranca;
@@ -139,7 +139,7 @@ class AlocacaoEtapaServiceTest {
 
         AlocacaoEtapaResponse resposta = alocar(anaId, gestor);
 
-        assertEquals(SituacaoEtapa.ALOCADO, resposta.statusEtapa());
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, resposta.statusEtapa());
         assertEquals("Ana Silva", resposta.recurso().nome());
         assertEquals(DAQUI_A_UMA_SEMANA, resposta.dataLimiteEntrega());
         assertEquals(DAQUI_A_UMA_SEMANA, etapa.getDataLimiteEntrega());
@@ -290,7 +290,7 @@ class AlocacaoEtapaServiceTest {
 
         AlocacaoEtapaResponse resposta = alocar(anaId, admin);
 
-        assertEquals(SituacaoEtapa.ALOCADO, resposta.statusEtapa());
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, resposta.statusEtapa());
         assertTrue(iniciada.alocada());
     }
 
