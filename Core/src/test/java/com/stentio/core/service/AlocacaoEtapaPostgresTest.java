@@ -349,6 +349,30 @@ class AlocacaoEtapaPostgresTest {
     }
 
     @Test
+    @DisplayName("aceite nominal obsoleto não sobrescreve uma realocação")
+    void aceiteNominalConfereODonoNoUpdate() {
+        UUID primeira = montarEtapas().getFirst();
+        alocacao.alocar(osId, primeira, new AlocacaoEtapaRequest(anaId, DAQUI_A_UM_MES), gestor);
+        alocacao.alocar(osId, primeira, new AlocacaoEtapaRequest(brunoId, DAQUI_A_UM_MES), gestor);
+
+        int atualizadas = new TransactionTemplate(transactionManager).execute(status -> {
+            Recurso ana = recursos.findById(anaId).orElseThrow();
+            return etapas.aceitarAlocacaoDireta(
+                    primeira,
+                    ana,
+                    Instant.now(),
+                    StatusEtapaOrdemServico.ACEITA,
+                    StatusEtapaOrdemServico.ALOCADO);
+        });
+
+        assertEquals(0, atualizadas);
+        assertEquals("ALOCADO", jdbc.queryForObject(
+                "select status from etapas_os where id = ?", String.class, primeira));
+        assertEquals(brunoId, jdbc.queryForObject(
+                "select recurso_id from etapas_os where id = ?", UUID.class, primeira));
+    }
+
+    @Test
     @DisplayName("Cenário 2 no banco: recurso sem o par é recusado e nada é gravado")
     void rn1NaoGravaNada() {
         UUID primeira = montarEtapas().getFirst();

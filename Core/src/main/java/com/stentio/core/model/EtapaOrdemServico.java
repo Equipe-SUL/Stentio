@@ -146,9 +146,10 @@ public class EtapaOrdemServico {
      * <p>RN.6: etapa já assumida ou entregue não volta para a fila.
      */
     public void disparar(Instant agora) {
-        if (status == StatusEtapaOrdemServico.ACEITA || status == StatusEtapaOrdemServico.ENTREGUE) {
+        if (status != StatusEtapaOrdemServico.PENDENTE
+                && status != StatusEtapaOrdemServico.ALOCADO) {
             throw new TransicaoEtapaInvalidaException(
-                    "A etapa " + nome + " já foi assumida e não pode ser disparada de novo");
+                    "A etapa " + nome + " não está disponível para disparo");
         }
         this.recurso = null;
         this.alocadoEm = null;

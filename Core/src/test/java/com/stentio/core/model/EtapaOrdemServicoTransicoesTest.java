@@ -89,6 +89,27 @@ class EtapaOrdemServicoTransicoesTest {
     }
 
     @Test
+    @DisplayName("etapa bloqueada pela anterior não pode ser disparada")
+    void naoDisparaEtapaAguardandoEtapaAnterior() {
+        TipoServico tipo = new TipoServico();
+        tipo.setId(UUID.randomUUID());
+        tipo.setNome("Revisão");
+        EtapaOrdemServico etapaBloqueada =
+                new EtapaOrdemServico(mock(OrdemServico.class), 2, "Revisão", tipo, 12);
+
+        assertEquals(StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, etapaBloqueada.getStatus());
+        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapaBloqueada.disparar(AGORA));
+    }
+
+    @Test
+    @DisplayName("uma etapa já disparada não envia convites duplicados")
+    void naoDisparaEtapaJaDisparada() {
+        etapa.disparar(AGORA);
+
+        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.disparar(AGORA));
+    }
+
+    @Test
     @DisplayName("aceitar marca o dono, o instante e congela a etapa para troca")
     void aceitarCongelaAEtapa() {
         etapa.disparar(AGORA);

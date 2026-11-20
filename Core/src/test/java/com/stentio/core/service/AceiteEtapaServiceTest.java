@@ -118,7 +118,12 @@ class AceiteEtapaServiceTest {
 
     /** Faz o UPDATE condicional se comportar como o banco: aplica a mudança e devolve 1. */
     private void bancoAceitaOClaim() {
-        when(etapas.aceitarSeDisponivel(eq(etapaId), any(), any(), any(), any()))
+        when(etapas.aceitarDisparada(eq(etapaId), any(), any(), any(), any()))
+                .thenAnswer(invocacao -> {
+                    etapa.aceitarPor(invocacao.getArgument(1), invocacao.getArgument(2));
+                    return 1;
+                });
+        when(etapas.aceitarAlocacaoDireta(eq(etapaId), any(), any(), any(), any()))
                 .thenAnswer(invocacao -> {
                     etapa.aceitarPor(invocacao.getArgument(1), invocacao.getArgument(2));
                     return 1;
@@ -135,7 +140,7 @@ class AceiteEtapaServiceTest {
 
         assertEquals(StatusEtapaOrdemServico.ACEITA, resposta.status());
         assertEquals(AGORA, resposta.aceitoEm());
-        verify(etapas).aceitarSeDisponivel(etapaId, ana, AGORA,
+        verify(etapas).aceitarDisparada(etapaId, ana, AGORA,
                 StatusEtapaOrdemServico.ACEITA, StatusEtapaOrdemServico.DISPARADA);
     }
 
@@ -143,7 +148,7 @@ class AceiteEtapaServiceTest {
     @DisplayName("CA.3: quem perde a corrida atualiza zero linhas e recebe conflito")
     void segundoAceiteFalha() {
         etapa.disparar(AGORA);
-        when(etapas.aceitarSeDisponivel(eq(etapaId), any(), any(), any(), any())).thenReturn(0);
+        when(etapas.aceitarDisparada(eq(etapaId), any(), any(), any(), any())).thenReturn(0);
 
         assertThrows(TransicaoEtapaInvalidaException.class, () -> service.aceitar(etapaId, ator));
         verify(historico, never()).save(any());
@@ -173,7 +178,8 @@ class AceiteEtapaServiceTest {
         when(recursoAutenticado.resolver(ator)).thenReturn(bruno);
 
         assertThrows(AlocacaoInvalidaException.class, () -> service.aceitar(etapaId, ator));
-        verify(etapas, never()).aceitarSeDisponivel(any(), any(), any(), any(), any());
+        verify(etapas, never()).aceitarDisparada(any(), any(), any(), any(), any());
+        verify(etapas, never()).aceitarAlocacaoDireta(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -203,7 +209,8 @@ class AceiteEtapaServiceTest {
         etapa.alocar(recurso("Elisa", traducao, portugues, ingles), PRAZO, AGORA);
 
         assertThrows(AlocacaoInvalidaException.class, () -> service.aceitar(etapaId, ator));
-        verify(etapas, never()).aceitarSeDisponivel(any(), any(), any(), any(), any());
+        verify(etapas, never()).aceitarDisparada(any(), any(), any(), any(), any());
+        verify(etapas, never()).aceitarAlocacaoDireta(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -214,7 +221,7 @@ class AceiteEtapaServiceTest {
 
         service.aceitar(etapaId, ator);
 
-        verify(etapas).aceitarSeDisponivel(etapaId, ana, AGORA,
+        verify(etapas).aceitarAlocacaoDireta(etapaId, ana, AGORA,
                 StatusEtapaOrdemServico.ACEITA, StatusEtapaOrdemServico.ALOCADO);
     }
 
