@@ -13,6 +13,7 @@ export async function enviarMensagemChatbot(
   const { data } = await coreApi.post<EnviarMensagemChatbotResponse>(
     `${ENDPOINT}/mensagens`,
     request,
+    { baseURL: "" }, // Força usar a mesma origem (Nginx -> chatbot-service:8000)
   );
   return data;
 }
@@ -20,6 +21,7 @@ export async function enviarMensagemChatbot(
 export async function buscarHistoricoChatbot(): Promise<HistoricoChatbotResponse> {
   const { data } = await coreApi.get<HistoricoChatbotResponse>(
     `${ENDPOINT}/historico`,
+    { baseURL: "" }, // Força usar a mesma origem (Nginx -> chatbot-service:8000)
   );
   return data;
 }
