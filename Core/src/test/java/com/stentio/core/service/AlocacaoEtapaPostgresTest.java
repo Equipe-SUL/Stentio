@@ -253,6 +253,44 @@ class AlocacaoEtapaPostgresTest {
         assertEquals(1, jdbc.queryForObject(
                 "select count(*) from notificacao_etapa_outbox where etapa_id = ?",
                 Integer.class, ids.get(1)));
+        assertTrue(jdbc.queryForObject(
+                "select payload from notificacao_etapa_outbox where etapa_id = ?",
+                String.class, ids.get(1)).contains("liberada automaticamente"));
+    }
+
+    @Test
+    @DisplayName("a etapa pré-alocada recebe aviso individual sem disparo aberto")
+    void avisaSomenteRecursoPreAlocado() {
+        List<UUID> ids = montarEtapas();
+        alocacao.alocar(osId, ids.get(1),
+                new AlocacaoEtapaRequest(danielaId, DAQUI_A_UM_MES), gestor);
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            EtapaOrdemServico primeira = etapas.buscarParaAlocacao(osId, ids.getFirst()).orElseThrow();
+            entregarComoRecurso(primeira);
+
+            RoteamentoEtapaService.Resultado resultado = roteamento.rotear(primeira);
+
+            assertEquals(StatusEtapaOrdemServico.ALOCADO,
+                    resultado.proximaEtapa().orElseThrow().getStatus());
+            assertFalse(resultado.conviteAutomatico());
+            assertEquals(1, resultado.recursosNotificados());
+        });
+
+        assertEquals(StatusEtapaOrdemServico.ALOCADO,
+                etapas.findById(ids.get(1)).orElseThrow().getStatus());
+        assertEquals(1, jdbc.queryForObject(
+                "select count(*) from notificacao_etapa_outbox where etapa_id = ?",
+                Integer.class, ids.get(1)));
+        assertEquals(jdbc.queryForObject("select email from recursos where id = ?", String.class, danielaId),
+                jdbc.queryForObject("select destinatario from notificacao_etapa_outbox where etapa_id = ?",
+                        String.class, ids.get(1)));
+        assertEquals(0, jdbc.queryForObject(
+                "select count(*) from etapas_os_historico where etapa_id = ? and evento = 'DISPARO'",
+                Integer.class, ids.get(1)));
+        assertTrue(jdbc.queryForObject(
+                "select payload from notificacao_etapa_outbox where etapa_id = ?",
+                String.class, ids.get(1)).contains("já pode começar"));
     }
 
     @Test

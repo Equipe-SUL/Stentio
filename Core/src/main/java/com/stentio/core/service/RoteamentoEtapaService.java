@@ -2,10 +2,12 @@ package com.stentio.core.service;
 
 import com.stentio.core.dto.DisparoEtapaResponse;
 import com.stentio.core.model.EtapaOrdemServico;
+import com.stentio.core.model.Recurso;
 import com.stentio.core.model.StatusEtapaOrdemServico;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.util.Optional;
 
 @Service
@@ -13,10 +15,17 @@ public class RoteamentoEtapaService {
 
     private final AvancoEtapaService avanco;
     private final DisparoEtapaService disparo;
+    private final ConviteEtapaEmailService convites;
+    private final Clock clock;
 
-    public RoteamentoEtapaService(AvancoEtapaService avanco, DisparoEtapaService disparo) {
+    public RoteamentoEtapaService(AvancoEtapaService avanco,
+                                  DisparoEtapaService disparo,
+                                  ConviteEtapaEmailService convites,
+                                  Clock clock) {
         this.avanco = avanco;
         this.disparo = disparo;
+        this.convites = convites;
+        this.clock = clock;
     }
 
     @Transactional
@@ -41,6 +50,13 @@ public class RoteamentoEtapaService {
                 || proxima.getStatus() == StatusEtapaOrdemServico.ACEITA
                 ? 1
                 : 0;
+        if (recursosNotificados == 1) {
+            Recurso recurso = proxima.getRecurso();
+            if (recurso == null) {
+                throw new IllegalStateException("Etapa atribuída sem recurso para notificar");
+            }
+            convites.avisarEtapaLiberada(proxima, recurso, clock.instant());
+        }
         return new Resultado(proximaEtapa, false, recursosNotificados);
     }
 
