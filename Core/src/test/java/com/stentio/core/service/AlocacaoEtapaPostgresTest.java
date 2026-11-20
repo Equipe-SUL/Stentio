@@ -68,6 +68,7 @@ class AlocacaoEtapaPostgresTest {
     @Autowired EtapaOrdemServicoRepository etapas;
     @Autowired EtapaLiberacaoService liberacao;
     @Autowired AvancoEtapaService avanco;
+    @Autowired RoteamentoEtapaService roteamento;
     @Autowired ClienteRepository clientes;
     @Autowired CategoriaProjetoRepository categorias;
     @Autowired IdiomaRepository idiomas;
@@ -147,6 +148,8 @@ class AlocacaoEtapaPostgresTest {
     @AfterEach
     void limparSomenteDadosDesteTeste() {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            jdbc.update("delete from notificacao_etapa_outbox where etapa_id in "
+                    + "(select id from etapas_os where os_id = ?)", osId);
             jdbc.update("delete from etapas_os_historico where etapa_id in "
                     + "(select id from etapas_os where os_id = ?)", osId);
             jdbc.update("delete from etapas_os where os_id = ?", osId);
@@ -235,14 +238,21 @@ class AlocacaoEtapaPostgresTest {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             EtapaOrdemServico primeira = etapas.buscarParaAlocacao(osId, ids.getFirst()).orElseThrow();
             entregarComoRecurso(primeira);
-            EtapaOrdemServico proxima = avanco.avancar(primeira).orElseThrow();
+            RoteamentoEtapaService.Resultado resultado = roteamento.rotear(primeira);
+            EtapaOrdemServico proxima = resultado.proximaEtapa().orElseThrow();
             assertEquals(ids.get(1), proxima.getId());
+            assertEquals(StatusEtapaOrdemServico.DISPARADA, proxima.getStatus());
+            assertTrue(resultado.conviteAutomatico());
+            assertEquals(1, resultado.recursosNotificados());
         });
 
-        assertEquals(StatusEtapaOrdemServico.PENDENTE,
+        assertEquals(StatusEtapaOrdemServico.DISPARADA,
                 etapas.findById(ids.get(1)).orElseThrow().getStatus());
         assertEquals(StatusOrdemServico.EM_EXECUCAO,
                 ordensServico.findById(osId).orElseThrow().getStatus());
+        assertEquals(1, jdbc.queryForObject(
+                "select count(*) from notificacao_etapa_outbox where etapa_id = ?",
+                Integer.class, ids.get(1)));
     }
 
     @Test
@@ -252,7 +262,7 @@ class AlocacaoEtapaPostgresTest {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             EtapaOrdemServico ultima = etapas.buscarParaAlocacao(osId, ids.getLast()).orElseThrow();
             entregarComoRecurso(ultima);
-            assertTrue(avanco.avancar(ultima).isEmpty());
+            assertTrue(avanco.avancar(ultima).proximaEtapa().isEmpty());
         });
 
         assertEquals(StatusOrdemServico.AGUARDANDO_VERIFICACAO,

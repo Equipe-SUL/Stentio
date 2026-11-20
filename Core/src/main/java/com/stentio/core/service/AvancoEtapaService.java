@@ -20,14 +20,14 @@ public class AvancoEtapaService {
     }
 
     @Transactional
-    public Optional<EtapaOrdemServico> avancar(EtapaOrdemServico etapaEntregue) {
+    public Resultado avancar(EtapaOrdemServico etapaEntregue) {
         OrdemServico ordemServico = etapaEntregue.getOrdemServico();
         int proximaOrdem = SequenciaEtapas.proximaOrdem(etapaEntregue.getOrdem());
         Optional<EtapaOrdemServico> proxima = etapas.findByOrdemServicoAndOrdem(ordemServico, proximaOrdem);
 
         if (proxima.isEmpty()) {
             ordemServico.aguardarVerificacao();
-            return Optional.empty();
+            return new Resultado(Optional.empty(), false);
         }
 
         if (etapaEntregue.getOrdem() == SequenciaEtapas.ORDEM_INICIAL) {
@@ -35,11 +35,16 @@ public class AvancoEtapaService {
         }
 
         EtapaOrdemServico etapaSeguinte = proxima.get();
-        if (etapaSeguinte.getStatus() == StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR) {
+        boolean liberadaNestaEntrega =
+                etapaSeguinte.getStatus() == StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR;
+        if (liberadaNestaEntrega) {
             etapaSeguinte.liberar();
             etapas.save(etapaSeguinte);
         }
 
-        return Optional.of(etapaSeguinte);
+        return new Resultado(Optional.of(etapaSeguinte), liberadaNestaEntrega);
+    }
+
+    public record Resultado(Optional<EtapaOrdemServico> proximaEtapa, boolean liberadaNestaEntrega) {
     }
 }

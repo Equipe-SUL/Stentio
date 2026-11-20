@@ -31,6 +31,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
@@ -123,6 +124,34 @@ class DisparoEtapaServiceTest {
         service.disparar(osId, etapaId, gestor);
 
         verify(convites).convidar(same(etapa), anyList(), same(AGORA));
+    }
+
+    @Test
+    @DisplayName("disparo automático abre a etapa e grava convites para todos os elegíveis")
+    void disparaAutomaticamenteParaOsElegiveis() {
+        elegiveis(qualquerRecurso(), qualquerRecurso(), qualquerRecurso());
+
+        var resposta = service.dispararAutomaticamente(etapa);
+
+        assertTrue(resposta.isPresent());
+        assertEquals(StatusEtapaOrdemServico.DISPARADA, etapa.getStatus());
+        assertEquals(3, resposta.orElseThrow().recursosNotificados());
+        verify(convites).convidar(same(etapa), anyList(), same(AGORA));
+        verify(historico).save(org.mockito.ArgumentMatchers.argThat(
+                evento -> "sistema".equals(evento.getRealizadoPor())));
+    }
+
+    @Test
+    @DisplayName("sem elegíveis o disparo automático mantém a etapa PENDENTE")
+    void disparoAutomaticoSemElegiveisMantemPendente() {
+        elegiveis();
+
+        var resposta = service.dispararAutomaticamente(etapa);
+
+        assertTrue(resposta.isEmpty());
+        assertEquals(StatusEtapaOrdemServico.PENDENTE, etapa.getStatus());
+        verify(convites, never()).convidar(any(), anyList(), any());
+        verify(historico, never()).save(any());
     }
 
     @Test

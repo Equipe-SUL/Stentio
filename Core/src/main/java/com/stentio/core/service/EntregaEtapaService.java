@@ -37,7 +37,7 @@ public class EntregaEtapaService {
     private final RecursoAutenticadoService recursoAutenticado;
     private final ArquivoStorageService storage;
     private final HistoricoEtapaRepository historico;
-    private final AvancoEtapaService avanco;
+    private final RoteamentoEtapaService roteamento;
     private final Clock clock;
 
     public EntregaEtapaService(EtapaOrdemServicoRepository etapas,
@@ -45,14 +45,14 @@ public class EntregaEtapaService {
                                RecursoAutenticadoService recursoAutenticado,
                                ArquivoStorageService storage,
                                HistoricoEtapaRepository historico,
-                               AvancoEtapaService avanco,
+                               RoteamentoEtapaService roteamento,
                                Clock clock) {
         this.etapas = etapas;
         this.liberacao = liberacao;
         this.recursoAutenticado = recursoAutenticado;
         this.storage = storage;
         this.historico = historico;
-        this.avanco = avanco;
+        this.roteamento = roteamento;
         this.clock = clock;
     }
 
@@ -86,7 +86,7 @@ public class EntregaEtapaService {
         try {
             etapa.entregar(salvo.nomeOriginal(), salvo.caminho(), clock.instant(), estaLiberada);
             etapas.save(etapa);
-            avanco.avancar(etapa);
+            roteamento.rotear(etapa);
         } catch (RuntimeException ex) {
             // O arquivo já está no disco e o banco não vai registrá-lo: apaga agora, senão
             // fica ocupando espaço sem ninguém que saiba que ele existe.

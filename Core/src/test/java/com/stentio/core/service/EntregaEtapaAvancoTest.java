@@ -33,14 +33,14 @@ class EntregaEtapaAvancoTest {
     private final RecursoAutenticadoService recursoAutenticado = mock(RecursoAutenticadoService.class);
     private final ArquivoStorageService storage = mock(ArquivoStorageService.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
-    private final AvancoEtapaService avanco = mock(AvancoEtapaService.class);
+    private final RoteamentoEtapaService roteamento = mock(RoteamentoEtapaService.class);
     private final EntregaEtapaService service = new EntregaEtapaService(
             etapas,
             liberacao,
             recursoAutenticado,
             storage,
             historico,
-            avanco,
+            roteamento,
             Clock.fixed(AGORA, ZoneOffset.UTC));
 
     @Test
@@ -64,9 +64,9 @@ class EntregaEtapaAvancoTest {
 
         service.entregar(etapaId, arquivo, ator);
 
-        var ordem = inOrder(etapa, avanco);
+        var ordem = inOrder(etapa, roteamento);
         ordem.verify(etapa).entregar("entrega.docx", "2026/11/entrega.docx", AGORA, true);
-        ordem.verify(avanco).avancar(etapa);
+        ordem.verify(roteamento).rotear(etapa);
         verify(etapas).save(etapa);
         assertEquals(StatusEtapaOrdemServico.ENTREGUE, etapa.getStatus());
     }

@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -53,9 +54,10 @@ class AvancoEtapaServiceTest {
         EtapaOrdemServico proxima = novaEtapa(2);
         when(etapas.findByOrdemServicoAndOrdem(ordemServico, 2)).thenReturn(Optional.of(proxima));
 
-        Optional<EtapaOrdemServico> resultado = service.avancar(entregue);
+        AvancoEtapaService.Resultado resultado = service.avancar(entregue);
 
-        assertSame(proxima, resultado.orElseThrow());
+        assertSame(proxima, resultado.proximaEtapa().orElseThrow());
+        assertTrue(resultado.liberadaNestaEntrega());
         assertEquals(StatusEtapaOrdemServico.PENDENTE, proxima.getStatus());
         assertEquals(StatusOrdemServico.EM_EXECUCAO, ordemServico.getStatus());
         verify(etapas).save(proxima);
@@ -91,9 +93,10 @@ class AvancoEtapaServiceTest {
     void ultimaEtapaDeOrdemDeUmaEtapaMoveOrdemParaAguardandoVerificacao() {
         when(etapas.findByOrdemServicoAndOrdem(ordemServico, 2)).thenReturn(Optional.empty());
 
-        Optional<EtapaOrdemServico> resultado = service.avancar(entregue);
+        AvancoEtapaService.Resultado resultado = service.avancar(entregue);
 
-        assertTrue(resultado.isEmpty());
+        assertTrue(resultado.proximaEtapa().isEmpty());
+        assertFalse(resultado.liberadaNestaEntrega());
         assertEquals(StatusOrdemServico.AGUARDANDO_VERIFICACAO, ordemServico.getStatus());
     }
 
