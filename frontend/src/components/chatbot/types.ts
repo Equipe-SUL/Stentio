@@ -9,7 +9,7 @@ export interface ChatbotAtalho {
 
 export interface ChatbotMensagem {
   id: string;
-  autor: "USUARIO" | "ASSISTENTE";
+  autor: "USUARIO" | "ASSISTENTE" | "IA";
   conteudo: string;
   criadaEm?: string;
   atalhos?: ChatbotAtalho[];
