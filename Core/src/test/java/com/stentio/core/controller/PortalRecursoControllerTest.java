@@ -4,6 +4,7 @@ import com.stentio.core.config.SecurityConfig;
 import com.stentio.core.dto.EntregaEtapaResponse;
 import com.stentio.core.exception.AutoCadastroInvalidoException;
 import com.stentio.core.exception.GlobalExceptionHandler;
+import com.stentio.core.exception.TransicaoEtapaInvalidaException;
 import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.model.StatusOrdemServico;
 import com.stentio.core.service.AceiteEtapaService;
@@ -126,6 +127,16 @@ class PortalRecursoControllerTest {
         mockMvc.perform(post(ACEITAR)).andExpect(status().isOk());
 
         verify(aceiteEtapaService).aceitar(any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "RECURSO")
+    @DisplayName("aceite que perde a disputa retorna 409")
+    void aceiteConcorrenteRetornaConflict() throws Exception {
+        when(aceiteEtapaService.aceitar(any(), any()))
+                .thenThrow(new TransicaoEtapaInvalidaException("Esta etapa já foi aceita"));
+
+        mockMvc.perform(post(ACEITAR)).andExpect(status().isConflict());
     }
 
     @Test

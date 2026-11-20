@@ -109,6 +109,7 @@ def testEnvironment = [
         ORCAMENTO_TEST_JDBC_URL    : testJdbcUrl,
         ORCAMENTO_TEST_DB_USER     : postgresUser,
         ORCAMENTO_TEST_DB_PASSWORD : postgresPassword,
+        ORCAMENTO_INTEGRATION_TESTS: environmentValue('ORCAMENTO_INTEGRATION_TESTS') ?: 'false',
         RABBITMQ_HOST              : rabbitHost,
         RABBITMQ_PORT              : rabbitPort,
         RABBITMQ_USER              : rabbitUser,

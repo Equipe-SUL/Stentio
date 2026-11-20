@@ -8,6 +8,7 @@ import com.stentio.core.dto.EtapasOrdemServicoRequest;
 import com.stentio.core.dto.EtapasOrdemServicoResponse;
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapasBloqueadasException;
+import com.stentio.core.exception.TransicaoEtapaInvalidaException;
 import com.stentio.core.model.*;
 import com.stentio.core.repository.*;
 import com.stentio.core.support.UsuarioAutenticado;
@@ -21,16 +22,25 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 
 /**
  * US-012 contra o Postgres real. O que os testes de mock não alcançam:
@@ -64,10 +74,11 @@ class AlocacaoEtapaPostgresTest {
     private static final Instant DAQUI_A_UM_MES = Instant.now().plusSeconds(30L * 24 * 3600);
 
     @Autowired AlocacaoEtapaService alocacao;
+    @Autowired AceiteEtapaService aceite;
+    @Autowired DisparoEtapaService disparo;
     @Autowired EtapaOrdemServicoService etapasService;
     @Autowired EtapaOrdemServicoRepository etapas;
     @Autowired EtapaLiberacaoService liberacao;
-    @Autowired AvancoEtapaService avanco;
     @Autowired RoteamentoEtapaService roteamento;
     @Autowired ClienteRepository clientes;
     @Autowired CategoriaProjetoRepository categorias;
@@ -79,6 +90,8 @@ class AlocacaoEtapaPostgresTest {
     @Autowired RecursoRepository recursos;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
+    @Autowired NotificacaoEtapaOutboxDispatcher notificacaoDispatcher;
+    @MockitoBean NotificacaoEtapaPublisher notificacaoPublisher;
 
     private final UsuarioAutenticado gestor = new UsuarioAutenticado("gestor.us012@teste.invalid", false);
 
@@ -96,6 +109,8 @@ class AlocacaoEtapaPostgresTest {
     private UUID brunoId;
     private UUID carlosId;
     private UUID danielaId;
+    private final List<UUID> recursosExtras = new ArrayList<>();
+    private final List<UUID> tiposServicoExtras = new ArrayList<>();
 
     /** Solicitação Português → Inglês, com uma OS pronta para receber etapas. */
     @BeforeEach
@@ -159,14 +174,21 @@ class AlocacaoEtapaPostgresTest {
             jdbc.update("delete from solicitacoes where id = ?", solicitacaoId);
             jdbc.update("delete from clientes where id = ?", clienteId);
             jdbc.update("delete from categorias_projeto where id = ?", categoriaId);
-            for (UUID recurso : List.of(anaId, brunoId, carlosId, danielaId)) {
+            List<UUID> recursosDoTeste = new ArrayList<>(List.of(anaId, brunoId, carlosId, danielaId));
+            recursosDoTeste.addAll(recursosExtras);
+            for (UUID recurso : recursosDoTeste) {
                 jdbc.update("delete from recursos_precos where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos_tipos_servico where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos where id = ?", recurso);
             }
             jdbc.update("delete from tipos_servico where id in (?, ?)", traducaoId, revisaoId);
+            for (UUID tipoExtra : tiposServicoExtras) {
+                jdbc.update("delete from tipos_servico where id = ?", tipoExtra);
+            }
             jdbc.update("delete from idiomas where id in (?, ?, ?)", portuguesId, inglesId, alemaoId);
         });
+        recursosExtras.clear();
+        tiposServicoExtras.clear();
     }
 
     // ------------------------------------------------------------------ fixtures
@@ -250,6 +272,8 @@ class AlocacaoEtapaPostgresTest {
                 etapas.findById(ids.get(1)).orElseThrow().getStatus());
         assertEquals(StatusOrdemServico.EM_EXECUCAO,
                 ordensServico.findById(osId).orElseThrow().getStatus());
+        assertEquals(StatusEtapaOrdemServico.DISPARADA,
+                etapas.findById(ids.get(1)).orElseThrow().getStatus());
         assertEquals(1, jdbc.queryForObject(
                 "select count(*) from notificacao_etapa_outbox where etapa_id = ?",
                 Integer.class, ids.get(1)));
@@ -294,17 +318,179 @@ class AlocacaoEtapaPostgresTest {
     }
 
     @Test
+    @DisplayName("a etapa aberta convida os três recursos elegíveis")
+    void convidaOsTresElegiveis() {
+        UUID terceiroRecursoId = new TransactionTemplate(transactionManager).execute(status -> {
+            TipoServico traducao = tiposServico.findById(traducaoId).orElseThrow();
+            Idioma portugues = idiomas.findById(portuguesId).orElseThrow();
+            Idioma ingles = idiomas.findById(inglesId).orElseThrow();
+            UUID id = novoRecurso("Eva US014", traducao, portugues, ingles);
+            recursosExtras.add(id);
+            return id;
+        });
+        List<EtapaOrdemServicoResponse> configuradas = etapasService.definirManualmente(osId,
+                new EtapasOrdemServicoRequest(List.of(
+                        new EtapasOrdemServicoRequest.Etapa(1, "Tradução", traducaoId, 24),
+                        new EtapasOrdemServicoRequest.Etapa(2, "Revisão de texto", traducaoId, 12))))
+                .etapas();
+        List<UUID> ids = configuradas.stream().map(EtapaOrdemServicoResponse::id).toList();
+
+        RoteamentoEtapaService.Resultado resultado = new TransactionTemplate(transactionManager).execute(status -> {
+            EtapaOrdemServico primeira = etapas.buscarParaAlocacao(osId, ids.getFirst()).orElseThrow();
+            entregarComoRecurso(primeira);
+            return roteamento.rotear(primeira);
+        });
+
+        assertTrue(resultado.conviteAutomatico());
+        assertEquals(3, resultado.recursosNotificados());
+        assertEquals(StatusEtapaOrdemServico.DISPARADA,
+                etapas.findById(ids.get(1)).orElseThrow().getStatus());
+        assertEquals(3, jdbc.queryForObject(
+                "select count(*) from notificacao_etapa_outbox where etapa_id = ?",
+                Integer.class, ids.get(1)));
+        assertEquals(3, jdbc.queryForObject(
+                "select count(distinct destinatario) from notificacao_etapa_outbox where etapa_id = ?",
+                Integer.class, ids.get(1)));
+        assertTrue(recursos.existsById(terceiroRecursoId));
+    }
+
+    @Test
+    @DisplayName("sem elegíveis, a etapa seguinte permanece PENDENTE e sem convite")
+    void semElegiveisMantemProximaPendente() {
+        UUID tipoSemElegiveisId = new TransactionTemplate(transactionManager).execute(status -> {
+            UUID id = novoTipoServico("Serviço sem elegíveis US014").getId();
+            tiposServicoExtras.add(id);
+            return id;
+        });
+        List<EtapaOrdemServicoResponse> configuradas = etapasService.definirManualmente(osId,
+                new EtapasOrdemServicoRequest(List.of(
+                        new EtapasOrdemServicoRequest.Etapa(1, "Tradução", traducaoId, 24),
+                        new EtapasOrdemServicoRequest.Etapa(2, "Serviço sem elegíveis", tipoSemElegiveisId, 12))))
+                .etapas();
+        List<UUID> ids = configuradas.stream().map(EtapaOrdemServicoResponse::id).toList();
+
+        RoteamentoEtapaService.Resultado resultado = new TransactionTemplate(transactionManager).execute(status -> {
+            EtapaOrdemServico primeira = etapas.buscarParaAlocacao(osId, ids.getFirst()).orElseThrow();
+            entregarComoRecurso(primeira);
+            return roteamento.rotear(primeira);
+        });
+
+        assertFalse(resultado.conviteAutomatico());
+        assertEquals(0, resultado.recursosNotificados());
+        assertEquals(StatusEtapaOrdemServico.PENDENTE,
+                etapas.findById(ids.get(1)).orElseThrow().getStatus());
+        assertEquals(0, jdbc.queryForObject(
+                "select count(*) from notificacao_etapa_outbox where etapa_id = ?",
+                Integer.class, ids.get(1)));
+    }
+
+    @Test
+    @DisplayName("dois aceites concorrentes resultam em um vencedor e um conflito")
+    void apenasUmRecursoAceitaConviteConcorrente() throws Exception {
+        UUID anaUsuarioId = UUID.randomUUID();
+        UUID brunoUsuarioId = UUID.randomUUID();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            Recurso ana = recursos.findById(anaId).orElseThrow();
+            ana.vincularUsuario(anaUsuarioId);
+            recursos.save(ana);
+            Recurso bruno = recursos.findById(brunoId).orElseThrow();
+            bruno.vincularUsuario(brunoUsuarioId);
+            recursos.save(bruno);
+        });
+        UUID etapaId = montarEtapas().getFirst();
+        disparo.disparar(osId, etapaId, gestor);
+
+        UsuarioAutenticado atorAna = new UsuarioAutenticado(
+                recursos.findById(anaId).orElseThrow().getEmail(), anaUsuarioId, false);
+        UsuarioAutenticado atorBruno = new UsuarioAutenticado(
+                recursos.findById(brunoId).orElseThrow().getEmail(), brunoUsuarioId, false);
+        CountDownLatch prontos = new CountDownLatch(2);
+        CountDownLatch iniciar = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            Future<Boolean> aceiteAna = executor.submit(
+                    () -> aceitarAposBarreira(etapaId, atorAna, prontos, iniciar));
+            Future<Boolean> aceiteBruno = executor.submit(
+                    () -> aceitarAposBarreira(etapaId, atorBruno, prontos, iniciar));
+            assertTrue(prontos.await(10, TimeUnit.SECONDS));
+            iniciar.countDown();
+
+            List<Boolean> resultados = List.of(
+                    aceiteAna.get(15, TimeUnit.SECONDS),
+                    aceiteBruno.get(15, TimeUnit.SECONDS));
+            assertEquals(1, resultados.stream().filter(Boolean::booleanValue).count());
+            assertEquals(1, resultados.stream().filter(resultado -> !resultado).count());
+        } finally {
+            iniciar.countDown();
+            executor.shutdownNow();
+        }
+
+        assertEquals(StatusEtapaOrdemServico.ACEITA, etapas.findById(etapaId).orElseThrow().getStatus());
+        assertEquals(1, jdbc.queryForObject(
+                "select count(*) from etapas_os_historico where etapa_id = ? and evento = 'ACEITE'",
+                Integer.class, etapaId));
+    }
+
+    @Test
+    @DisplayName("falha do RabbitMQ mantém a entrega confirmada e a notificação pendente")
+    void falhaDoRabbitNaoDesfazEntrega() throws Exception {
+        List<UUID> ids = montarEtapas();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            EtapaOrdemServico primeira = etapas.buscarParaAlocacao(osId, ids.getFirst()).orElseThrow();
+            entregarComoRecurso(primeira);
+            roteamento.rotear(primeira);
+        });
+        doThrow(new IllegalStateException("RabbitMQ indisponível"))
+                .when(notificacaoPublisher).publicar(any());
+
+        assertTrue(notificacaoDispatcher.processarProximo());
+
+        assertEquals(StatusEtapaOrdemServico.ENTREGUE,
+                etapas.findById(ids.getFirst()).orElseThrow().getStatus());
+        assertEquals(StatusOrdemServico.EM_EXECUCAO,
+                ordensServico.findById(osId).orElseThrow().getStatus());
+        assertEquals(1, jdbc.queryForObject(
+                "select count(*) from notificacao_etapa_outbox where etapa_id = ? and enviado_em is null",
+                Integer.class, ids.get(1)));
+        assertEquals(1, jdbc.queryForObject(
+                "select tentativas from notificacao_etapa_outbox where etapa_id = ?",
+                Integer.class, ids.get(1)));
+    }
+
+    @Test
     @DisplayName("a última entrega coloca a OS em verificação")
     void ultimaEntregaAguardaVerificacao() {
         List<UUID> ids = montarEtapas();
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             EtapaOrdemServico ultima = etapas.buscarParaAlocacao(osId, ids.getLast()).orElseThrow();
             entregarComoRecurso(ultima);
-            assertTrue(avanco.avancar(ultima).proximaEtapa().isEmpty());
+            RoteamentoEtapaService.Resultado resultado = roteamento.rotear(ultima);
+            assertTrue(resultado.proximaEtapa().isEmpty());
+            assertEquals(0, resultado.recursosNotificados());
         });
 
         assertEquals(StatusOrdemServico.AGUARDANDO_VERIFICACAO,
                 ordensServico.findById(osId).orElseThrow().getStatus());
+        assertEquals(0, jdbc.queryForObject(
+                "select count(*) from notificacao_etapa_outbox where etapa_id = ?",
+                Integer.class, ids.getLast()));
+    }
+
+    private boolean aceitarAposBarreira(UUID etapaId,
+                                        UsuarioAutenticado ator,
+                                        CountDownLatch prontos,
+                                        CountDownLatch iniciar) throws InterruptedException {
+        prontos.countDown();
+        if (!iniciar.await(10, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Timeout aguardando início dos aceites concorrentes");
+        }
+        try {
+            aceite.aceitar(etapaId, ator);
+            return true;
+        } catch (TransicaoEtapaInvalidaException ex) {
+            return false;
+        }
     }
 
     private void entregarComoRecurso(EtapaOrdemServico etapa) {
