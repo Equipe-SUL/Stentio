@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import axios from "axios";
+import * as DocumentPicker from "expo-document-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { getApiErrorMessage } from "../../../lib/api";
-import { aceitarEtapa, listarEtapasPortal, recusarEtapa, type DemandaRecurso, type EtapasPortalRecurso } from "../../../components/recursos/portalRecursoApi";
+import { aceitarEtapa, baixarEntrega, enviarEntrega, listarEtapasPortal, recusarEtapa, type DemandaRecurso, type EtapasPortalRecurso } from "../../../components/recursos/portalRecursoApi";
+
+const LIMITE_ENTREGA_BYTES = 10 * 1024 * 1024;
+const EXTENSOES_ENTREGA = new Set(["pdf", "doc", "docx", "odt", "rtf", "txt", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png"]);
 
 const STATUS: Record<string, { label: string; cor: string }> = {
   PENDENTE: { label: "Pendente", cor: "bg-amber-50 text-amber-800 border-amber-200" },
@@ -27,6 +31,9 @@ export default function MinhasDemandasScreen() {
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [etapaEmAcao, setEtapaEmAcao] = useState<string | null>(null);
+  const [arquivo, setArquivo] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [etapaDoArquivo, setEtapaDoArquivo] = useState<string | null>(null);
+  const [progresso, setProgresso] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -69,6 +76,43 @@ export default function MinhasDemandasScreen() {
     }
   };
 
+  const selecionarEntrega = async (etapaId: string) => {
+    const escolha = await DocumentPicker.getDocumentAsync({ type: "*/*", multiple: false, copyToCacheDirectory: true });
+    if (escolha.canceled) return;
+    const item = escolha.assets[0];
+    const extensao = item.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!EXTENSOES_ENTREGA.has(extensao)) {
+      setErro("Tipo de arquivo não permitido. Envie PDF, Office, texto ou imagem compatível.");
+      return;
+    }
+    if (item.size !== undefined && item.size > LIMITE_ENTREGA_BYTES) {
+      setErro("O arquivo ultrapassa o limite de 10 MB.");
+      return;
+    }
+    setErro("");
+    setArquivo(item);
+    setEtapaDoArquivo(etapaId);
+  };
+
+  const enviarArquivo = async (etapaId: string) => {
+    if (!arquivo || etapaDoArquivo !== etapaId) return;
+    try {
+      setEtapaEmAcao(etapaId);
+      setProgresso(0);
+      setErro("");
+      await enviarEntrega(etapaId, { uri: arquivo.uri, nome: arquivo.name, tipo: arquivo.mimeType ?? "application/octet-stream", file: arquivo.file }, setProgresso);
+      setMensagem("Entrega enviada com sucesso.");
+      setArquivo(null);
+      setEtapaDoArquivo(null);
+      await carregar();
+    } catch (error) {
+      setErro(getApiErrorMessage(error));
+    } finally {
+      setEtapaEmAcao(null);
+      setProgresso(null);
+    }
+  };
+
   const renderDemandas = (lista: DemandaRecurso[], disponiveis = false) => lista.map((demanda) => {
     const status = STATUS[demanda.situacao] ?? { label: demanda.situacao, cor: "bg-neutral-100 text-neutral-700 border-neutral-200" };
     return (
@@ -98,6 +142,27 @@ export default function MinhasDemandasScreen() {
               </Pressable>
             ) : null}
           </View>
+        ) : null}
+        {demanda.situacao === "ACEITA" ? (
+          <View className="gap-2">
+            {etapaDoArquivo === demanda.etapa_id && arquivo ? <Text className="text-xs text-neutral-600">Arquivo: {arquivo.name}</Text> : null}
+            <View className="flex-row flex-wrap gap-2">
+              <Pressable disabled={etapaEmAcao === demanda.etapa_id} onPress={() => void selecionarEntrega(demanda.etapa_id)} className="rounded-xl border border-neutral-300 bg-white px-4 py-2.5">
+                <Text className="text-sm font-semibold text-neutral-700">{arquivo && etapaDoArquivo === demanda.etapa_id ? "Trocar arquivo" : "Selecionar arquivo"}</Text>
+              </Pressable>
+              {arquivo && etapaDoArquivo === demanda.etapa_id ? (
+                <Pressable disabled={etapaEmAcao === demanda.etapa_id} onPress={() => void enviarArquivo(demanda.etapa_id)} className="rounded-xl bg-[#6f4f28] px-4 py-2.5">
+                  <Text className="text-sm font-semibold text-white">{progresso === null ? "Enviar entrega" : `Enviando ${progresso}%`}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+        {demanda.situacao === "ENTREGUE" && demanda.arquivo_entrega_url ? (
+          <Pressable onPress={() => void baixarEntrega(demanda.arquivo_entrega_url!, demanda.arquivo_entrega_nome || "entrega")} className="self-start flex-row items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2">
+            <Ionicons name="download-outline" size={17} color="#6d28d9" />
+            <Text className="text-sm font-medium text-violet-800">{demanda.arquivo_entrega_nome || "Baixar arquivo entregue"}</Text>
+          </Pressable>
         ) : null}
       </View>
     );
