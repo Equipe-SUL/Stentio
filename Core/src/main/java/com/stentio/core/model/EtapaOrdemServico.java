@@ -95,9 +95,14 @@ public class EtapaOrdemServico {
         if (recurso == null) {
             throw new AlocacaoInvalidaException("Informe o recurso a alocar");
         }
-        if (!recurso.isAtivo()) {
-            throw new AlocacaoInvalidaException(
-                    "O recurso " + recurso.getNome() + " está inativo e não pode receber etapas");
+        // US-023 RN.5: inativo ou não verificado não recebe etapa. A pergunta é uma só,
+        // mas a mensagem diz qual das duas faltou — "não pode receber etapas" sem motivo
+        // manda o gestor procurar no lugar errado.
+        if (!recurso.elegivelParaAlocacao()) {
+            throw new AlocacaoInvalidaException("O recurso " + recurso.getNome()
+                    + (recurso.isAtivo()
+                            ? " ainda não foi verificado e não pode receber etapas"
+                            : " está inativo e não pode receber etapas"));
         }
         if (dataLimiteEntrega == null || !dataLimiteEntrega.isAfter(agora)) {
             throw new AlocacaoInvalidaException("A data limite de entrega deve estar no futuro");

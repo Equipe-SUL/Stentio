@@ -29,6 +29,28 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
     boolean existsByOrdemServicoIdAndRecursoIsNotNull(UUID ordemServicoId);
 
     /**
+     * US-023 CA.5: as etapas alocadas a um profissional — a tela "Minhas demandas".
+     *
+     * <p>Desce até a solicitação porque o par de idiomas mora lá, e o profissional precisa
+     * saber de que língua para qual antes de aceitar. Mais raso que isso obrigaria a uma
+     * consulta por linha, e com open-in-view desligado nem isso funcionaria.
+     *
+     * <p>Mais urgente primeiro: a ordenação por data limite é a pergunta que quem executa
+     * faz ao abrir a tela.
+     */
+    @Query("""
+            select e from EtapaOrdemServico e
+              join fetch e.tipoServico
+              join fetch e.ordemServico o
+              join fetch o.solicitacao s
+              join fetch s.idiomaOrigem
+              join fetch s.idiomaDestino
+             where e.recurso.id = :recursoId
+             order by e.dataLimiteEntrega asc nulls last, e.ordem asc
+            """)
+    List<EtapaOrdemServico> listarPorRecurso(@Param("recursoId") UUID recursoId);
+
+    /**
      * US-012: a etapa com tudo o que a alocação precisa conferir. O par de idiomas da RN.1
      * mora na solicitação da OS, não na etapa, então a consulta desce até lá — com
      * open-in-view desligado, buscar depois lançaria LazyInitializationException.

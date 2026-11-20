@@ -321,6 +321,8 @@ class AuditoriaPostgresTest {
 
     private UUID novoRecurso(String nome, TipoServico tipo, Idioma origem, Idioma destino) {
         Recurso recurso = new Recurso(nome, UUID.randomUUID() + "@teste.invalid", "11988887777");
+        // US-023 RN.5: recurso não verificado não pode receber etapas.
+        recurso.definirVerificacao(true);
         recurso.definirTiposServico(List.of(tipo));
         recurso.definirPrecos(List.of(new Recurso.NovoPreco(
                 origem, destino, UnidadeCobranca.PALAVRA, new BigDecimal("0.35"))));

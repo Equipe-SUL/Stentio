@@ -33,6 +33,7 @@ public class RecursoMapper {
                 recurso.getEmail(),
                 recurso.getTelefone(),
                 recurso.isAtivo(),
+                recurso.isVerificado(),
                 paraTiposServico(recurso),
                 paraPrecos(recurso)
         );

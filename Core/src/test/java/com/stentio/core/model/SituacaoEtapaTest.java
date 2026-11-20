@@ -37,6 +37,7 @@ class SituacaoEtapaTest {
 
     private static Recurso recursoApto(Idioma origem, Idioma destino, TipoServico tipo) {
         Recurso r = new Recurso("Ana Silva", "ana@traducoes.com", null);
+        r.definirVerificacao(true);
         r.definirTiposServico(List.of(tipo));
         r.definirPrecos(List.of(new Recurso.NovoPreco(
                 origem, destino, UnidadeCobranca.PALAVRA, new BigDecimal("0.35"))));
