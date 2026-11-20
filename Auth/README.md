@@ -16,6 +16,10 @@ O Compose publica a API em `http://localhost:8081` e a aplicação escuta na
 porta `8080` dentro do container. O serviço depende do PostgreSQL, MongoDB e
 RabbitMQ definidos no Compose.
 
+O schema de usuários é criado pela baseline Flyway em
+[`src/main/resources/db/migration/auth/V1__auth_schema.sql`](./src/main/resources/db/migration/auth/V1__auth_schema.sql).
+O Hibernate valida o schema na inicialização e não o altera.
+
 Para executar fora do Docker, inicie primeiro a infraestrutura na raiz:
 
 ```bash

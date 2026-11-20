@@ -106,6 +106,20 @@ public class EtapaOrdemServico {
         return recurso != null;
     }
 
+    /** RN.1: a primeira etapa é livre; as demais dependem da entrega da etapa anterior. */
+    public boolean liberada(StatusEtapaOrdemServico statusAnterior) {
+        return ordem == SequenciaEtapas.ORDEM_INICIAL
+                || statusAnterior == StatusEtapaOrdemServico.ENTREGUE;
+    }
+
+    public void liberar() {
+        if (status != StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " não está aguardando liberação");
+        }
+        status = StatusEtapaOrdemServico.PENDENTE;
+    }
+
     /**
      * US-012 CA.4. Realocar sobrescreve: trocar o profissional é uma alocação nova, e quem
      * decide se podia trocar é a RN.3, não este método.
@@ -145,10 +159,15 @@ public class EtapaOrdemServico {
      *
      * <p>RN.6: etapa já assumida ou entregue não volta para a fila.
      */
-    public void disparar(Instant agora) {
-        if (status == StatusEtapaOrdemServico.ACEITA || status == StatusEtapaOrdemServico.ENTREGUE) {
+    public void disparar(Instant agora, boolean liberada) {
+        if (!liberada) {
             throw new TransicaoEtapaInvalidaException(
-                    "A etapa " + nome + " já foi assumida e não pode ser disparada de novo");
+                    "A etapa " + nome + " aguarda a entrega da etapa anterior");
+        }
+        if (status != StatusEtapaOrdemServico.PENDENTE
+                && status != StatusEtapaOrdemServico.ALOCADO) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " não está disponível para disparo");
         }
         this.recurso = null;
         this.alocadoEm = null;
@@ -160,7 +179,11 @@ public class EtapaOrdemServico {
      * US-013 CA.3. Só sai de um convite em aberto: quem chega depois do primeiro encontra
      * a etapa fora de DISPARADA e recebe a recusa.
      */
-    public void aceitarPor(Recurso quemAceita, Instant agora) {
+    public void aceitarPor(Recurso quemAceita, Instant agora, boolean liberada) {
+        if (status == StatusEtapaOrdemServico.DISPARADA && !liberada) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " aguarda a entrega da etapa anterior");
+        }
         if (status != StatusEtapaOrdemServico.DISPARADA && status != StatusEtapaOrdemServico.ALOCADO) {
             throw new TransicaoEtapaInvalidaException(
                     "A etapa " + nome + " não está disponível para aceite");
@@ -177,7 +200,7 @@ public class EtapaOrdemServico {
      * aceitar — não há o que devolver, e tirar a etapa de DISPARADA porque alguém não
      * quis a esconderia de quem queria.
      */
-    public void recusar() {
+    public void recusar(boolean liberada) {
         if (status != StatusEtapaOrdemServico.ALOCADO) {
             throw new TransicaoEtapaInvalidaException(
                     "A etapa " + nome + " não tem um convite seu para recusar");
@@ -185,14 +208,20 @@ public class EtapaOrdemServico {
         this.recurso = null;
         this.alocadoEm = null;
         this.dataLimiteEntrega = null;
-        this.status = StatusEtapaOrdemServico.PENDENTE;
+        this.status = liberada
+                ? StatusEtapaOrdemServico.PENDENTE
+                : StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR;
     }
 
     /** US-013 CA.5 e RN.4: só entrega quem assumiu. */
-    public void entregar(String nomeDoArquivo, String caminho, Instant agora) {
+    public void entregar(String nomeDoArquivo, String caminho, Instant agora, boolean liberada) {
         if (status != StatusEtapaOrdemServico.ACEITA) {
             throw new TransicaoEtapaInvalidaException(
                     "A etapa " + nome + " precisa estar aceita para receber a entrega");
+        }
+        if (!liberada) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " aguarda a entrega da etapa anterior");
         }
         this.arquivoEntregueNome = nomeDoArquivo;
         this.arquivoEntregueCaminho = caminho;

@@ -6,12 +6,18 @@ import com.stentio.core.dto.EntregaEtapaResponse;
 import com.stentio.core.dto.EtapaStatusResponse;
 import com.stentio.core.dto.RecursoResponse;
 import com.stentio.core.service.AceiteEtapaService;
+import com.stentio.core.service.ArquivoStorageService;
 import com.stentio.core.service.EntregaEtapaService;
 import com.stentio.core.service.PortalRecursoService;
 import com.stentio.core.service.RecusaEtapaService;
 import com.stentio.core.support.UsuarioAutenticado;
 import io.swagger.v3.oas.annotations.Operation;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,15 +51,18 @@ public class PortalRecursoController {
     private final AceiteEtapaService aceiteEtapaService;
     private final RecusaEtapaService recusaEtapaService;
     private final EntregaEtapaService entregaEtapaService;
+    private final ArquivoStorageService arquivoStorageService;
 
     public PortalRecursoController(PortalRecursoService portalRecursoService,
                                    AceiteEtapaService aceiteEtapaService,
                                    RecusaEtapaService recusaEtapaService,
-                                   EntregaEtapaService entregaEtapaService) {
+                                   EntregaEtapaService entregaEtapaService,
+                                   ArquivoStorageService arquivoStorageService) {
         this.portalRecursoService = portalRecursoService;
         this.aceiteEtapaService = aceiteEtapaService;
         this.recusaEtapaService = recusaEtapaService;
         this.entregaEtapaService = entregaEtapaService;
+        this.arquivoStorageService = arquivoStorageService;
     }
 
     /**
@@ -60,7 +70,7 @@ public class PortalRecursoController {
      * rota e quem está falando, que vem do token.
      */
     @PostMapping("/etapas/{etapaId}/aceitar")
-    @Operation(summary = "Aceita uma etapa disparada; quem aceitar primeiro fica com ela")
+    @Operation(summary = "Aceita uma etapa disparada ou alocada diretamente")
     public AceiteEtapaResponse aceitar(@PathVariable UUID etapaId, Authentication autenticacao) {
         return aceiteEtapaService.aceitar(etapaId, UsuarioAutenticado.de(autenticacao));
     }
@@ -73,7 +83,10 @@ public class PortalRecursoController {
     }
 
     /** US-013 CA.5: entregar o arquivo da etapa. Um arquivo por entrega. */
-    @PostMapping(value = "/etapas/{etapaId}/entregar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = {
+            "/etapas/{etapaId}/entregar",
+            "/etapas/{etapaId}/entrega"
+    }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Entrega o arquivo da etapa aceita pelo profissional autenticado")
     public EntregaEtapaResponse entregar(@PathVariable UUID etapaId,
                                          @RequestPart("arquivo") MultipartFile arquivo,
@@ -81,8 +94,27 @@ public class PortalRecursoController {
         return entregaEtapaService.entregar(etapaId, arquivo, UsuarioAutenticado.de(autenticacao));
     }
 
+    @GetMapping("/etapas/{etapaId}/entrega/arquivo")
+    @Operation(summary = "Baixa a entrega do profissional autenticado")
+    public ResponseEntity<Resource> baixarEntrega(@PathVariable UUID etapaId, Authentication autenticacao) {
+        EntregaEtapaService.ArquivoEntregue arquivo =
+                entregaEtapaService.localizarEntregaDoRecurso(etapaId, UsuarioAutenticado.de(autenticacao));
+        Resource conteudo = arquivoStorageService.carregar(arquivo.caminho());
+        ContentDisposition anexo = ContentDisposition.attachment()
+                .filename(arquivo.nomeOriginal(), StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "no-referrer")
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, anexo.toString())
+                .body(conteudo);
+    }
+
     @GetMapping("/etapas")
-    @Operation(summary = "Lista as etapas alocadas ao profissional autenticado")
+    @Operation(summary = "Lista as etapas abertas e alocadas ao profissional autenticado")
     public List<DemandaRecursoResponse> minhasDemandas(Authentication autenticacao) {
         return portalRecursoService.minhasDemandas(UsuarioAutenticado.de(autenticacao));
     }

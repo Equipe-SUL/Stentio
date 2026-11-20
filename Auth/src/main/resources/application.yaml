@@ -27,11 +27,18 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
+
+  flyway:
+    locations: classpath:db/migration/auth
+    table: flyway_auth_schema_history
+    # Auth e Core compartilham public; o outro serviço pode criar tabelas primeiro.
+    baseline-on-migrate: true
+    baseline-version: 0
 
   security:
     user:

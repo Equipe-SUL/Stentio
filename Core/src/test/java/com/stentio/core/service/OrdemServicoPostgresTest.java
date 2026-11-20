@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
         "spring.datasource.url=${ORCAMENTO_TEST_JDBC_URL:jdbc:postgresql://localhost:5432/stentio_test}",
         "spring.datasource.username=${ORCAMENTO_TEST_DB_USER:postgres}",
         "spring.datasource.password=${ORCAMENTO_TEST_DB_PASSWORD:postgres}",
-        "spring.jpa.hibernate.ddl-auto=update",
+        "spring.jpa.hibernate.ddl-auto=validate",
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration,org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration,org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.mongo.MongoTemplateAutoConfiguration",
         "spring.data.mongodb.uri=mongodb://localhost:27017/stentio_test",
         "spring.mongodb.uri=mongodb://localhost:27017/stentio_test",
@@ -95,6 +95,18 @@ class OrdemServicoPostgresTest {
             jdbc.update("delete from categorias_projeto where id = ?", categoriaId);
             jdbc.update("delete from idiomas where id in (?, ?)", origemId, destinoId);
         });
+    }
+
+    @Test
+    void checksDaOrdemAceitamOsNovosStatusDeExecucao() {
+        service.criarParaOrcamentoAprovado(orcamentoId);
+
+        assertEquals(1, jdbc.update(
+                "update ordens_servico set status = ? where orcamento_id = ?",
+                "EM_EXECUCAO", orcamentoId));
+        assertEquals(1, jdbc.update(
+                "update ordens_servico set status = ? where orcamento_id = ?",
+                "AGUARDANDO_VERIFICACAO", orcamentoId));
     }
 
     @Test

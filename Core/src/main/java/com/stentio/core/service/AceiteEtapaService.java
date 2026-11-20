@@ -31,15 +31,18 @@ import java.util.UUID;
 public class AceiteEtapaService {
 
     private final EtapaOrdemServicoRepository etapas;
+    private final EtapaLiberacaoService liberacao;
     private final RecursoAutenticadoService recursoAutenticado;
     private final HistoricoEtapaRepository historico;
     private final Clock clock;
 
     public AceiteEtapaService(EtapaOrdemServicoRepository etapas,
+                              EtapaLiberacaoService liberacao,
                               RecursoAutenticadoService recursoAutenticado,
                               HistoricoEtapaRepository historico,
                               Clock clock) {
         this.etapas = etapas;
+        this.liberacao = liberacao;
         this.recursoAutenticado = recursoAutenticado;
         this.historico = historico;
         this.clock = clock;
@@ -56,12 +59,11 @@ public class AceiteEtapaService {
         // CA.3: o status esperado entra na condição do UPDATE. Quem perder a corrida
         // atualiza zero linhas, e zero linhas é a resposta 409 — não um aceite silencioso
         // por cima do colega.
-        int atualizadas = etapas.aceitarSeDisponivel(
-                etapaId,
-                recurso,
-                clock.instant(),
-                StatusEtapaOrdemServico.ACEITA,
-                esperado);
+        int atualizadas = esperado == StatusEtapaOrdemServico.DISPARADA
+                ? etapas.aceitarDisparada(
+                        etapaId, recurso, clock.instant(), StatusEtapaOrdemServico.ACEITA, esperado)
+                : etapas.aceitarAlocacaoDireta(
+                        etapaId, recurso, clock.instant(), StatusEtapaOrdemServico.ACEITA, esperado);
 
         if (atualizadas == 0) {
             throw new TransicaoEtapaInvalidaException(
@@ -100,6 +102,10 @@ public class AceiteEtapaService {
 
         return switch (etapa.getStatus()) {
             case DISPARADA -> {
+                if (!liberacao.estaLiberada(etapa)) {
+                    throw new TransicaoEtapaInvalidaException(
+                            "A etapa " + etapa.getNome() + " aguarda a entrega da etapa anterior");
+                }
                 garantirQueOPerfilAtende(etapa, recurso);
                 yield StatusEtapaOrdemServico.DISPARADA;
             }

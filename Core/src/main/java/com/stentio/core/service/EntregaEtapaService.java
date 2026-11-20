@@ -33,20 +33,26 @@ import java.util.UUID;
 public class EntregaEtapaService {
 
     private final EtapaOrdemServicoRepository etapas;
+    private final EtapaLiberacaoService liberacao;
     private final RecursoAutenticadoService recursoAutenticado;
     private final ArquivoStorageService storage;
     private final HistoricoEtapaRepository historico;
+    private final RoteamentoEtapaService roteamento;
     private final Clock clock;
 
     public EntregaEtapaService(EtapaOrdemServicoRepository etapas,
+                               EtapaLiberacaoService liberacao,
                                RecursoAutenticadoService recursoAutenticado,
                                ArquivoStorageService storage,
                                HistoricoEtapaRepository historico,
+                               RoteamentoEtapaService roteamento,
                                Clock clock) {
         this.etapas = etapas;
+        this.liberacao = liberacao;
         this.recursoAutenticado = recursoAutenticado;
         this.storage = storage;
         this.historico = historico;
+        this.roteamento = roteamento;
         this.clock = clock;
     }
 
@@ -70,11 +76,22 @@ public class EntregaEtapaService {
             throw new TransicaoEtapaInvalidaException(
                     "A etapa " + etapa.getNome() + " não está em execução para receber entrega");
         }
+        boolean estaLiberada = liberacao.estaLiberada(etapa);
+        if (!estaLiberada) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + etapa.getNome() + " aguarda a entrega da etapa anterior");
+        }
 
         ArquivoArmazenado salvo = storage.salvarTodos(List.of(arquivo)).getFirst();
+        RoteamentoEtapaService.Resultado resultadoRoteamento;
         try {
-            etapa.entregar(salvo.nomeOriginal(), salvo.caminho(), clock.instant());
+            etapa.entregar(salvo.nomeOriginal(), salvo.caminho(), clock.instant(), estaLiberada);
             etapas.save(etapa);
+            resultadoRoteamento = roteamento.rotear(etapa);
+            historico.save(new HistoricoEtapa(
+                    etapa, EventoEtapa.ENTREGA, recurso, recurso.getEmail(), etapa.getEntregueEm()));
+            historico.save(new HistoricoEtapa(
+                    etapa, EventoEtapa.AVANCO, null, "sistema", etapa.getEntregueEm()));
         } catch (RuntimeException ex) {
             // O arquivo já está no disco e o banco não vai registrá-lo: apaga agora, senão
             // fica ocupando espaço sem ninguém que saiba que ele existe.
@@ -82,15 +99,24 @@ public class EntregaEtapaService {
             throw ex;
         }
 
-        // CA.8
-        historico.save(new HistoricoEtapa(
-                etapa, EventoEtapa.ENTREGA, recurso, ator.email(), etapa.getEntregueEm()));
+        EntregaEtapaResponse.Avanco avanco = resultadoRoteamento.proximaEtapa()
+                .map(proxima -> new EntregaEtapaResponse.Avanco(
+                        proxima.getId(),
+                        proxima.getStatus(),
+                        resultadoRoteamento.conviteAutomatico(),
+                        resultadoRoteamento.recursosNotificados()))
+                .orElse(null);
 
         return new EntregaEtapaResponse(
                 etapa.getId(),
                 etapa.getStatus(),
                 etapa.getEntregueEm(),
-                etapa.getArquivoEntregueNome());
+                etapa.getArquivoEntregueNome(),
+                "/api/v1/recurso/etapas/" + etapa.getId() + "/entrega/arquivo",
+                avanco,
+                new EntregaEtapaResponse.OrdemServico(
+                        etapa.getOrdemServico().getId(),
+                        etapa.getOrdemServico().getStatus()));
     }
 
     /** O que o download precisa saber, já conferido. */
@@ -100,6 +126,20 @@ public class EntregaEtapaService {
                 .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
 
         if (etapa.getArquivoEntregueCaminho() == null) {
+            throw new SolicitacaoInvalidaException("Esta etapa ainda não tem arquivo entregue");
+        }
+        return new ArquivoEntregue(etapa.getArquivoEntregueNome(), etapa.getArquivoEntregueCaminho());
+    }
+
+    @Transactional(readOnly = true)
+    public ArquivoEntregue localizarEntregaDoRecurso(UUID etapaId, UsuarioAutenticado ator) {
+        Recurso recurso = recursoAutenticado.resolver(ator);
+        EtapaOrdemServico etapa = etapas.buscarParaAceite(etapaId)
+                .filter(candidata -> candidata.pertenceA(recurso))
+                .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
+
+        if (etapa.getStatus() != StatusEtapaOrdemServico.ENTREGUE
+                || etapa.getArquivoEntregueCaminho() == null) {
             throw new SolicitacaoInvalidaException("Esta etapa ainda não tem arquivo entregue");
         }
         return new ArquivoEntregue(etapa.getArquivoEntregueNome(), etapa.getArquivoEntregueCaminho());

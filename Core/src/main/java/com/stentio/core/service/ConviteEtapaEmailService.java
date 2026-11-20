@@ -59,15 +59,30 @@ public class ConviteEtapaEmailService {
         String assunto = "Nova etapa disponível: " + etapa.getNome();
 
         List<NotificacaoEtapaOutbox> convites = elegiveis.stream()
-                .map(recurso -> new NotificacaoEtapaOutbox(
-                        etapa,
-                        recurso.getEmail(),
-                        objectMapper.writeValueAsString(
-                                new NotificacaoEtapaMensagem(recurso.getEmail(), assunto, corpo(etapa, recurso))),
-                        agora))
+                .map(recurso -> criarNotificacao(
+                        etapa, recurso, assunto, corpo(etapa, recurso), agora))
                 .toList();
 
         outbox.saveAll(convites);
+    }
+
+    public void avisarEtapaLiberada(EtapaOrdemServico etapa, Recurso recurso, Instant agora) {
+        String assunto = "Etapa liberada para execução: " + etapa.getNome();
+        outbox.saveAll(List.of(criarNotificacao(
+                etapa, recurso, assunto, corpoEtapaLiberada(etapa, recurso), agora)));
+    }
+
+    private NotificacaoEtapaOutbox criarNotificacao(EtapaOrdemServico etapa,
+                                                    Recurso recurso,
+                                                    String assunto,
+                                                    String corpo,
+                                                    Instant agora) {
+        return new NotificacaoEtapaOutbox(
+                etapa,
+                recurso.getEmail(),
+                objectMapper.writeValueAsString(
+                        new NotificacaoEtapaMensagem(recurso.getEmail(), assunto, corpo)),
+                agora);
     }
 
     private String corpo(EtapaOrdemServico etapa, Recurso recurso) {
@@ -77,7 +92,8 @@ public class ConviteEtapaEmailService {
 
         StringBuilder corpo = new StringBuilder()
                 .append("Olá, ").append(recurso.getNome()).append(".\n\n")
-                .append("Uma nova etapa está disponível e o seu perfil atende aos requisitos.\n\n")
+                .append("A etapa anterior foi concluída e esta etapa foi liberada automaticamente; ")
+                .append("seu perfil atende aos requisitos.\n\n")
                 .append("Ordem de serviço: ").append(codigo).append('\n')
                 .append("Etapa: ").append(etapa.getNome()).append('\n')
                 .append("Serviço: ").append(etapa.getTipoServico().getNome()).append('\n')
@@ -93,6 +109,22 @@ public class ConviteEtapaEmailService {
 
         return corpo
                 .append("\nQuem aceitar primeiro assume a etapa. Para aceitar, acesse o portal:\n")
+                .append(urlPortal)
+                .append("\n\nEquipe Aliança Traduções\n")
+                .toString();
+    }
+
+    private String corpoEtapaLiberada(EtapaOrdemServico etapa, Recurso recurso) {
+        String codigo = CodigoVisual.gerar("OS", etapa.getOrdemServico().getCriadoEm(),
+                etapa.getOrdemServico().getId());
+
+        return new StringBuilder()
+                .append("Olá, ").append(recurso.getNome()).append(".\n\n")
+                .append("A etapa ").append(etapa.getNome())
+                .append(" da ordem de serviço ").append(codigo)
+                .append(" foi liberada para você.\n")
+                .append("Você já pode começar a trabalhar nesta etapa.\n\n")
+                .append("Acesse o portal do recurso:\n")
                 .append(urlPortal)
                 .append("\n\nEquipe Aliança Traduções\n")
                 .toString();

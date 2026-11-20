@@ -2,6 +2,7 @@ package com.stentio.core.repository;
 
 import com.stentio.core.dto.DashboardEtapaPendenciaProjection;
 import com.stentio.core.model.EtapaOrdemServico;
+import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.Recurso;
 import com.stentio.core.model.StatusEtapaOrdemServico;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -48,13 +49,33 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
                    e.recurso = :recurso,
                    e.aceitoEm = :agora
              where e.id = :etapaId
-               and e.status = :disponivel
+               and e.status = :disparada
+               and e.recurso is null
             """)
-    int aceitarSeDisponivel(@Param("etapaId") UUID etapaId,
-                            @Param("recurso") Recurso recurso,
-                            @Param("agora") Instant agora,
-                            @Param("aceita") StatusEtapaOrdemServico aceita,
-                            @Param("disponivel") StatusEtapaOrdemServico disponivel);
+    int aceitarDisparada(@Param("etapaId") UUID etapaId,
+                         @Param("recurso") Recurso recurso,
+                         @Param("agora") Instant agora,
+                         @Param("aceita") StatusEtapaOrdemServico aceita,
+                         @Param("disparada") StatusEtapaOrdemServico disparada);
+
+    /**
+     * O aceite de alocação nominal também confere o dono no UPDATE. A leitura feita pelo
+     * serviço pode ficar obsoleta se o gestor realocar antes desta gravação.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update EtapaOrdemServico e
+               set e.status = :aceita,
+                   e.aceitoEm = :agora
+             where e.id = :etapaId
+               and e.status = :alocado
+               and e.recurso = :recurso
+            """)
+    int aceitarAlocacaoDireta(@Param("etapaId") UUID etapaId,
+                              @Param("recurso") Recurso recurso,
+                              @Param("agora") Instant agora,
+                              @Param("aceita") StatusEtapaOrdemServico aceita,
+                              @Param("alocado") StatusEtapaOrdemServico alocado);
 
     /**
      * US-013: a etapa com o que o aceite precisa conferir — par de idiomas e tipo de
@@ -72,6 +93,16 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
              where e.id = :etapaId
             """)
     Optional<EtapaOrdemServico> buscarParaAceite(@Param("etapaId") UUID etapaId);
+
+    @Query("""
+            select e.status from EtapaOrdemServico e
+             where e.ordemServico.id = :ordemServicoId
+               and e.ordem = :ordem
+            """)
+    Optional<StatusEtapaOrdemServico> buscarStatusPorOrdem(@Param("ordemServicoId") UUID ordemServicoId,
+                                                           @Param("ordem") int ordem);
+
+    Optional<EtapaOrdemServico> findByOrdemServicoAndOrdem(OrdemServico ordemServico, int ordem);
 
     /**
      * US-013 CA.4: as etapas abertas que este profissional pode assumir.

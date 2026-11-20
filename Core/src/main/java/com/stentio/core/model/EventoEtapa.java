@@ -3,8 +3,7 @@ package com.stentio.core.model;
 /**
  * US-012 CA.4 e US-013 CA.8: o que aconteceu com a etapa, para o histórico.
  *
- * <p>Cada valor novo aqui exige o ALTER do CHECK descrito em schema-disparo-etapas.sql,
- * porque o ddl-auto nunca altera um CHECK existente.
+ * <p>Cada valor novo aqui exige atualizar o CHECK em uma nova migração Flyway.
  */
 public enum EventoEtapa {
     /** Primeira vez que a etapa recebeu um profissional. */
@@ -18,5 +17,7 @@ public enum EventoEtapa {
     /** O profissional recusou a alocação direta. */
     RECUSA,
     /** O arquivo da etapa foi entregue. */
-    ENTREGA
+    ENTREGA,
+    /** A entrega liberou a próxima etapa do workflow ou concluiu a sequência. */
+    AVANCO
 }

@@ -31,6 +31,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
@@ -46,12 +47,13 @@ class DisparoEtapaServiceTest {
     private static final Instant PRAZO = Instant.parse("2026-11-24T12:00:00Z");
 
     private final EtapaOrdemServicoRepository etapas = mock(EtapaOrdemServicoRepository.class);
+    private final EtapaLiberacaoService liberacao = mock(EtapaLiberacaoService.class);
     private final RecursoRepository recursos = mock(RecursoRepository.class);
     private final ConviteEtapaEmailService convites = mock(ConviteEtapaEmailService.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
 
     private final DisparoEtapaService service = new DisparoEtapaService(
-            etapas, recursos, convites, historico, Clock.fixed(AGORA, ZoneOffset.UTC));
+            etapas, liberacao, recursos, convites, historico, Clock.fixed(AGORA, ZoneOffset.UTC));
 
     private final UUID osId = UUID.randomUUID();
     private final UUID etapaId = UUID.randomUUID();
@@ -84,6 +86,7 @@ class DisparoEtapaServiceTest {
 
         when(etapas.buscarParaAlocacao(osId, etapaId)).thenReturn(Optional.of(etapa));
         when(etapas.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(liberacao.estaLiberada(etapa)).thenReturn(true);
     }
 
     private static Idioma idioma() {
@@ -124,6 +127,34 @@ class DisparoEtapaServiceTest {
     }
 
     @Test
+    @DisplayName("disparo automático abre a etapa e grava convites para todos os elegíveis")
+    void disparaAutomaticamenteParaOsElegiveis() {
+        elegiveis(qualquerRecurso(), qualquerRecurso(), qualquerRecurso());
+
+        var resposta = service.dispararAutomaticamente(etapa);
+
+        assertTrue(resposta.isPresent());
+        assertEquals(StatusEtapaOrdemServico.DISPARADA, etapa.getStatus());
+        assertEquals(3, resposta.orElseThrow().recursosNotificados());
+        verify(convites).convidar(same(etapa), anyList(), same(AGORA));
+        verify(historico).save(org.mockito.ArgumentMatchers.argThat(
+                evento -> "sistema".equals(evento.getRealizadoPor())));
+    }
+
+    @Test
+    @DisplayName("sem elegíveis o disparo automático mantém a etapa PENDENTE")
+    void disparoAutomaticoSemElegiveisMantemPendente() {
+        elegiveis();
+
+        var resposta = service.dispararAutomaticamente(etapa);
+
+        assertTrue(resposta.isEmpty());
+        assertEquals(StatusEtapaOrdemServico.PENDENTE, etapa.getStatus());
+        verify(convites, never()).convidar(any(), anyList(), any());
+        verify(historico, never()).save(any());
+    }
+
+    @Test
     @DisplayName("sem ninguém elegível o disparo falha em vez de deixar a etapa presa")
     void semElegiveisNaoDispara() {
         elegiveis();
@@ -136,12 +167,30 @@ class DisparoEtapaServiceTest {
     }
 
     @Test
+    @DisplayName("etapa alocada antes da entrega anterior não pode ser disparada")
+    void naoDisparaEtapaAindaBloqueada() {
+        EtapaOrdemServico bloqueada = new EtapaOrdemServico(
+                mock(OrdemServico.class), 2, "Revisão", traducao, 12);
+        Recurso alocado = mock(Recurso.class);
+        when(alocado.elegivelParaAlocacao()).thenReturn(true);
+        bloqueada.alocar(alocado, PRAZO, AGORA);
+        when(etapas.buscarParaAlocacao(osId, etapaId)).thenReturn(Optional.of(bloqueada));
+        when(liberacao.estaLiberada(bloqueada)).thenReturn(false);
+
+        assertThrows(TransicaoEtapaInvalidaException.class,
+                () -> service.disparar(osId, etapaId, gestor));
+
+        verify(recursos, never()).buscarDisponiveis(any(), any(), any());
+        verify(convites, never()).convidar(any(), anyList(), any());
+    }
+
+    @Test
     @DisplayName("RN.6: etapa já aceita não volta para a fila")
     void naoDisparaEtapaJaAceita() {
         Recurso ana = mock(Recurso.class);
         when(ana.elegivelParaAlocacao()).thenReturn(true);
         etapa.alocar(ana, PRAZO, AGORA);
-        etapa.aceitarPor(ana, AGORA);
+        etapa.aceitarPor(ana, AGORA, true);
         elegiveis(qualquerRecurso());
 
         assertThrows(TransicaoEtapaInvalidaException.class,

@@ -57,4 +57,8 @@ public final class SequenciaEtapas {
                 ? StatusEtapaOrdemServico.PENDENTE
                 : StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR;
     }
+
+    public static int proximaOrdem(int ordem) {
+        return Math.incrementExact(ordem);
+    }
 }

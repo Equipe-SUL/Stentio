@@ -8,8 +8,8 @@ package com.stentio.core.model;
  * a todos os elegíveis (US-013). Nos dois casos ninguém assumiu ainda — quem assume é
  * quem aceita.
  *
- * <p>US-013: acrescentar valor aqui exige recriar o CHECK de {@code etapas_os.status};
- * o bloco está em {@code schema-disparo-etapas.sql}.
+ * <p>US-013: acrescentar valor aqui exige atualizar o CHECK de {@code etapas_os.status}
+ * em uma nova migração Flyway.
  */
 public enum StatusEtapaOrdemServico {
 

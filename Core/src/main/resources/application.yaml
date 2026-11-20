@@ -14,13 +14,20 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         # Carrega coleções LAZY (tipos, preços, idiomas) em lotes, evitando uma consulta por recurso na listagem.
         default_batch_fetch_size: 50
+
+  flyway:
+    locations: classpath:db/migration/core
+    table: flyway_core_schema_history
+    # Core e Auth compartilham public; o outro serviço pode criar tabelas primeiro.
+    baseline-on-migrate: true
+    baseline-version: 0
 
   data:
     web:
