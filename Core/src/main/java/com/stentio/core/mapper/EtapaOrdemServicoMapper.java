@@ -28,7 +28,7 @@ public class EtapaOrdemServicoMapper {
                 etapa.getNome(),
                 etapa.getTipoServico().getId(),
                 etapa.getTipoServico().getNome(),
-                etapa.situacao(),
+                etapa.getStatus(),
                 etapa.getPrazoEstimadoHoras(),
                 etapa.getRecurso() == null ? null : etapa.getRecurso().getId(),
                 etapa.getRecurso() == null ? null : etapa.getRecurso().getNome(),

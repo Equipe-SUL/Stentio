@@ -3,7 +3,10 @@ package com.stentio.core.controller;
 import com.stentio.core.config.SecurityConfig;
 import com.stentio.core.exception.AutoCadastroInvalidoException;
 import com.stentio.core.exception.GlobalExceptionHandler;
+import com.stentio.core.service.AceiteEtapaService;
+import com.stentio.core.service.EntregaEtapaService;
 import com.stentio.core.service.PortalRecursoService;
+import com.stentio.core.service.RecusaEtapaService;
 import com.stentio.core.service.TokenService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +24,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -36,12 +40,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PortalRecursoControllerTest {
 
     private static final String ETAPAS = "/api/v1/recurso/etapas";
+    private static final String ACEITAR = ETAPAS + "/" + java.util.UUID.randomUUID() + "/aceitar";
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
     private PortalRecursoService service;
+
+    @MockitoBean
+    private AceiteEtapaService aceiteEtapaService;
+
+    @MockitoBean
+    private RecusaEtapaService recusaEtapaService;
+
+    @MockitoBean
+    private EntregaEtapaService entregaEtapaService;
 
     @MockitoBean
     private TokenService tokenService;
@@ -85,5 +99,23 @@ class PortalRecursoControllerTest {
                 .thenThrow(new AutoCadastroInvalidoException("Esta conta ainda não tem perfil de recurso"));
 
         mockMvc.perform(get(ETAPAS)).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "RECURSO")
+    @DisplayName("CA.3: o profissional aceita pela própria rota do portal")
+    void recursoAceita() throws Exception {
+        mockMvc.perform(post(ACEITAR)).andExpect(status().isOk());
+
+        verify(aceiteEtapaService).aceitar(any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ATENDENTE")
+    @DisplayName("ninguém da equipe aceita etapa no lugar de um profissional")
+    void atendenteNaoAceita() throws Exception {
+        mockMvc.perform(post(ACEITAR)).andExpect(status().isForbidden());
+
+        verify(aceiteEtapaService, never()).aceitar(any(), any());
     }
 }

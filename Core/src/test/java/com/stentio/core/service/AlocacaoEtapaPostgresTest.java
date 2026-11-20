@@ -284,8 +284,9 @@ class AlocacaoEtapaPostgresTest {
         assertEquals(anaId, etapa.get("recurso_id"));
         assertNotNull(etapa.get("data_limite_entrega"));
         assertNotNull(etapa.get("alocado_em"));
-        // A decisão central da US: o status gravado continua sendo o do fluxo.
-        assertEquals("PENDENTE", etapa.get("status"));
+        // US-013: alocar virou convite nominal, e o estado passou a ser gravado. Na US-012
+        // ficava PENDENTE com o recurso preenchido, e ALOCADO era calculado na resposta.
+        assertEquals("ALOCADO", etapa.get("status"));
 
         Map<String, Object> registro = jdbc.queryForMap(
                 "select evento, recurso_anterior_id, recurso_novo_id, realizado_por "
@@ -305,13 +306,13 @@ class AlocacaoEtapaPostgresTest {
         EtapasOrdemServicoResponse listagem = etapasService.listar(osId);
 
         EtapaOrdemServicoResponse alocada = listagem.etapas().getFirst();
-        assertEquals(SituacaoEtapa.ALOCADO, alocada.status());
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, alocada.status());
         assertEquals("Ana US012", alocada.recursoNome());
         assertEquals(anaId, alocada.recursoId());
         // As outras continuam sem recurso, e o left join não as elimina da listagem.
         assertEquals(3, listagem.etapas().size());
         assertNull(listagem.etapas().get(1).recursoNome());
-        assertEquals(SituacaoEtapa.AGUARDANDO_ETAPA_ANTERIOR, listagem.etapas().get(1).status());
+        assertEquals(StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, listagem.etapas().get(1).status());
     }
 
     @Test

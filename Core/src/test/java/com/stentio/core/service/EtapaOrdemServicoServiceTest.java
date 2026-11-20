@@ -10,7 +10,7 @@ import com.stentio.core.model.EtapaOrdemServico;
 import com.stentio.core.model.ModeloWorkflow;
 import com.stentio.core.model.ModeloWorkflowEtapa;
 import com.stentio.core.model.OrdemServico;
-import com.stentio.core.model.SituacaoEtapa;
+import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.model.StatusOrdemServico;
 import com.stentio.core.model.TipoServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
@@ -98,13 +98,13 @@ class EtapaOrdemServicoServiceTest {
         var primeira = resposta.etapas().getFirst();
         assertEquals(1, primeira.ordem());
         assertEquals("Tradução Principal", primeira.nome());
-        assertEquals(SituacaoEtapa.PENDENTE, primeira.status());
+        assertEquals(StatusEtapaOrdemServico.PENDENTE, primeira.status());
         assertEquals(24, primeira.prazoEstimadoHoras());
         assertEquals(traducao.getId(), primeira.tipoServicoId());
         assertEquals("Tradução", primeira.tipoServicoNome());
         assertNull(primeira.recursoId());
 
-        assertEquals(SituacaoEtapa.AGUARDANDO_ETAPA_ANTERIOR, resposta.etapas().get(1).status());
+        assertEquals(StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, resposta.etapas().get(1).status());
     }
 
     @Test
@@ -115,7 +115,7 @@ class EtapaOrdemServicoServiceTest {
                 etapa(1, "Tradução Principal", traducao, 24)));
 
         assertEquals(List.of(1, 2), resposta.etapas().stream().map(e -> e.ordem()).toList());
-        assertEquals(SituacaoEtapa.PENDENTE, resposta.etapas().getFirst().status());
+        assertEquals(StatusEtapaOrdemServico.PENDENTE, resposta.etapas().getFirst().status());
     }
 
     @Test
@@ -179,8 +179,8 @@ class EtapaOrdemServicoServiceTest {
         assertEquals(2, resposta.etapas().size());
         assertEquals("Tradução", resposta.etapas().getFirst().nome());
         assertEquals(20, resposta.etapas().getFirst().prazoEstimadoHoras());
-        assertEquals(SituacaoEtapa.PENDENTE, resposta.etapas().getFirst().status());
-        assertEquals(SituacaoEtapa.AGUARDANDO_ETAPA_ANTERIOR, resposta.etapas().get(1).status());
+        assertEquals(StatusEtapaOrdemServico.PENDENTE, resposta.etapas().getFirst().status());
+        assertEquals(StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, resposta.etapas().get(1).status());
         assertEquals(8, resposta.etapas().get(1).prazoEstimadoHoras());
     }
 

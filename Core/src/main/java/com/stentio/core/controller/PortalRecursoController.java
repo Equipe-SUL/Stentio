@@ -1,16 +1,28 @@
 package com.stentio.core.controller;
 
+import com.stentio.core.dto.AceiteEtapaResponse;
 import com.stentio.core.dto.DemandaRecursoResponse;
+import com.stentio.core.dto.EntregaEtapaResponse;
+import com.stentio.core.dto.EtapaStatusResponse;
 import com.stentio.core.dto.RecursoResponse;
+import com.stentio.core.service.AceiteEtapaService;
+import com.stentio.core.service.EntregaEtapaService;
 import com.stentio.core.service.PortalRecursoService;
+import com.stentio.core.service.RecusaEtapaService;
 import com.stentio.core.support.UsuarioAutenticado;
 import io.swagger.v3.oas.annotations.Operation;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * US-023 CA.5: o portal do profissional.
@@ -29,9 +41,44 @@ public class PortalRecursoController {
     static final String BASE_PATH = "/api/v1/recurso";
 
     private final PortalRecursoService portalRecursoService;
+    private final AceiteEtapaService aceiteEtapaService;
+    private final RecusaEtapaService recusaEtapaService;
+    private final EntregaEtapaService entregaEtapaService;
 
-    public PortalRecursoController(PortalRecursoService portalRecursoService) {
+    public PortalRecursoController(PortalRecursoService portalRecursoService,
+                                   AceiteEtapaService aceiteEtapaService,
+                                   RecusaEtapaService recusaEtapaService,
+                                   EntregaEtapaService entregaEtapaService) {
         this.portalRecursoService = portalRecursoService;
+        this.aceiteEtapaService = aceiteEtapaService;
+        this.recusaEtapaService = recusaEtapaService;
+        this.entregaEtapaService = entregaEtapaService;
+    }
+
+    /**
+     * US-013 CA.3: aceitar a etapa. Sem corpo: tudo o que a operação precisa é o id na
+     * rota e quem está falando, que vem do token.
+     */
+    @PostMapping("/etapas/{etapaId}/aceitar")
+    @Operation(summary = "Aceita uma etapa disparada; quem aceitar primeiro fica com ela")
+    public AceiteEtapaResponse aceitar(@PathVariable UUID etapaId, Authentication autenticacao) {
+        return aceiteEtapaService.aceitar(etapaId, UsuarioAutenticado.de(autenticacao));
+    }
+
+    /** US-013 CA.6: recusar a alocação direta. A etapa volta a pendente. */
+    @PostMapping("/etapas/{etapaId}/recusar")
+    @Operation(summary = "Recusa uma etapa alocada diretamente ao profissional autenticado")
+    public EtapaStatusResponse recusar(@PathVariable UUID etapaId, Authentication autenticacao) {
+        return recusaEtapaService.recusar(etapaId, UsuarioAutenticado.de(autenticacao));
+    }
+
+    /** US-013 CA.5: entregar o arquivo da etapa. Um arquivo por entrega. */
+    @PostMapping(value = "/etapas/{etapaId}/entregar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Entrega o arquivo da etapa aceita pelo profissional autenticado")
+    public EntregaEtapaResponse entregar(@PathVariable UUID etapaId,
+                                         @RequestPart("arquivo") MultipartFile arquivo,
+                                         Authentication autenticacao) {
+        return entregaEtapaService.entregar(etapaId, arquivo, UsuarioAutenticado.de(autenticacao));
     }
 
     @GetMapping("/etapas")

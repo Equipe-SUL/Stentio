@@ -7,7 +7,7 @@ import com.stentio.core.model.EtapaOrdemServico;
 import com.stentio.core.model.Idioma;
 import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.Recurso;
-import com.stentio.core.model.SituacaoEtapa;
+import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.model.Solicitacao;
 import com.stentio.core.model.TipoServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
@@ -33,7 +33,8 @@ class PortalRecursoServiceTest {
     private final EtapaOrdemServicoRepository etapas = mock(EtapaOrdemServicoRepository.class);
 
     private final PortalRecursoService service =
-            new PortalRecursoService(recursos, etapas, new RecursoMapper());
+            new PortalRecursoService(
+                    new RecursoAutenticadoService(recursos), etapas, new RecursoMapper());
 
     private final UUID usuarioId = UUID.randomUUID();
     private final UsuarioAutenticado maria = new UsuarioAutenticado("maria@exemplo.com", usuarioId, false);
@@ -88,7 +89,7 @@ class PortalRecursoServiceTest {
         assertEquals("Português", demanda.idiomaOrigem());
         assertEquals("Inglês", demanda.idiomaDestino());
         assertEquals("Tradução", demanda.tipoServico());
-        assertEquals(SituacaoEtapa.PENDENTE, demanda.situacao());
+        assertEquals(StatusEtapaOrdemServico.PENDENTE, demanda.status());
         assertTrue(demanda.ordemServicoCodigo().startsWith("OS-2026-"));
     }
 

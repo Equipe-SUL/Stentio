@@ -73,12 +73,12 @@ public final class EventosAuditoria {
     }
 
     /**
-     * Único ponto que decide o que é "o status" de uma etapa para a auditoria. Hoje a
-     * alocação não fica gravada na coluna status (ver {@code SituacaoEtapa}); quando a
-     * US-013 transformar ALOCADO em status gravado, basta trocar por {@code getStatus()}.
+     * Único ponto que decide o que é "o status" de uma etapa para a auditoria. Desde a
+     * US-013 o estado é gravado na coluna, inclusive ALOCADO, então a auditoria lê o
+     * mesmo valor que o banco guarda — não há mais situação calculada para divergir dele.
      */
     public static String statusEtapa(EtapaOrdemServico etapa) {
-        return etapa.situacao().name();
+        return etapa.getStatus().name();
     }
 
     private static String codigoOs(OrdemServico ordem) {

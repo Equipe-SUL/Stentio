@@ -134,6 +134,13 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
+    // US-013: a etapa não está no estado que a operação exige. 409 porque o pedido está
+    // bem formado — quem mudou foi o mundo, e é o que a CA.3 pede no aceite concorrente.
+    @ExceptionHandler(TransicaoEtapaInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleTransicaoInvalida(TransicaoEtapaInvalidaException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(EtapaNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleEtapaNaoEncontrada(EtapaNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
