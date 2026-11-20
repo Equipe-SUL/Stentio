@@ -5,11 +5,13 @@ from schemas.chatbot import Atalho
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+PERFIS_SEM_ACESSO_FINANCEIRO = {"TRADUTOR", "RECURSO"}
+
 
 def consultar_os_no_banco(db: Session, termo_busca: str) -> tuple[str, list[Atalho]]:
     """Busca OS por UUID parcial/total ou pelo nome da empresa/cliente."""
     atalhos = []
-    
+
     # Faz o JOIN: OrdemServico -> Orcamento -> Cliente
     query = (
         db.query(OrdemServico, Orcamento, Cliente)
@@ -35,7 +37,7 @@ def consultar_os_no_banco(db: Session, termo_busca: str) -> tuple[str, list[Atal
         os_id_str = str(os_obj.id)
         id_curto = os_id_str[:8]
         nome_cli = cli_obj.nome_empresa if cli_obj else "Cliente não vinculado"
-        
+
         linhas_resposta.append(
             f"- OS {id_curto} (Cliente: {nome_cli}): Status '{os_obj.status}'"
         )
@@ -64,10 +66,11 @@ def consultar_orcamentos_no_banco(db: Session, termo_busca: str, perfil: str) ->
     for orc_obj, cli_obj in resultados:
         orc_id_str = str(orc_obj.id)
         nome_cli = cli_obj.nome_empresa if cli_obj else "Sem cliente"
-        
-        # RN.1 - Tradutor não pode ver dados financeiros
-        info_valor = f" | Valor: R$ {orc_obj.valor_total}" if perfil != "TRADUTOR" else ""
-        
+
+        # RN.1 - Tradutor e recurso não podem ver dados financeiros
+        pode_ver_valor = perfil.strip().upper() not in PERFIS_SEM_ACESSO_FINANCEIRO
+        info_valor = f" | Valor: R$ {orc_obj.valor_total}" if pode_ver_valor else ""
+
         linhas.append(f"- Orçamento {orc_id_str[:8]} ({nome_cli}): Status '{orc_obj.status}'{info_valor}")
         atalhos.append(Atalho(tipo="ORCAMENTO", id=orc_id_str, titulo=f"Abrir Orçamento ({nome_cli})"))
 
@@ -75,9 +78,20 @@ def consultar_orcamentos_no_banco(db: Session, termo_busca: str, perfil: str) ->
 
 
 def consultar_faturamento(db: Session, perfil: str) -> tuple[str, list[Atalho]]:
-    """Calcula o faturamento somando orçamentos aprovados (bloqueado para Tradutor - Cenário 2 BDD)."""
-    if perfil == "TRADUTOR":
-        return "BLOQUEIO_RBAC: O perfil de Tradutor não possui permissão para visualizar dados financeiros ou de faturamento consolidado.", []
+    """Calcula o faturamento somando orçamentos aprovados (bloqueado para Tradutores/Recursos)."""
+    if perfil.strip().upper() in PERFIS_SEM_ACESSO_FINANCEIRO:
+        return (
+            "BLOQUEIO_RBAC: O perfil operacional não possui permissão para visualizar dados financeiros ou de faturamento consolidado.",
+            [],
+        )
 
-    total = db.query(func.sum(Orcamento.valor_total)).scalar() or 0.0
-    return f"O valor total consolidado em orçamentos no sistema é de R$ {total:,.2f}.", []
+    total = (
+        db.query(func.sum(Orcamento.valor_total))
+        .filter(Orcamento.status == "APROVADO")
+        .scalar()
+        or 0.0
+    )
+    return (
+        f"O valor total consolidado em orçamentos aprovados é de R$ {total:,.2f}.",
+        [],
+    )

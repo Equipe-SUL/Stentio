@@ -1,7 +1,7 @@
 # US-021 — Microserviço de Chatbot IA (LLM + RAG + Tool Calling)
 
 ## Resumo da Entrega
-Implementação do microserviço backend de Inteligência Artificial (`chatbot-service`) em **Python (FastAPI)** integrado ao front-end (`stentio-web` via proxy reverso Nginx), aos bancos de dados **PostgreSQL** (consulta transacional em tempo real de Ordens de Serviço, Orçamentos, Clientes e Usuários) e **MongoDB** (persistência do histórico de conversas), utilizando **Groq API** com suporte a **Function Calling (Tools)** e **RAG (Retrieval-Augmented Generation)** sobre a documentação oficial do sistema (`manual_stentio.md`).
+Implementação do microserviço backend de Inteligência Artificial (`chatbot-service`) em **Python (FastAPI)** integrado ao front-end (`stentio-web` via proxy reverso Nginx), aos bancos de dados **PostgreSQL** (consulta transacional em tempo real de Ordens de Serviço, Orçamentos, Clientes e Usuários) e **MongoDB** (persistência do histórico de conversas), utilizando **Groq API** com suporte a **Function Calling (Tools)** e **RAG (Retrieval-Augmented Generation)** sobre a documentação oficial do sistema (`manual_operacional_do_sistema_stentio.md`).
 
 ---
 
@@ -10,7 +10,7 @@ Implementação do microserviço backend de Inteligência Artificial (`chatbot-s
 * **`chatbot/` (Novo Microserviço FastAPI):**
   * **`POST /api/v1/ia/chatbot/mensagens`:** Processa mensagens em linguagem natural, consulta dados no PostgreSQL via *Tool Calling*, aplica regras estritas de RBAC e retorna respostas acompanhadas de botões de atalho (`OS`, `ORCAMENTO`, `CLIENTE`).
   * **`GET /api/v1/ia/chatbot/historico`:** Recupera o histórico de mensagens e atalhos da sessão ativa do usuário logado diretamente do MongoDB (`stentio_chatbot.chatbot_mensagens`).
-  * **RAG (`app/services/rag_service.py` + `docs/manual_stentio.md`):** Busca contextualizada na base de conhecimento oficial do Stentio para responder dúvidas operacionais (fluxos de telas, configuração SMTP, aprovação pública de orçamento, permissões e limites do escopo).
+  * **RAG (`app/services/rag_service.py` + `docs/manual_operacional_do_sistema_stentio.md`):** Busca contextualizada na base de conhecimento oficial do Stentio para responder dúvidas operacionais (fluxos de telas, configuração SMTP, aprovação pública de orçamento, permissões e limites do escopo).
   * **Segurança Híbrida (`app/core/security.py`):** Validação de JWT compatível tanto com cookie HttpOnly (`stentio_token` utilizado pelo Front-end Web) quanto com header `Authorization: Bearer` (Swagger/Mobile).
 * **Infraestrutura & Front-end:**
   * **`docker-compose.yml`:** Inclusão do container `stentio-chatbot-service` na rede `stentio-network` (porta `8000`) conectado ao PostgreSQL e ao MongoDB.
@@ -90,7 +90,7 @@ docker compose logs -f chatbot-service
    * *"O que acontece automaticamente no sistema depois que o cliente aprova um orçamento?"*
    * *"Quais perfis têm permissão para excluir um cliente?"*
    * *"O sistema Stentio emite nota fiscal ou fatura de venda?"*
-* **Resultado esperado:** A IA responde com base na documentação oficial (`manual_stentio.md`), explicando o passo a passo e informando corretamente o que o sistema faz ou não faz (sem inventar funcionalidades não implementadas).
+* **Resultado esperado:** A IA responde com base na documentação oficial (`manual_operacional_do_sistema_stentio.md`), explicando o passo a passo e informando corretamente o que o sistema faz ou não faz (sem inventar funcionalidades não implementadas).
 
 ---
 
@@ -112,3 +112,16 @@ docker compose logs -f chatbot-service
 * **Resultado esperado:**
   * Para `TRADUTOR`: A IA recusa educadamente informando que o perfil não possui permissão para visualizar dados financeiros consolidados ou de clientes, sem expor problemas técnicos (**RN.1 e RN.2**).
   * Para `ADMIN`: A IA soma os valores no banco de dados e informa o faturamento total consolidado.
+
+---
+
+## Testes unitários
+
+Os testes unitários usam pytest, mocks e bancos externos não são necessários. Instale as dependências de desenvolvimento e execute a suíte na pasta `chatbot/`:
+
+```bash
+uv sync --group dev
+uv run pytest
+```
+
+Os casos cobrem as rotas e o histórico, autenticação JWT, regras RBAC, consultas por ferramentas, busca RAG e validação dos esquemas.

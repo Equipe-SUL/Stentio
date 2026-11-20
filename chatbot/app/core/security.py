@@ -1,4 +1,5 @@
 import uuid
+from typing import Annotated
 
 import jwt
 from db.models import Usuario
@@ -11,10 +12,11 @@ from core.config import settings
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
+
 def obter_usuario_logado(
     request: Request,
-    authorization: str | None = Security(api_key_header),
-    db: Session = Depends(get_db)
+    authorization: Annotated[str | None, Security(api_key_header)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     # 1. Tenta ler do Header Authorization; se não vier, lê do cookie 'stentio_token'
     raw_token = authorization or request.cookies.get("stentio_token")
@@ -30,14 +32,14 @@ def obter_usuario_logado(
 
     try:
         payload = jwt.decode(
-            token,
-            settings.JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM]
+            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
         )
 
         identificador = payload.get("sub") or payload.get("email") or payload.get("id")
         if not identificador:
-            raise HTTPException(status_code=401, detail="Token inválido: identificador ausente.")
+            raise HTTPException(
+                status_code=401, detail="Token inválido: identificador ausente."
+            )
 
         # Busca o usuário no PostgreSQL pelo UUID ou pelo e-mail
         usuario_db = None
@@ -45,7 +47,9 @@ def obter_usuario_logado(
             user_uuid = uuid.UUID(str(identificador))
             usuario_db = db.query(Usuario).filter(Usuario.id == user_uuid).first()
         except ValueError:
-            usuario_db = db.query(Usuario).filter(Usuario.email == str(identificador)).first()
+            usuario_db = (
+                db.query(Usuario).filter(Usuario.email == str(identificador)).first()
+            )
 
         # Fallback: se o usuário estiver no banco do Auth separado ou já vier com role no JWT
         if not usuario_db:
@@ -53,26 +57,28 @@ def obter_usuario_logado(
             return {
                 "usuario_id": str(identificador),
                 "perfil": str(role_jwt).upper().replace("ROLE_", ""),
-                "nome": str(identificador)
+                "nome": str(identificador),
             }
 
-        if not usuario_db.ativo:
+        if usuario_db.ativo is False:
             raise HTTPException(status_code=401, detail="Usuário inativo.")
 
         perfil_formatado = (
             str(usuario_db.role).upper().replace("ROLE_", "")
-            if usuario_db.role
+            if usuario_db.role is not None
             else "TRADUTOR"
         )
 
         return {
             "usuario_id": str(usuario_db.id),
             "perfil": perfil_formatado,
-            "nome": usuario_db.nome
+            "nome": usuario_db.nome,
         }
 
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Sessão expirada. Faça login novamente.")
+        raise HTTPException(
+            status_code=401, detail="Sessão expirada. Faça login novamente."
+        )
     except jwt.InvalidTokenError as e:
         print(f"Erro ao decodificar JWT: {e}")
         raise HTTPException(status_code=401, detail="Token de autenticação inválido.")

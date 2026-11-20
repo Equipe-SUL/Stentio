@@ -2,31 +2,84 @@ import re
 from pathlib import Path
 
 STOPWORDS = {
-    "a", "o", "as", "os", "um", "uma", "uns", "umas", "de", "do", "da", "dos", "das",
-    "em", "no", "na", "nos", "nas", "por", "para", "com", "sem", "sob", "sobre",
-    "e", "ou", "mas", "que", "qual", "quais", "como", "onde", "quando", "porque",
-    "eu", "ele", "ela", "eles", "elas", "meu", "minha", "seu", "sua",
-    "fazer", "posso", "consigo", "sistema", "stentio", "tela", "esta", "este", "isso"
+    "a",
+    "o",
+    "as",
+    "os",
+    "um",
+    "uma",
+    "uns",
+    "umas",
+    "de",
+    "do",
+    "da",
+    "dos",
+    "das",
+    "em",
+    "no",
+    "na",
+    "nos",
+    "nas",
+    "por",
+    "para",
+    "com",
+    "sem",
+    "sob",
+    "sobre",
+    "e",
+    "ou",
+    "mas",
+    "que",
+    "qual",
+    "quais",
+    "como",
+    "onde",
+    "quando",
+    "porque",
+    "eu",
+    "ele",
+    "ela",
+    "eles",
+    "elas",
+    "meu",
+    "minha",
+    "seu",
+    "sua",
+    "fazer",
+    "posso",
+    "consigo",
+    "sistema",
+    "stentio",
+    "tela",
+    "esta",
+    "este",
+    "isso",
 }
+
 
 def _carregar_manual() -> str:
     base_dir = Path(__file__).resolve().parent.parent
-    caminhos_possiveis = [
-        base_dir / "docs" / "manual_stentio.md",
-        base_dir.parent / "docs" / "manual_stentio.md",
+    diretorios_possiveis = [base_dir / "docs", base_dir.parent / "docs"]
+    nomes_possiveis = [
+        "manual_stentio.md",
+        "manual_operacional_do_sistema_stentio.md",
     ]
-    for caminho in caminhos_possiveis:
-        if caminho.exists():
-            return caminho.read_text(encoding="utf-8")
+    for diretorio in diretorios_possiveis:
+        for nome in nomes_possiveis:
+            caminho = diretorio / nome
+            if caminho.exists():
+                return caminho.read_text(encoding="utf-8")
     return ""
+
 
 def _tokenizar(texto: str) -> set[str]:
     palavras = re.findall(r"\b[a-zà-ú0-9]{3,}\b", texto.lower())
     return {p for p in palavras if p not in STOPWORDS}
 
+
 def buscar_contexto_manual(pergunta: str, top_k: int = 3) -> str:
     """
-    Busca as seções mais relevantes do manual_stentio.md para responder
+    Busca as seções mais relevantes do manual oficial para responder
     dúvidas operacionais e regras de negócio (CA.2).
     """
     conteudo = _carregar_manual()

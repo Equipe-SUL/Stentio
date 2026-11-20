@@ -26,12 +26,12 @@ TOOLS_SPEC = [
                 "properties": {
                     "termo_busca": {
                         "type": "string",
-                        "description": "Nome da empresa/cliente (ex: 'XPTO') ou UUID da OS."
+                        "description": "Nome da empresa/cliente (ex: 'XPTO') ou UUID da OS.",
                     }
                 },
-                "required": ["termo_busca"]
-            }
-        }
+                "required": ["termo_busca"],
+            },
+        },
     },
     {
         "type": "function",
@@ -43,31 +43,29 @@ TOOLS_SPEC = [
                 "properties": {
                     "termo_busca": {
                         "type": "string",
-                        "description": "Nome da empresa/cliente ou UUID do orçamento."
+                        "description": "Nome da empresa/cliente ou UUID do orçamento.",
                     }
                 },
-                "required": ["termo_busca"]
-            }
-        }
+                "required": ["termo_busca"],
+            },
+        },
     },
     {
         "type": "function",
         "function": {
             "name": "consultar_faturamento",
             "description": "Consulta dados financeiros, faturamento total do mês ou valores consolidados.",
-            "parameters": {
-                "type": "object",
-                "properties": {}
-            }
-        }
-    }
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
 
+
 def processar_pergunta_ia(
-    mensagem_usuario: str, 
-    perfil_usuario: str, 
+    mensagem_usuario: str,
+    perfil_usuario: str,
     db: Session,
-    historico_conversa: list = None
+    historico_conversa: list = None,
 ) -> tuple[str, list[Atalho]]:
     atalhos_acumulados: list[Atalho] = []
 
@@ -112,7 +110,7 @@ def processar_pergunta_ia(
             tools=TOOLS_SPEC,
             tool_choice="auto",
             temperature=0.2,
-            max_tokens=500
+            max_tokens=500,
         )
 
         resposta_msg = response.choices[0].message
@@ -135,25 +133,26 @@ def processar_pergunta_ia(
                         db, argumentos.get("termo_busca", ""), perfil_usuario
                     )
                 elif nome_funcao == "consultar_faturamento":
-                    resultado_texto, novos_atalhos = consultar_faturamento(db, perfil_usuario)
+                    resultado_texto, novos_atalhos = consultar_faturamento(
+                        db, perfil_usuario
+                    )
                 else:
                     resultado_texto, novos_atalhos = "Função não reconhecida.", []
 
                 atalhos_acumulados.extend(novos_atalhos)
 
-                mensagens.append({
-                    "tool_call_id": tool_call.id,
-                    "role": "tool",
-                    "name": nome_funcao,
-                    "content": resultado_texto,
-                })
+                mensagens.append(
+                    {
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": nome_funcao,
+                        "content": resultado_texto,
+                    }
+                )
 
             # 2ª Chamada ao Groq: formula a resposta final em linguagem natural com os dados do banco
             segunda_resposta = groq_client.chat.completions.create(
-                model=MODELO_GROQ,
-                messages=mensagens,
-                temperature=0.2,
-                max_tokens=500
+                model=MODELO_GROQ, messages=mensagens, temperature=0.2, max_tokens=500
             )
             return segunda_resposta.choices[0].message.content, atalhos_acumulados
 
@@ -165,5 +164,5 @@ def processar_pergunta_ia(
         return (
             "Desculpe, não consegui processar a sua solicitação no momento. "
             "Pode tentar reformular a pergunta?",
-            []
+            [],
         )

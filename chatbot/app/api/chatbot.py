@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Annotated
 
 from core.security import obter_usuario_logado
 from db.mongo import mensagens_collection
@@ -18,12 +19,13 @@ from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/v1/ia/chatbot", tags=["Chatbot"])
 
+UsuarioLogado = Annotated[dict, Depends(obter_usuario_logado)]
+DbSession = Annotated[Session, Depends(get_db)]
+
 
 @router.post("/mensagens", response_model=MensagemResponse)
 async def processar_mensagem(
-    req: MensagemRequest, 
-    usuario: dict = Depends(obter_usuario_logado),
-    db: Session = Depends(get_db)
+    req: MensagemRequest, usuario: UsuarioLogado, db: DbSession
 ):
     conversa_id = req.conversaId if req.conversaId else str(uuid.uuid4())
     usuario_id = str(usuario["usuario_id"])
@@ -45,7 +47,7 @@ async def processar_mensagem(
         "autor": "USUARIO",
         "conteudo": req.mensagem,
         "atalhos": [],
-        "criada_em": datetime.now(timezone.utc)
+        "criada_em": datetime.now(timezone.utc),
     }
     mensagens_collection.insert_one(doc_usuario)
 
@@ -54,7 +56,7 @@ async def processar_mensagem(
         mensagem_usuario=req.mensagem,
         perfil_usuario=usuario["perfil"],
         db=db,
-        historico_conversa=historico_recente
+        historico_conversa=historico_recente,
     )
 
     # 4. Salva a resposta da IA no MongoDB
@@ -66,7 +68,7 @@ async def processar_mensagem(
         "autor": "IA",
         "conteudo": resposta_texto,
         "atalhos": [a.model_dump() for a in atalhos],
-        "criada_em": datetime.now(timezone.utc)
+        "criada_em": datetime.now(timezone.utc),
     }
     mensagens_collection.insert_one(doc_ia)
 
@@ -74,22 +76,23 @@ async def processar_mensagem(
         resposta=resposta_texto,
         conversaId=conversa_id,
         mensagemId=mensagem_ia_id,
-        atalhos=atalhos
+        atalhos=atalhos,
     )
 
 
 @router.get("/historico", response_model=HistoricoResponse)
 async def obter_historico(
-    conversaId: str | None = Query(None, description="ID da conversa (opcional)"), 
-    usuario: dict = Depends(obter_usuario_logado)
+    usuario: UsuarioLogado,
+    conversaId: Annotated[
+        str | None, Query(description="ID da conversa (opcional)")
+    ] = None,
 ):
     usuario_id = str(usuario["usuario_id"])
 
     # Se não vier conversaId, busca a conversa mais recente desse usuário no MongoDB
     if not conversaId:
         ultima_msg = mensagens_collection.find_one(
-            {"usuario_id": usuario_id},
-            sort=[("criada_em", DESCENDING)]
+            {"usuario_id": usuario_id}, sort=[("criada_em", DESCENDING)]
         )
         conversaId = ultima_msg["conversa_id"] if ultima_msg else str(uuid.uuid4())
 
@@ -104,12 +107,9 @@ async def obter_historico(
             autor=doc["autor"],
             conteudo=doc["conteudo"],
             criadaEm=doc["criada_em"],
-            atalhos=[Atalho(**a) for a in doc.get("atalhos", [])]
+            atalhos=[Atalho(**a) for a in doc.get("atalhos", [])],
         )
         for doc in docs
     ]
 
-    return HistoricoResponse(
-        conversaId=conversaId,
-        mensagens=mensagens_formatadas
-    )
+    return HistoricoResponse(conversaId=conversaId, mensagens=mensagens_formatadas)

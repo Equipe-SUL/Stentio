@@ -7,6 +7,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+
 # Dependência para injetar a sessão do banco nas rotas/tools
 def get_db():
     db = SessionLocal()

@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Cliente(Base):
@@ -25,6 +26,7 @@ class Cliente(Base):
     nome_empresa = Column(String(150))
     nome_representante = Column(String(100))
     telefone = Column(String(20))
+
 
 class Orcamento(Base):
     __tablename__ = "orcamentos"
@@ -42,6 +44,7 @@ class Orcamento(Base):
     numero_versao = Column(Integer)
     solicitacao_id = Column(UUID(as_uuid=True))
 
+
 class OrdemServico(Base):
     __tablename__ = "ordens_servico"
 
@@ -51,12 +54,15 @@ class OrdemServico(Base):
     orcamento_id = Column(UUID(as_uuid=True), ForeignKey("orcamentos.id"))
     solicitacao_id = Column(UUID(as_uuid=True))
 
+
 class Usuario(Base):
     __tablename__ = "usuarios"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    ativo = Column(Boolean, default=True)
-    email = Column(String(255))
-    nome = Column(String(255))
-    role = Column(String(255))
-    senha = Column(String(255))
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    email: Mapped[str | None] = mapped_column(String(255))
+    nome: Mapped[str | None] = mapped_column(String(255))
+    role: Mapped[str | None] = mapped_column(String(255))
+    senha: Mapped[str | None] = mapped_column(String(255))
