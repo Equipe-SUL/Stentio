@@ -20,3 +20,4 @@ Thumbs.db
 # Anexos gravados em dev local (Core)
 Core/uploads/
 uploads/
+node_modules

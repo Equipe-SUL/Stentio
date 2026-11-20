@@ -1,0 +1,6 @@
+CREATE USER agent WITH PASSWORD 'senha_segura_do_agent';
+GRANT CONNECT ON DATABASE stentio_test TO agent;
+\c stentio_test
+GRANT USAGE ON SCHEMA public TO agent;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO agent;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO agent;

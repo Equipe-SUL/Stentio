@@ -49,7 +49,6 @@ services:
       - rabbitmq
     networks:
       - stentio-network
-
   core:
     build:
       context: ./Core
@@ -94,7 +93,6 @@ services:
       - rabbitmq
     networks:
       - stentio-network
-
   email-service:
     build:
       context: ./email-service
@@ -122,7 +120,6 @@ services:
       - rabbitmq
     networks:
       - stentio-network
-
   import-service:
     build:
       context: ./import-service
@@ -135,7 +132,28 @@ services:
       - postgres
     networks:
       - stentio-network
-
+  chatbot-service:
+    build:
+      context: ./chatbot
+      dockerfile: Dockerfile
+    container_name: stentio-chatbot-service
+    ports:
+      - "${CHATBOT_PORT:-8000}:8000"
+    environment:
+      CHATBOT_DB_USER: ${CHATBOT_DB_USER:-agent}
+      CHATBOT_DB_PASSWORD: ${CHATBOT_DB_PASSWORD:-senha_segura_do_agent}
+      DATABASE_URL: postgresql+psycopg://${CHATBOT_DB_USER:-agent}:${CHATBOT_DB_PASSWORD:-senha_segura_do_agent}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${CORE_POSTGRES_DB:-${POSTGRES_DB:-stentio}}
+      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-changeme}@mongodb:${MONGO_PORT:-27017}/${MONGO_DB_NAME:-stentio_chatbot}?authSource=admin
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-stentio_chatbot}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      JWT_SECRET: ${JWT_SECRET:-minha-chave-secreta-super-longa-para-jwt-stentio-2026}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+    depends_on:
+      - postgres
+      - mongodb
+    networks:
+      - stentio-network
+    restart: unless-stopped
   postgres:
     image: postgres:18-trixie
     container_name: postgresdb-local
@@ -146,12 +164,12 @@ services:
       PGDATA: /data/postgres
     volumes:
       - postgres_data:/data/postgres
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - stentio-network
     restart: unless-stopped
-
   mongodb:
     # 8.0-ubi8-slim não sobe em kernels sem suporte a SIGSYS; 7.0 é compatível (ver 19cff60).
     image: mongo:7.0.5
@@ -166,7 +184,6 @@ services:
     networks:
       - stentio-network
     restart: unless-stopped
-
   rabbitmq:
     image: rabbitmq:4-management
     container_name: rabbitmq-local
@@ -181,7 +198,6 @@ services:
     networks:
       - stentio-network
     restart: unless-stopped
-
   mailhog:
     # dependência de desenvolvimento
     # para subir use: docker compose --profile dev [...]
@@ -194,7 +210,6 @@ services:
     ports:
       - "${MAILHOG_PORT_SMTP:-1025}:1025"
       - "${MAILHOG_PORT:-8025}:8025"
-
   cloudflared:
     image: cloudflare/cloudflared:latest
     command: [ "tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARED_TUNNEL_TOKEN}", "--url", "http://front:80" ]
@@ -205,34 +220,11 @@ services:
     restart: unless-stopped
     profiles:
       - deploy
-
-  chatbot-service:
-    build:
-      context: ./chatbot
-      dockerfile: Dockerfile
-    container_name: stentio-chatbot-service
-    ports:
-      - "${CHATBOT_PORT:-8000}:8000"
-    environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${CORE_POSTGRES_DB:-${POSTGRES_DB:-stentio}}
-      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-changeme}@mongodb:${MONGO_PORT:-27017}/${MONGO_DB_NAME:-stentio_chatbot}?authSource=admin
-      MONGO_DB_NAME: ${MONGO_DB_NAME:-stentio_chatbot}
-      GROQ_API_KEY: ${GROQ_API_KEY}
-      JWT_SECRET: ${JWT_SECRET:-minha-chave-secreta-super-longa-para-jwt-stentio-2026}
-      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
-    depends_on:
-      - postgres
-      - mongodb
-    networks:
-      - stentio-network
-    restart: unless-stopped
-
 volumes:
   core_uploads:
   mongo_data:
   postgres_data:
   rabbitmq_data:
-
 networks:
   stentio-network:
     driver: bridge

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import Markdown, { type MarkdownProps } from "react-native-markdown-display";
 import type { Role } from "../../lib/session";
 import { podeAcessarRota } from "../../lib/routePermissions";
 import { buscarHistoricoChatbot, enviarMensagemChatbot } from "./chatbotApi";
@@ -33,6 +34,31 @@ function rotaDoAtalho(atalho: ChatbotAtalho): string {
 function idLocal(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+const markdownStyles: NonNullable<MarkdownProps["style"]> = {
+  body: { color: "#27272a", fontSize: 14, lineHeight: 22 },
+  paragraph: { marginTop: 0, marginBottom: 10 },
+  heading1: { color: "#2D1A11", fontSize: 18, fontWeight: "700", lineHeight: 24, marginTop: 12, marginBottom: 6 },
+  heading2: { color: "#2D1A11", fontSize: 16, fontWeight: "700", lineHeight: 22, marginTop: 10, marginBottom: 5 },
+  heading3: { color: "#2D1A11", fontSize: 15, fontWeight: "700", lineHeight: 21, marginTop: 8, marginBottom: 4 },
+  heading4: { color: "#2D1A11", fontSize: 14, fontWeight: "700", marginTop: 6, marginBottom: 4 },
+  heading5: { color: "#2D1A11", fontSize: 14, fontWeight: "700", marginTop: 6, marginBottom: 4 },
+  heading6: { color: "#2D1A11", fontSize: 14, fontWeight: "700", marginTop: 6, marginBottom: 4 },
+  strong: { fontWeight: "700" },
+  em: { fontStyle: "italic" },
+  bullet_list: { marginVertical: 4 },
+  ordered_list: { marginVertical: 4 },
+  list_item: { flexDirection: "row", alignItems: "flex-start", marginVertical: 2 },
+  bullet_list_icon: { color: "#27272a", fontSize: 14, lineHeight: 20, marginRight: 8 },
+  bullet_list_content: { flex: 1 },
+  ordered_list_icon: { color: "#27272a", fontSize: 14, lineHeight: 20, marginRight: 8 },
+  ordered_list_content: { flex: 1 },
+  code_inline: { fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", backgroundColor: "#f4f4f5", lineHeight: 22 },
+  fence: { fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", backgroundColor: "#f4f4f5", padding: 8, borderRadius: 6 },
+  blockquote: { borderLeftWidth: 3, borderLeftColor: "#c5a995", paddingLeft: 8, color: "#52525b" },
+  link: { color: "#6f3e24", textDecorationLine: "underline" },
+  hr: { backgroundColor: "#e4e4e7", height: 1, marginVertical: 8 },
+};
 
 export function ChatbotWidget({ role }: { role: Role }) {
   const router = useRouter();
@@ -160,9 +186,16 @@ export function ChatbotWidget({ role }: { role: Role }) {
                     item.autor === "USUARIO" ? styles.userBubble : styles.assistantBubble,
                   ]}
                 >
-                  <Text style={item.autor === "USUARIO" ? styles.userText : styles.assistantText}>
-                    {item.conteudo}
-                  </Text>
+                  {item.autor !== "USUARIO" ? (
+                    <Markdown
+                      style={markdownStyles}
+                      onLinkPress={(url) => /^https?:\/\//i.test(url)}
+                    >
+                      {item.conteudo}
+                    </Markdown>
+                  ) : (
+                    <Text style={styles.userText}>{item.conteudo}</Text>
+                  )}
                   {!!item.atalhos?.length && (
                     <View style={styles.shortcuts}>
                       {item.atalhos
@@ -265,7 +298,6 @@ const styles = StyleSheet.create({
   userBubble: { backgroundColor: "#8c5230", borderBottomRightRadius: 5 },
   assistantBubble: { backgroundColor: "#fff", borderColor: "#e4e4e7", borderWidth: 1, borderBottomLeftRadius: 5 },
   userText: { color: "#fff", fontSize: 14, lineHeight: 20 },
-  assistantText: { color: "#27272a", fontSize: 14, lineHeight: 20 },
   shortcuts: { borderTopWidth: 1, borderTopColor: "#eee7e2", marginTop: 9, paddingTop: 7, gap: 5 },
   shortcut: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
   shortcutText: { color: "#6f3e24", fontSize: 12, fontWeight: "600", textDecorationLine: "underline" },
