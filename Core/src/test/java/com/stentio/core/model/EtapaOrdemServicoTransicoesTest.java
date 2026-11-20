@@ -25,6 +25,8 @@ import static org.mockito.Mockito.when;
 class EtapaOrdemServicoTransicoesTest {
 
     private static final Instant AGORA = Instant.parse("2026-11-17T12:00:00Z");
+    /** A etapa destes testes é a primeira da sequência: não depende de nenhuma anterior. */
+    private static final EtapaOrdemServico SEM_ANTERIOR = null;
     private static final Instant PRAZO = Instant.parse("2026-11-24T12:00:00Z");
 
     private Recurso ana;
@@ -70,7 +72,7 @@ class EtapaOrdemServicoTransicoesTest {
     void dispararDescartaAlocacao() {
         etapa.alocar(ana, PRAZO, AGORA);
 
-        etapa.disparar(AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
 
         assertEquals(StatusEtapaOrdemServico.DISPARADA, etapa.getStatus());
         assertNull(etapa.getRecurso());
@@ -80,10 +82,10 @@ class EtapaOrdemServicoTransicoesTest {
     @Test
     @DisplayName("RN.6: etapa já aceita não volta para a fila")
     void naoDisparaEtapaAceita() {
-        etapa.disparar(AGORA);
-        etapa.aceitarPor(ana, AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
+        etapa.aceitarPor(SEM_ANTERIOR, ana, AGORA);
 
-        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.disparar(AGORA));
+        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.disparar(SEM_ANTERIOR, AGORA));
         assertEquals(StatusEtapaOrdemServico.ACEITA, etapa.getStatus());
         assertTrue(etapa.pertenceA(ana));
     }
@@ -91,9 +93,9 @@ class EtapaOrdemServicoTransicoesTest {
     @Test
     @DisplayName("aceitar marca o dono, o instante e congela a etapa para troca")
     void aceitarCongelaAEtapa() {
-        etapa.disparar(AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
 
-        etapa.aceitarPor(bruno, AGORA);
+        etapa.aceitarPor(SEM_ANTERIOR, bruno, AGORA);
 
         assertEquals(StatusEtapaOrdemServico.ACEITA, etapa.getStatus());
         assertEquals(AGORA, etapa.getAceitoEm());
@@ -107,7 +109,7 @@ class EtapaOrdemServicoTransicoesTest {
     void recusarLiberaAEtapa() {
         etapa.alocar(ana, PRAZO, AGORA);
 
-        etapa.recusar();
+        etapa.recusar(SEM_ANTERIOR);
 
         assertEquals(StatusEtapaOrdemServico.PENDENTE, etapa.getStatus());
         assertNull(etapa.getRecurso());
@@ -117,18 +119,18 @@ class EtapaOrdemServicoTransicoesTest {
     @Test
     @DisplayName("só se recusa um convite nominal: etapa disparada não tem o que recusar")
     void naoRecusaEtapaDisparada() {
-        etapa.disparar(AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
 
-        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.recusar());
+        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.recusar(SEM_ANTERIOR));
     }
 
     @Test
     @DisplayName("CA.5: entregar guarda nome e caminho e fecha a etapa")
     void entregarFechaAEtapa() {
-        etapa.disparar(AGORA);
-        etapa.aceitarPor(ana, AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
+        etapa.aceitarPor(SEM_ANTERIOR, ana, AGORA);
 
-        etapa.entregar("traducao-final.docx", "2026/11/abc.docx", AGORA);
+        etapa.entregar(SEM_ANTERIOR, "traducao-final.docx", "2026/11/abc.docx", AGORA);
 
         assertEquals(StatusEtapaOrdemServico.ENTREGUE, etapa.getStatus());
         assertEquals("traducao-final.docx", etapa.getArquivoEntregueNome());
@@ -139,10 +141,10 @@ class EtapaOrdemServicoTransicoesTest {
     @Test
     @DisplayName("RN.4: não se entrega uma etapa que ninguém assumiu")
     void naoEntregaEtapaNaoAceita() {
-        etapa.disparar(AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
 
         assertThrows(TransicaoEtapaInvalidaException.class,
-                () -> etapa.entregar("x.docx", "2026/11/x.docx", AGORA));
+                () -> etapa.entregar(SEM_ANTERIOR, "x.docx", "2026/11/x.docx", AGORA));
         assertNull(etapa.getArquivoEntregueCaminho());
     }
 }

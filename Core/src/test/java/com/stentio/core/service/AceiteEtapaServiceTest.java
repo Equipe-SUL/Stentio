@@ -44,6 +44,8 @@ import static org.mockito.Mockito.when;
 class AceiteEtapaServiceTest {
 
     private static final Instant AGORA = Instant.parse("2026-11-17T12:00:00Z");
+    /** A etapa destes testes é a primeira da sequência: não depende de nenhuma anterior. */
+    private static final EtapaOrdemServico SEM_ANTERIOR = null;
     private static final Instant PRAZO = Instant.parse("2026-11-24T12:00:00Z");
 
     private final EtapaOrdemServicoRepository etapas = mock(EtapaOrdemServicoRepository.class);
@@ -120,7 +122,7 @@ class AceiteEtapaServiceTest {
     private void bancoAceitaOClaim() {
         when(etapas.aceitarSeDisponivel(eq(etapaId), any(), any(), any(), any()))
                 .thenAnswer(invocacao -> {
-                    etapa.aceitarPor(invocacao.getArgument(1), invocacao.getArgument(2));
+                    etapa.aceitarPor(SEM_ANTERIOR, invocacao.getArgument(1), invocacao.getArgument(2));
                     return 1;
                 });
     }
@@ -128,7 +130,7 @@ class AceiteEtapaServiceTest {
     @Test
     @DisplayName("CA.3: aceita a etapa disparada e devolve o estado novo")
     void aceitaEtapaDisparada() {
-        etapa.disparar(AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
         bancoAceitaOClaim();
 
         AceiteEtapaResponse resposta = service.aceitar(etapaId, ator);
@@ -142,7 +144,7 @@ class AceiteEtapaServiceTest {
     @Test
     @DisplayName("CA.3: quem perde a corrida atualiza zero linhas e recebe conflito")
     void segundoAceiteFalha() {
-        etapa.disparar(AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
         when(etapas.aceitarSeDisponivel(eq(etapaId), any(), any(), any(), any())).thenReturn(0);
 
         assertThrows(TransicaoEtapaInvalidaException.class, () -> service.aceitar(etapaId, ator));
@@ -152,7 +154,7 @@ class AceiteEtapaServiceTest {
     @Test
     @DisplayName("CA.8: o aceite vencedor deixa rastro com quem aceitou")
     void gravaHistoricoDoAceite() {
-        etapa.disparar(AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
         bancoAceitaOClaim();
 
         service.aceitar(etapaId, ator);
@@ -166,7 +168,7 @@ class AceiteEtapaServiceTest {
     @Test
     @DisplayName("CA.4: perfil que não atende o par de idiomas não aceita")
     void recusaParDeIdiomasIncompativel() {
-        etapa.disparar(AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
         // Construído fora do when: montar o recurso toca nos mocks de Idioma, e fazer isso
         // dentro do thenReturn deixa a stubbing inacabada (UnfinishedStubbingException).
         Recurso bruno = recurso("Bruno", traducao, portugues, alemao);
@@ -179,7 +181,7 @@ class AceiteEtapaServiceTest {
     @Test
     @DisplayName("CA.4: perfil que não executa o tipo de serviço não aceita")
     void recusaTipoDeServicoIncompativel() {
-        etapa.disparar(AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
         Recurso carla = recurso("Carla", revisao, portugues, ingles);
         when(recursoAutenticado.resolver(ator)).thenReturn(carla);
 
@@ -189,7 +191,7 @@ class AceiteEtapaServiceTest {
     @Test
     @DisplayName("US-023 RN.5: cadastro ainda não verificado não aceita nada")
     void recusaRecursoNaoVerificado() {
-        etapa.disparar(AGORA);
+        etapa.disparar(SEM_ANTERIOR, AGORA);
         Recurso semVerificacao = recurso("Diego", traducao, portugues, ingles);
         semVerificacao.definirVerificacao(false);
         when(recursoAutenticado.resolver(ator)).thenReturn(semVerificacao);

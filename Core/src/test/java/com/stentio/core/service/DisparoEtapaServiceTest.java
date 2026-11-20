@@ -43,6 +43,8 @@ import static org.mockito.Mockito.when;
 class DisparoEtapaServiceTest {
 
     private static final Instant AGORA = Instant.parse("2026-11-17T12:00:00Z");
+    /** A etapa destes testes é a primeira da sequência: não depende de nenhuma anterior. */
+    private static final EtapaOrdemServico SEM_ANTERIOR = null;
     private static final Instant PRAZO = Instant.parse("2026-11-24T12:00:00Z");
 
     private final EtapaOrdemServicoRepository etapas = mock(EtapaOrdemServicoRepository.class);
@@ -141,7 +143,7 @@ class DisparoEtapaServiceTest {
         Recurso ana = mock(Recurso.class);
         when(ana.elegivelParaAlocacao()).thenReturn(true);
         etapa.alocar(ana, PRAZO, AGORA);
-        etapa.aceitarPor(ana, AGORA);
+        etapa.aceitarPor(SEM_ANTERIOR, ana, AGORA);
         elegiveis(qualquerRecurso());
 
         assertThrows(TransicaoEtapaInvalidaException.class,

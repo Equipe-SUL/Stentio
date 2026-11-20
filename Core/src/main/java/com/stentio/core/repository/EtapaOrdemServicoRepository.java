@@ -3,6 +3,7 @@ package com.stentio.core.repository;
 import com.stentio.core.dto.DashboardEtapaPendenciaProjection;
 import com.stentio.core.model.EtapaOrdemServico;
 import com.stentio.core.model.Recurso;
+import com.stentio.core.model.SequenciaEtapas;
 import com.stentio.core.model.StatusEtapaOrdemServico;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -29,6 +30,24 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
 
     // RN.3: basta uma etapa alocada para a sequência ficar congelada.
     boolean existsByOrdemServicoIdAndRecursoIsNotNull(UUID ordemServicoId);
+
+    Optional<EtapaOrdemServico> findByOrdemServicoIdAndOrdem(UUID ordemServicoId, Integer ordem);
+
+    /**
+     * US-014 RN.1: a etapa de que esta depende — a de ordem imediatamente anterior na mesma
+     * OS. Nula para a primeira, que não depende de ninguém.
+     *
+     * <p>Fica aqui, e não em cada service, porque disparo, aceite, recusa e entrega fazem a
+     * mesma pergunta; uma resposta diferente em um deles é exatamente o bug de ordem que a
+     * regra corrige.
+     */
+    default EtapaOrdemServico anteriorDe(EtapaOrdemServico etapa) {
+        if (etapa.getOrdem() <= SequenciaEtapas.ORDEM_INICIAL) {
+            return null;
+        }
+        return findByOrdemServicoIdAndOrdem(etapa.getOrdemServico().getId(), etapa.getOrdem() - 1)
+                .orElse(null);
+    }
 
     /**
      * US-013 CA.3 e RN.3: o aceite, em uma instrução só.
