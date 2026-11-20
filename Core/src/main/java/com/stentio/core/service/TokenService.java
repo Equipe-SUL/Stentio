@@ -45,9 +45,11 @@ public class TokenService {
     }
 
     /**
-     * Token emitido antes de o Auth incluir as claims userId e nome continua válido: o
-     * usuário segue autenticado, só sem esses dados. Derrubar a sessão de todo mundo no dia
-     * do deploy seria pior do que um log que mostra o e-mail no lugar do nome.
+     * US-023 RN.3: a claim userId só existe em token emitido a partir desta US. Ausente,
+     * o usuário segue autenticado sem id — é o que mantém de pé a sessão de quem já
+     * estava logado quando o deploy aconteceu. Quem precisa do id (o portal do recurso)
+     * é que recusa a requisição, e com mensagem própria. O mesmo vale para a claim nome
+     * da US-019: sem ela, o log de auditoria mostra o e-mail.
      */
     private static UUID lerUsuarioId(String valor) {
         if (valor == null || valor.isBlank()) {
@@ -62,5 +64,10 @@ public class TokenService {
 
     /** {@code usuarioId} e {@code nome} podem vir nulos em tokens antigos. */
     public record TokenDados(String email, Role role, UUID usuarioId, String nome) {
+
+        /** Token sem a claim nome (US-023 e anteriores à US-019). */
+        public TokenDados(String email, Role role, UUID usuarioId) {
+            this(email, role, usuarioId, null);
+        }
     }
 }

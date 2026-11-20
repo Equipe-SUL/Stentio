@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 @Service
 public class TokenService {
@@ -19,8 +20,9 @@ public class TokenService {
 
     private static final String CLAIM_ROLE = "role";
     /**
-     * O Core precisa saber *qual* usuário está autenticado, não só o papel. Mesmo nome de
-     * claim usado pela US-023, para os dois trabalhos lerem o mesmo campo.
+     * US-023 CA.4: o Core precisa saber *qual* usuário está autenticado, não só o papel.
+     * O e-mail já ia no subject, mas usá-lo como chave estrangeira amarraria o vínculo do
+     * recurso a um dado que o próprio usuário pode trocar.
      */
     private static final String CLAIM_USER_ID = "userId";
     /**
@@ -58,9 +60,24 @@ public class TokenService {
         String email = decoded.getSubject();
         String role = decoded.getClaim(CLAIM_ROLE).asString();
 
-        return new TokenDados(email, Role.valueOf(role));
+        return new TokenDados(email, Role.valueOf(role), lerUsuarioId(decoded.getClaim(CLAIM_USER_ID).asString()));
     }
 
-    public record TokenDados(String email, Role role) {
+    /**
+     * RN.3: token emitido antes desta US não tem a claim. Voltar nulo mantém a sessão de
+     * quem já estava logado, em vez de derrubar todo mundo no dia do deploy.
+     */
+    private static UUID lerUsuarioId(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(valor);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    public record TokenDados(String email, Role role, UUID usuarioId) {
     }
 }
