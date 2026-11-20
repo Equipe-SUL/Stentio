@@ -15,6 +15,7 @@ import type { OrdemServicoDetalhe } from "../types";
 import {
   alocarRecursoEtapa,
   dispararEtapaParaElegiveis,
+  baixarArquivoEntrega,
   aplicarModeloWorkflow,
   buscarWorkflowOrdem,
   listarModelosWorkflow,
@@ -127,7 +128,7 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
 
   // RN.3: Se alguma etapa já possui recurso alocado, a sequência não pode mais ser alterada estruturalmente
   const bloqueadoPorRN3 = useMemo(() => {
-    return etapas.some((e) => Boolean(e.recurso_id));
+    return etapas.some((e) => Boolean(e.recurso_id) || e.status === "ACEITA" || e.status === "ENTREGUE");
   }, [etapas]);
 
   // Limpa mensagens de sucesso automaticamente após alguns segundos
@@ -543,6 +544,11 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
           onDisparar={(etapa) => setEtapaConfirmandoDisparoId(etapa.id ?? null)}
           onConfirmarDisparo={(etapa) => void handleConfirmarDisparo(etapa)}
           onCancelarDisparo={() => setEtapaConfirmandoDisparoId(null)}
+          onBaixarEntrega={(etapa) => {
+            if (etapa.arquivo_entrega_url) {
+              void baixarArquivoEntrega(etapa.arquivo_entrega_url, etapa.arquivo_entrega_nome || "entrega").catch((err) => setErro(getApiErrorMessage(err)));
+            }
+          }}
         />
       </View>
 

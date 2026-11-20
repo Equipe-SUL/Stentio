@@ -18,6 +18,7 @@ export interface EtapaWorkflow {
   recurso_nome?: string | null;
   data_limite_entrega?: string | null;
   recurso_aceite_nome?: string | null;
+  aceito_por_nome?: string | null;
   aceito_em?: string | null;
   arquivo_entrega_url?: string | null;
   arquivo_entrega_nome?: string | null;

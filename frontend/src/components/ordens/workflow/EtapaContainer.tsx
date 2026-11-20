@@ -21,6 +21,7 @@ interface EtapaContainerProps {
   disparando: boolean;
   onConfirmarDisparo: () => void;
   onCancelarDisparo: () => void;
+  onBaixarEntrega: () => void;
   onAtualizarCampo: (campo: keyof EtapaWorkflow, valor: any) => void;
 }
 
@@ -48,10 +49,12 @@ export function EtapaContainer({
   disparando,
   onConfirmarDisparo,
   onCancelarDisparo,
+  onBaixarEntrega,
   onAtualizarCampo,
 }: EtapaContainerProps) {
-  const isAlocada = etapa.status === "ALOCADO";
+  const isAlocada = ["ALOCADO", "ACEITA", "ENTREGUE"].includes(etapa.status);
   const isAguardando = etapa.status === "AGUARDANDO_ETAPA_ANTERIOR";
+  const etapaEmExecucao = etapa.status === "ACEITA" || etapa.status === "ENTREGUE";
 
   // Obter nome legível do tipo de serviço
   const tipoEncontrado = tiposServico.find((t) => t.id === etapa.tipo_servico_id);
@@ -65,8 +68,12 @@ export function EtapaContainer({
 
   if (isAlocada) {
     badgeNoBg = "bg-emerald-500 border-emerald-600 text-white";
-    statusRotulo = "Alocada";
     statusBadgeBg = "bg-emerald-50 border-emerald-200 text-emerald-800";
+    statusRotulo = etapa.status === "ENTREGUE" ? "Entregue" : etapa.status === "ACEITA" ? "Aceita" : "Alocada";
+  } else if (etapa.status === "DISPARADA") {
+    badgeNoBg = "bg-blue-100 border-blue-300 text-blue-800";
+    statusRotulo = "Disparada";
+    statusBadgeBg = "bg-blue-50 border-blue-200 text-blue-800";
   } else if (isAguardando) {
     badgeNoBg = "bg-neutral-100 border-neutral-300 text-neutral-500";
     statusRotulo = "Aguardando anterior";
@@ -280,8 +287,9 @@ export function EtapaContainer({
 
                 <Pressable
                   onPress={onAlocarRecurso}
-                  className="rounded-md p-1 hover:bg-emerald-100"
-                  accessibilityLabel="Alterar recurso alocado"
+                  disabled={etapaEmExecucao}
+                  className={`rounded-md p-1 hover:bg-emerald-100 ${etapaEmExecucao ? "opacity-40" : ""}`}
+                  accessibilityLabel={etapaEmExecucao ? "Etapa em execução não pode ser realocada" : "Alterar recurso alocado"}
                 >
                   <Ionicons name="swap-horizontal" size={16} color="#065f46" />
                 </Pressable>
@@ -336,10 +344,16 @@ export function EtapaContainer({
                 )}
               </>
             ) : null}
-            {etapa.status === "ACEITA" && etapa.recurso_aceite_nome ? (
+            {etapa.status === "ACEITA" && (etapa.recurso_aceite_nome || etapa.aceito_por_nome || etapa.recurso_nome) ? (
               <Text className="text-xs font-medium text-emerald-800">
-                Aceita por {etapa.recurso_aceite_nome}{etapa.aceito_em ? ` em ${new Date(etapa.aceito_em).toLocaleString("pt-BR")}` : ""}
+                Aceita por {etapa.recurso_aceite_nome || etapa.aceito_por_nome || etapa.recurso_nome}{etapa.aceito_em ? ` em ${new Date(etapa.aceito_em).toLocaleString("pt-BR")}` : ""}
               </Text>
+            ) : null}
+            {etapa.status === "ENTREGUE" && etapa.arquivo_entrega_url ? (
+              <Pressable onPress={onBaixarEntrega} className="flex-row items-center gap-2 self-start rounded-lg border border-violet-200 bg-violet-50 px-3 py-2">
+                <Ionicons name="download-outline" size={16} color="#6d28d9" />
+                <Text className="text-xs font-semibold text-violet-800">Baixar {etapa.arquivo_entrega_nome || "arquivo entregue"}</Text>
+              </Pressable>
             ) : null}
           </View>
         </View>
@@ -358,7 +372,13 @@ export function EtapaContainer({
             color={isAlocada ? "#10b981" : isAguardando ? "#a3a3a3" : "#d97706"}
           />
           <Text className="text-xs text-neutral-500 flex-1">
-            {isAlocada
+            {etapa.status === "ENTREGUE"
+              ? "Entrega recebida"
+              : etapa.status === "ACEITA"
+              ? "Recurso aceitou a execução desta etapa"
+              : etapa.status === "DISPARADA"
+              ? "Aguardando aceite de um recurso elegível"
+              : isAlocada
               ? "Recurso alocado para a execução desta etapa"
               : isAguardando
               ? "Aguardando a etapa anterior para ser alocada"

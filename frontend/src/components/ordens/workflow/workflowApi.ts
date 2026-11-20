@@ -161,6 +161,19 @@ export async function dispararEtapaParaElegiveis(
   return data;
 }
 
+export async function baixarArquivoEntrega(url: string, nomeArquivo: string): Promise<void> {
+  if (typeof window === "undefined") return;
+  const { data } = await coreApi.get(url, { responseType: "blob" });
+  const blobUrl = window.URL.createObjectURL(new Blob([data]));
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}
+
 /**
  * Lista modelos de workflow pré-definidos (GET /api/v1/modelos-workflow)
  */
