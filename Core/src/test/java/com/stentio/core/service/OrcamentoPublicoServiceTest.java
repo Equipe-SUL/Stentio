@@ -28,6 +28,7 @@ class OrcamentoPublicoServiceTest {
     @Mock OrcamentoHistoricoRepository historico;
     @Mock OrcamentoDecisaoOutboxRepository outbox;
     @Mock RestTemplate emailServiceRestTemplate;
+    @Mock org.springframework.context.ApplicationEventPublisher eventos;
     private final Instant agora = Instant.parse("2026-10-10T17:00:00Z");
     private final String token = "6bbd9908-4783-4991-a4f9-b0fc1807115a";
     private Orcamento orcamento;
@@ -37,7 +38,7 @@ class OrcamentoPublicoServiceTest {
     @BeforeEach
     void preparar() {
         service = new OrcamentoPublicoService(repository, historico, outbox, mapper,
-                Clock.fixed(agora, ZoneOffset.UTC), emailServiceRestTemplate);
+                Clock.fixed(agora, ZoneOffset.UTC), emailServiceRestTemplate, eventos);
         orcamento = new Orcamento();
         orcamento.setId(UUID.randomUUID());
         orcamento.setStatus(StatusOrcamento.AGUARDANDO_APROVACAO);

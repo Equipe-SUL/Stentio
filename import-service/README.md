@@ -4,7 +4,7 @@ Versão baseada no `import-service(1).zip`, com persistência direta pelo ORM SQ
 
 O arquivo inteiro é validado antes da gravação. O importador agrupa profissionais
 por e-mail, resolve serviços por nome e monta `Recurso.tipos_servicos`. As tabelas
-`recursos`, `tipos_servico` e `recurso_tipos_servicos` são persistidas em uma única
+`recursos`, `tipos_servico` e `recursos_tipos_servico` são persistidas em uma única
 transação. A resposta de sucesso é enviada somente depois de o commit terminar.
 Não há tarefa em background nem envio ao Core nesta versão.
 
@@ -27,11 +27,10 @@ Swagger: http://localhost:8000/docs
 O exemplo está em `examples/recursos-servicos.csv`. Para o primeiro teste, use
 `POST /upload-csv/validar`, que não acessa o banco. Depois use `POST /upload-csv`.
 
-Se estiver rodando dentro do Docker Compose, configure `POSTGRES_HOST=postgres`
-(ou o nome real do serviço) e a porta interna do PostgreSQL, normalmente `5432`.
-Fora do Docker, use `localhost` e a porta publicada no computador.
-O Dockerfile existente expõe o importador na porta 8000; ele ainda precisa ser
-adicionado ao Compose do projeto caso você deseje iniciá-lo junto aos outros serviços.
+O `docker-compose.yml` do Stentio já inclui o serviço. Ele escuta na porta
+interna `8000`, publicada como `http://localhost:8123`, e conecta ao PostgreSQL
+com o host `postgres`. O Nginx do frontend encaminha as rotas de configuração e
+upload para o importador.
 
 ## Layout provisório do CSV
 
@@ -142,7 +141,7 @@ preservado. Confirme o nome real antes de importar:
 ```sql
 SELECT to_regclass('public.recursos'),
        to_regclass('public.tipos_servico'),
-       to_regclass('public.recurso_tipos_servicos');
+       to_regclass('public.recursos_tipos_servico');
 ```
 
 Se o nome real for `tipos_servicos`, altere `__tablename__` de `TipoServico` e o
@@ -164,15 +163,11 @@ uma constraint nova de unicidade de nome no catálogo.
 
 ## Integração com o frontend
 
-Esta entrega implementa o backend atualizado que escreve diretamente no banco.
-O frontend anterior foi criado para outro CSV (UUIDs de idiomas, preços e tipos)
-e para `/api/v1/importacoes/recursos*`. Esse contrato não é intercambiável.
-
-A tela deve chamar `/upload-csv/validar` e `/upload-csv` e consumir os novos
-schemas descritos em `/docs`. Não basta mudar somente a URL: a prévia agora
-contém `servicos` e o resultado contém contadores da transação integral.
-A rota de configuração foi mantida para carregar os limites no navegador.
-Nenhum arquivo do frontend foi substituído neste pacote.
+O frontend atual consome o contrato implementado por este serviço:
+`GET /api/v1/importacoes/configuracao`, `POST /upload-csv/validar` e
+`POST /upload-csv`. A prévia contém `servicos`; o resultado contém os contadores
+da transação integral. No Compose, o Nginx encaminha essas rotas ao
+`import-service`, publicado na porta host `8123`.
 
 CORS está configurado para os hosts locais do exemplo e permite credenciais.
 A versão recebida não implementava autenticação e ela não foi acrescentada

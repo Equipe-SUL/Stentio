@@ -43,10 +43,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             TokenService.TokenDados dados = tokenService.validarToken(token);
             var perfil = new SimpleGrantedAuthority(PREFIXO_ROLE + dados.role().name());
             var autenticacao = new UsernamePasswordAuthenticationToken(dados.email(), null, List.of(perfil));
-            // US-023: o id do usuário viaja em details, e não como principal, para
+            // US-023 / US-019: id e nome viajam em details, e não como principal, para
             // getName() continuar devolvendo o e-mail — é dele que dependem o histórico
             // da US-012 e todo @WithMockUser dos testes existentes.
-            autenticacao.setDetails(dados.usuarioId());
+            autenticacao.setDetails(new DadosUsuarioToken(dados.usuarioId(), dados.nome()));
             SecurityContextHolder.getContext().setAuthentication(autenticacao);
         } catch (JWTVerificationException | IllegalArgumentException ex) {
             // Token inválido segue sem autenticação; o SecurityConfig responde 401.

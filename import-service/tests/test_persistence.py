@@ -137,7 +137,7 @@ def test_database_failure_during_flush_rolls_back_every_table(monkeypatch):
             async with engine.begin() as connection:
                 await connection.execute(
                     text(
-                        "CREATE TRIGGER bloquear_vinculo BEFORE INSERT ON recurso_tipos_servico BEGIN SELECT RAISE(ABORT, 'forced failure'); END"
+                        "CREATE TRIGGER bloquear_vinculo BEFORE INSERT ON recursos_tipos_servico BEGIN SELECT RAISE(ABORT, 'forced failure'); END"
                     )
                 )
             response = await post(HEADER + REVIEW + BIA)
