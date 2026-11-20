@@ -107,38 +107,6 @@ public class EtapaOrdemServico {
     }
 
     /**
-     * US-014 RN.1: a etapa pode ser trabalhada — é a primeira da sequência ou a anterior já
-     * foi entregue.
-     *
-     * <p>É calculado, e não lido do status, de propósito. O status guarda o convite (ALOCADO,
-     * DISPARADA, ACEITA) e por isso não consegue guardar também a ordem: alocar com
-     * antecedência grava ALOCADO por cima de AGUARDANDO_ETAPA_ANTERIOR, e a informação de
-     * que a etapa ainda espera a anterior se perderia. A anterior entregue é a única fonte
-     * que não muda de sentido.
-     *
-     * @param anterior a etapa de ordem imediatamente anterior na mesma OS; nula para a
-     *                 primeira (ver {@code EtapaOrdemServicoRepository.anteriorDe})
-     */
-    public boolean liberada(EtapaOrdemServico anterior) {
-        if (ordem == SequenciaEtapas.ORDEM_INICIAL) {
-            return true;
-        }
-        if (anterior != null && anterior.getOrdem() != ordem - 1) {
-            throw new IllegalArgumentException("A etapa " + anterior.getOrdem()
-                    + " não é a anterior da etapa " + ordem);
-        }
-        return anterior != null && anterior.getStatus() == StatusEtapaOrdemServico.ENTREGUE;
-    }
-
-    /** US-014 CA.1: 409 quando a operação exige etapa liberada e a anterior não foi entregue. */
-    public void garantirLiberada(EtapaOrdemServico anterior) {
-        if (!liberada(anterior)) {
-            throw new TransicaoEtapaInvalidaException(
-                    "A etapa " + nome + " só pode avançar depois que a etapa anterior for entregue");
-        }
-    }
-
-    /**
      * US-012 CA.4. Realocar sobrescreve: trocar o profissional é uma alocação nova, e quem
      * decide se podia trocar é a RN.3, não este método.
      *
@@ -176,16 +144,12 @@ public class EtapaOrdemServico {
      * alguém que não foi quem aceitou.
      *
      * <p>RN.6: etapa já assumida ou entregue não volta para a fila.
-     *
-     * <p>US-014 CA.1: convite aberto só em etapa liberada. Disparar antes faria os elegíveis
-     * assumirem uma etapa que ainda não tem com o que trabalhar.
      */
-    public void disparar(EtapaOrdemServico anterior, Instant agora) {
+    public void disparar(Instant agora) {
         if (status == StatusEtapaOrdemServico.ACEITA || status == StatusEtapaOrdemServico.ENTREGUE) {
             throw new TransicaoEtapaInvalidaException(
                     "A etapa " + nome + " já foi assumida e não pode ser disparada de novo");
         }
-        garantirLiberada(anterior);
         this.recurso = null;
         this.alocadoEm = null;
         this.disparadaEm = agora;
@@ -195,18 +159,11 @@ public class EtapaOrdemServico {
     /**
      * US-013 CA.3. Só sai de um convite em aberto: quem chega depois do primeiro encontra
      * a etapa fora de DISPARADA e recebe a recusa.
-     *
-     * <p>US-014 CA.1: o convite aberto só é aceito em etapa liberada. O convite nominal
-     * (ALOCADO) pode ser aceito com antecedência: a pessoa se compromete com a etapa, mas
-     * só entrega depois que a anterior for entregue.
      */
-    public void aceitarPor(EtapaOrdemServico anterior, Recurso quemAceita, Instant agora) {
+    public void aceitarPor(Recurso quemAceita, Instant agora) {
         if (status != StatusEtapaOrdemServico.DISPARADA && status != StatusEtapaOrdemServico.ALOCADO) {
             throw new TransicaoEtapaInvalidaException(
                     "A etapa " + nome + " não está disponível para aceite");
-        }
-        if (status == StatusEtapaOrdemServico.DISPARADA) {
-            garantirLiberada(anterior);
         }
         this.recurso = quemAceita;
         this.aceitoEm = agora;
@@ -219,12 +176,8 @@ public class EtapaOrdemServico {
      * <p>Só vale para o convite nominal. Recusar um convite aberto é simplesmente não
      * aceitar — não há o que devolver, e tirar a etapa de DISPARADA porque alguém não
      * quis a esconderia de quem queria.
-     *
-     * <p>US-014 RN.1: volta para PENDENTE só se a etapa estiver liberada. Se a anterior
-     * ainda não foi entregue, volta para AGUARDANDO_ETAPA_ANTERIOR — senão a recusa de um
-     * convite feito com antecedência faria a etapa parecer pronta para começar.
      */
-    public void recusar(EtapaOrdemServico anterior) {
+    public void recusar() {
         if (status != StatusEtapaOrdemServico.ALOCADO) {
             throw new TransicaoEtapaInvalidaException(
                     "A etapa " + nome + " não tem um convite seu para recusar");
@@ -232,23 +185,15 @@ public class EtapaOrdemServico {
         this.recurso = null;
         this.alocadoEm = null;
         this.dataLimiteEntrega = null;
-        this.status = liberada(anterior)
-                ? StatusEtapaOrdemServico.PENDENTE
-                : StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR;
+        this.status = StatusEtapaOrdemServico.PENDENTE;
     }
 
-    /**
-     * US-013 CA.5 e RN.4: só entrega quem assumiu.
-     *
-     * <p>US-014 CA.1: e só em etapa liberada. Quem aceitou um convite nominal com
-     * antecedência espera a anterior ser entregue para entregar a sua.
-     */
-    public void entregar(EtapaOrdemServico anterior, String nomeDoArquivo, String caminho, Instant agora) {
+    /** US-013 CA.5 e RN.4: só entrega quem assumiu. */
+    public void entregar(String nomeDoArquivo, String caminho, Instant agora) {
         if (status != StatusEtapaOrdemServico.ACEITA) {
             throw new TransicaoEtapaInvalidaException(
                     "A etapa " + nome + " precisa estar aceita para receber a entrega");
         }
-        garantirLiberada(anterior);
         this.arquivoEntregueNome = nomeDoArquivo;
         this.arquivoEntregueCaminho = caminho;
         this.entregueEm = agora;

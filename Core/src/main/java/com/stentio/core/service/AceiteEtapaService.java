@@ -100,14 +100,10 @@ public class AceiteEtapaService {
 
         return switch (etapa.getStatus()) {
             case DISPARADA -> {
-                // US-014 CA.1: convite aberto só se aceita em etapa liberada. A anterior
-                // entregue não volta atrás, então conferir aqui, antes do UPDATE, basta.
-                etapa.garantirLiberada(etapas.anteriorDe(etapa));
                 garantirQueOPerfilAtende(etapa, recurso);
                 yield StatusEtapaOrdemServico.DISPARADA;
             }
             // CA.6: a alocação direta também espera aceite — só que de uma pessoa só.
-            // US-014 CA.1: pode ser aceita com antecedência; a ordem é cobrada na entrega.
             case ALOCADO -> {
                 if (!etapa.pertenceA(recurso)) {
                     throw new AlocacaoInvalidaException("Esta etapa foi alocada a outro profissional");

@@ -70,14 +70,10 @@ public class EntregaEtapaService {
             throw new TransicaoEtapaInvalidaException(
                     "A etapa " + etapa.getNome() + " não está em execução para receber entrega");
         }
-        // US-014 CA.1: pelo mesmo motivo, a ordem também é conferida antes de gravar o
-        // arquivo. Quem aceitou um convite nominal com antecedência espera a anterior.
-        EtapaOrdemServico anterior = etapas.anteriorDe(etapa);
-        etapa.garantirLiberada(anterior);
 
         ArquivoArmazenado salvo = storage.salvarTodos(List.of(arquivo)).getFirst();
         try {
-            etapa.entregar(anterior, salvo.nomeOriginal(), salvo.caminho(), clock.instant());
+            etapa.entregar(salvo.nomeOriginal(), salvo.caminho(), clock.instant());
             etapas.save(etapa);
         } catch (RuntimeException ex) {
             // O arquivo já está no disco e o banco não vai registrá-lo: apaga agora, senão
