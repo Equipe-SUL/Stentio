@@ -12,7 +12,7 @@ import com.stentio.core.model.HistoricoEtapa;
 import com.stentio.core.model.Idioma;
 import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.Recurso;
-import com.stentio.core.model.SituacaoEtapa;
+import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.model.Solicitacao;
 import com.stentio.core.model.TipoServico;
 import com.stentio.core.model.UnidadeCobranca;
@@ -47,8 +47,11 @@ class AlocacaoEtapaServiceTest {
     private final RecursoRepository recursos = mock(RecursoRepository.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
 
+    private final org.springframework.context.ApplicationEventPublisher eventos =
+            mock(org.springframework.context.ApplicationEventPublisher.class);
+
     private final AlocacaoEtapaService service = new AlocacaoEtapaService(
-            etapas, recursos, historico, Clock.fixed(AGORA, ZoneOffset.UTC));
+            etapas, recursos, historico, Clock.fixed(AGORA, ZoneOffset.UTC), eventos);
 
     private final UUID osId = UUID.randomUUID();
     private final UUID etapaId = UUID.randomUUID();
@@ -101,7 +104,10 @@ class AlocacaoEtapaServiceTest {
         when(ordem.getId()).thenReturn(osId);
         when(ordem.getSolicitacao()).thenReturn(solicitacao);
 
-        return new EtapaOrdemServico(ordem, 1, "Tradução Principal", tipoDaEtapa, 24);
+        EtapaOrdemServico nova = new EtapaOrdemServico(ordem, 1, "Tradução Principal", tipoDaEtapa, 24);
+        // Etapa carregada do banco sempre tem id; o evento de auditoria (US-019) depende dele.
+        org.springframework.test.util.ReflectionTestUtils.setField(nova, "id", etapaId);
+        return nova;
     }
 
     private Recurso recurso(String nome, TipoServico tipoHabilitado, Idioma origem, Idioma destino) {
@@ -133,7 +139,7 @@ class AlocacaoEtapaServiceTest {
 
         AlocacaoEtapaResponse resposta = alocar(anaId, gestor);
 
-        assertEquals(SituacaoEtapa.ALOCADO, resposta.statusEtapa());
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, resposta.statusEtapa());
         assertEquals("Ana Silva", resposta.recurso().nome());
         assertEquals(DAQUI_A_UMA_SEMANA, resposta.dataLimiteEntrega());
         assertEquals(DAQUI_A_UMA_SEMANA, etapa.getDataLimiteEntrega());
@@ -284,7 +290,7 @@ class AlocacaoEtapaServiceTest {
 
         AlocacaoEtapaResponse resposta = alocar(anaId, admin);
 
-        assertEquals(SituacaoEtapa.ALOCADO, resposta.statusEtapa());
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, resposta.statusEtapa());
         assertTrue(iniciada.alocada());
     }
 

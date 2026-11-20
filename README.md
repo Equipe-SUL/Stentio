@@ -66,6 +66,8 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 | **auth** | Autenticação, usuários, sessão e controle de acesso por perfil (JWT) | 8081 |
 | **core** | Domínio de negócio: clientes, recursos, catálogos, tabelas de preço e solicitações | 8082 |
 | **email-service** | Envio de e-mails, configuração SMTP e dados da empresa | 8083 |
+| **import-service** | Validação e importação de recursos e serviços via CSV | 8123 |
+| **chatbot-service** | Assistente com consulta ao PostgreSQL e histórico no MongoDB | 8000 |
 
 | Infraestrutura | Finalidade | Porta |
 | :-------------- | :---------- | :----: |
@@ -148,7 +150,7 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 Para desenvolver um serviço fora do Docker, instale também:
 
 - **JDK 25** — microsserviços Java (Spring Boot 4.1.1); use o Gradle embutido (`./gradlew`)
-- **Node.js 20+** — frontend (Expo SDK 57; o Dockerfile usa Node 24)
+- **Node.js 20+** — frontend (Expo; o Dockerfile usa Node 24)
 
 ### 1. Clonar o projeto
 
@@ -178,6 +180,15 @@ docker compose --profile dev up -d --build
 ```
 
 Acompanhe a subida com `docker compose ps` e os logs com `docker compose logs -f core`.
+
+Auth e Core aplicam suas baselines Flyway ao iniciar e usam o Hibernate apenas para
+validar o schema. Em um banco vazio, as tabelas e constraints — incluindo os estados
+da US-013 — são criados sem comandos SQL manuais. Cada serviço registra suas versões
+em uma tabela de histórico própria, pois ambos compartilham o schema `public`:
+[Core](./Core/src/main/resources/db/migration/core/V1__core_schema.sql) e
+[Auth](./Auth/src/main/resources/db/migration/auth/V1__auth_schema.sql). Depois do
+primeiro deploy, novas alterações devem ser adicionadas em novas versões, sem editar
+as baselines já aplicadas.
 
 | Serviço | URL |
 | :------ | :-- |
@@ -268,6 +279,8 @@ docker compose down -v
 
 - [`Auth/README.md`](./Auth/README.md) — autenticação, JWT, seed de admin e testes de API
 - [`email-service/README.md`](./email-service/README.md) — arquitetura do serviço de e-mail
+- [`import-service/README.md`](./import-service/README.md) — contrato da importação CSV
+- [`chatbot/README.md`](./chatbot/README.md) — integração e testes do chatbot
 - [`docs/usuario/configuracao-smtp.md`](./docs/usuario/configuracao-smtp.md) — manual de configuração do SMTP
 - [`docs/processo/product-backlog.md`](./docs/processo/product-backlog.md) — épicos, histórias e resumo por sprint
 

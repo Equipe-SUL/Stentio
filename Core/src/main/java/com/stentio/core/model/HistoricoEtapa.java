@@ -52,11 +52,16 @@ public class HistoricoEtapa {
     @JoinColumn(name = "recurso_anterior_id", updatable = false)
     private Recurso recursoAnterior;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "recurso_novo_id", nullable = false, updatable = false)
+    /**
+     * O profissional envolvido no evento: quem foi alocado, quem aceitou, quem recusou,
+     * quem entregou. Nulo no disparo, que não é dirigido a ninguém em particular.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recurso_novo_id", updatable = false)
     private Recurso recursoNovo;
 
-    @Column(name = "data_limite_entrega", nullable = false, updatable = false)
+    /** O prazo vigente no momento do evento; nulo quando ainda não havia um. */
+    @Column(name = "data_limite_entrega", updatable = false)
     private Instant dataLimiteEntrega;
 
     @Column(name = "realizado_por", nullable = false, updatable = false, length = 150)
@@ -65,6 +70,7 @@ public class HistoricoEtapa {
     @Column(name = "realizado_em", nullable = false, updatable = false)
     private Instant realizadoEm;
 
+    /** US-012: alocação e realocação, onde o evento se deduz de haver ou não um anterior. */
     public HistoricoEtapa(EtapaOrdemServico etapa, Recurso recursoAnterior, Recurso recursoNovo,
                           Instant dataLimiteEntrega, String realizadoPor, Instant realizadoEm) {
         this.etapa = etapa;
@@ -72,6 +78,20 @@ public class HistoricoEtapa {
         this.recursoAnterior = recursoAnterior;
         this.recursoNovo = recursoNovo;
         this.dataLimiteEntrega = dataLimiteEntrega;
+        this.realizadoPor = realizadoPor;
+        this.realizadoEm = realizadoEm;
+    }
+
+    /**
+     * US-013: disparo, aceite, recusa e entrega. Aqui o evento é dito, não deduzido — a
+     * mesma combinação de recursos descreve coisas diferentes conforme a ação.
+     */
+    public HistoricoEtapa(EtapaOrdemServico etapa, EventoEtapa evento, Recurso recurso,
+                          String realizadoPor, Instant realizadoEm) {
+        this.etapa = etapa;
+        this.evento = evento;
+        this.recursoNovo = recurso;
+        this.dataLimiteEntrega = etapa.getDataLimiteEntrega();
         this.realizadoPor = realizadoPor;
         this.realizadoEm = realizadoEm;
     }

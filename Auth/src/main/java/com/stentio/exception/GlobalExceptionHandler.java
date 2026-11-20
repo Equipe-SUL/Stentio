@@ -1,5 +1,8 @@
 package com.stentio.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,6 +15,8 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(CredenciaisLoginException.class)
     public ResponseEntity<Map<String, Object>> handleCredenciaisLogin(CredenciaisLoginException ex) {
@@ -40,6 +45,18 @@ public class GlobalExceptionHandler {
                 "error", status.getReasonPhrase(),
                 "message", message
         ));
+    }
+
+    /**
+     * O banco recusou a gravação. Sem este tratamento a exceção sobe até o servlet, o
+     * Spring encaminha para /error e a resposta sai como erro de autenticação, escondendo
+     * a causa. O texto do banco não vai para o cliente: ele descreve tabelas e colunas.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleViolacaoDeIntegridade(DataIntegrityViolationException ex) {
+        log.error("Violação de integridade ao gravar", ex);
+        return buildResponse(HttpStatus.CONFLICT,
+                "Não foi possível gravar o registro. Verifique os dados e tente novamente");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

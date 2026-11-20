@@ -99,6 +99,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // US-019: paginação ou intervalo de datas inválido na consulta de auditoria.
+    @ExceptionHandler(AuditoriaFiltroInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleAuditoriaFiltroInvalido(AuditoriaFiltroInvalidoException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @ExceptionHandler(OrdemServicoNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleOrdemServicoNaoEncontrada(OrdemServicoNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
@@ -128,6 +134,13 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
+    // US-013: a etapa não está no estado que a operação exige. 409 porque o pedido está
+    // bem formado — quem mudou foi o mundo, e é o que a CA.3 pede no aceite concorrente.
+    @ExceptionHandler(TransicaoEtapaInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleTransicaoInvalida(TransicaoEtapaInvalidaException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(EtapaNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleEtapaNaoEncontrada(EtapaNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
@@ -152,6 +165,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SolicitacaoInvalidaException.class)
     public ResponseEntity<ErroResponse> handleSolicitacaoInvalida(SolicitacaoInvalidaException ex) {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(SolicitacaoPublicaValidacaoException.class)
+    public ResponseEntity<ErroResponse> handleSolicitacaoPublicaValidacao(SolicitacaoPublicaValidacaoException ex) {
+        List<CampoErro> erros = ex.erros();
+        String mensagem = erros.size() == 1
+                ? erros.getFirst().mensagem()
+                : "Existem " + erros.size() + " campos inválidos";
+        return ResponseEntity.badRequest().body(ErroResponse.deValidacao(mensagem, erros));
     }
 
     // Id enviado no corpo que não existe: o erro está no dado enviado, por isso 400 e não 404.

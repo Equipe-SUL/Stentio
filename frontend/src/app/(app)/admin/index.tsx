@@ -14,6 +14,12 @@ const ITENS: HubItem[] = [
     route: "/configs/usuarios",
   },
   {
+    nome: "Logs de alterações",
+    descricao: "Histórico de mudanças de status em orçamentos, ordens de serviço e etapas.",
+    icon: "time-outline",
+    route: "/auditoria",
+  },
+  {
     nome: "Notificações",
     descricao: "Registros do sistema e pedidos de confirmação por usuário.",
     icon: "notifications-outline",

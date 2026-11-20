@@ -23,6 +23,7 @@ function correspondeARota(pathname: string, prefixo: string): boolean {
 export function podeAcessarRota(pathname: string, role: Role): boolean {
   if (correspondeARota(pathname, "/portal")) return role === "RECURSO";
   if (role === "RECURSO") return false;
+  if (correspondeARota(pathname, "/auditoria")) return role === "ADMIN";
   if (correspondeARota(pathname, "/dashboard")) return ROLES_GESTAO.includes(role);
   if (role === "ADMIN") return true;
 

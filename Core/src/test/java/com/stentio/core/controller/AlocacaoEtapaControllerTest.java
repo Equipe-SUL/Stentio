@@ -7,7 +7,7 @@ import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.AlocacaoNaoPermitidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.exception.GlobalExceptionHandler;
-import com.stentio.core.model.SituacaoEtapa;
+import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.service.AlocacaoEtapaService;
 import com.stentio.core.service.TokenService;
 import com.stentio.core.support.UsuarioAutenticado;
@@ -63,7 +63,7 @@ class AlocacaoEtapaControllerTest {
     private TokenService tokenService;
 
     private static AlocacaoEtapaResponse resposta() {
-        return new AlocacaoEtapaResponse(ETAPA_ID, SituacaoEtapa.ALOCADO,
+        return new AlocacaoEtapaResponse(ETAPA_ID, StatusEtapaOrdemServico.ALOCADO,
                 new AlocacaoEtapaResponse.Recurso(RECURSO_ID, "Ana Silva"), LIMITE);
     }
 

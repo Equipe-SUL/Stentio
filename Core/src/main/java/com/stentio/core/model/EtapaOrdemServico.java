@@ -2,6 +2,7 @@ package com.stentio.core.model;
 
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.AlocacaoNaoPermitidaException;
+import com.stentio.core.exception.TransicaoEtapaInvalidaException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -62,6 +63,29 @@ public class EtapaOrdemServico {
     @Column(name = "alocado_em")
     private Instant alocadoEm;
 
+    /** US-013: quando o convite aberto saiu. */
+    @Column(name = "disparada_em")
+    private Instant disparadaEm;
+
+    /** US-013 CA.3: quando o profissional assumiu. */
+    @Column(name = "aceito_em")
+    private Instant aceitoEm;
+
+    /** US-013 CA.5: quando o arquivo chegou. */
+    @Column(name = "entregue_em")
+    private Instant entregueEm;
+
+    /**
+     * US-013 CA.5: a entrega. Guarda o nome que o profissional enviou e o caminho interno
+     * do arquivo — o mesmo par que os anexos da solicitação já usam, porque o nome original
+     * é o que o revisor reconhece e o caminho é o que o storage entende.
+     */
+    @Column(name = "arquivo_entregue_nome", length = 255)
+    private String arquivoEntregueNome;
+
+    @Column(name = "arquivo_entregue_caminho", length = 500)
+    private String arquivoEntregueCaminho;
+
     @CreationTimestamp
     @Column(name = "criado_em", nullable = false, updatable = false,
             columnDefinition = "timestamp(6) with time zone default now() not null")
@@ -82,14 +106,27 @@ public class EtapaOrdemServico {
         return recurso != null;
     }
 
-    /** US-012: o que a API mostra, somando o fluxo com a alocação. */
-    public SituacaoEtapa situacao() {
-        return SituacaoEtapa.de(this);
+    /** RN.1: a primeira etapa é livre; as demais dependem da entrega da etapa anterior. */
+    public boolean liberada(StatusEtapaOrdemServico statusAnterior) {
+        return ordem == SequenciaEtapas.ORDEM_INICIAL
+                || statusAnterior == StatusEtapaOrdemServico.ENTREGUE;
+    }
+
+    public void liberar() {
+        if (status != StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " não está aguardando liberação");
+        }
+        status = StatusEtapaOrdemServico.PENDENTE;
     }
 
     /**
      * US-012 CA.4. Realocar sobrescreve: trocar o profissional é uma alocação nova, e quem
      * decide se podia trocar é a RN.3, não este método.
+     *
+     * <p>US-013: alocar passou a ser um convite nominal, não uma atribuição. O status vai
+     * para ALOCADO e fica esperando o aceite — a mesma coisa que a US-012 já mostrava na
+     * resposta, agora gravada em vez de deduzida.
      */
     public void alocar(Recurso recurso, Instant dataLimiteEntrega, Instant agora) {
         if (recurso == null) {
@@ -110,17 +147,102 @@ public class EtapaOrdemServico {
         this.recurso = recurso;
         this.dataLimiteEntrega = dataLimiteEntrega;
         this.alocadoEm = agora;
+        this.status = StatusEtapaOrdemServico.ALOCADO;
+    }
+
+    /**
+     * US-013 CA.1: abre a etapa para todos os elegíveis.
+     *
+     * <p>Um convite nominal anterior é desfeito de propósito: se o gestor decidiu abrir, a
+     * escolha de antes deixou de valer, e manter o recurso ali faria a etapa parecer de
+     * alguém que não foi quem aceitou.
+     *
+     * <p>RN.6: etapa já assumida ou entregue não volta para a fila.
+     */
+    public void disparar(Instant agora, boolean liberada) {
+        if (!liberada) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " aguarda a entrega da etapa anterior");
+        }
+        if (status != StatusEtapaOrdemServico.PENDENTE
+                && status != StatusEtapaOrdemServico.ALOCADO) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " não está disponível para disparo");
+        }
+        this.recurso = null;
+        this.alocadoEm = null;
+        this.disparadaEm = agora;
+        this.status = StatusEtapaOrdemServico.DISPARADA;
+    }
+
+    /**
+     * US-013 CA.3. Só sai de um convite em aberto: quem chega depois do primeiro encontra
+     * a etapa fora de DISPARADA e recebe a recusa.
+     */
+    public void aceitarPor(Recurso quemAceita, Instant agora, boolean liberada) {
+        if (status == StatusEtapaOrdemServico.DISPARADA && !liberada) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " aguarda a entrega da etapa anterior");
+        }
+        if (status != StatusEtapaOrdemServico.DISPARADA && status != StatusEtapaOrdemServico.ALOCADO) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " não está disponível para aceite");
+        }
+        this.recurso = quemAceita;
+        this.aceitoEm = agora;
+        this.status = StatusEtapaOrdemServico.ACEITA;
+    }
+
+    /**
+     * US-013 RN.5: o profissional devolve um convite nominal, e a etapa volta para a fila.
+     *
+     * <p>Só vale para o convite nominal. Recusar um convite aberto é simplesmente não
+     * aceitar — não há o que devolver, e tirar a etapa de DISPARADA porque alguém não
+     * quis a esconderia de quem queria.
+     */
+    public void recusar(boolean liberada) {
+        if (status != StatusEtapaOrdemServico.ALOCADO) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " não tem um convite seu para recusar");
+        }
+        this.recurso = null;
+        this.alocadoEm = null;
+        this.dataLimiteEntrega = null;
+        this.status = liberada
+                ? StatusEtapaOrdemServico.PENDENTE
+                : StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR;
+    }
+
+    /** US-013 CA.5 e RN.4: só entrega quem assumiu. */
+    public void entregar(String nomeDoArquivo, String caminho, Instant agora, boolean liberada) {
+        if (status != StatusEtapaOrdemServico.ACEITA) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " precisa estar aceita para receber a entrega");
+        }
+        if (!liberada) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " aguarda a entrega da etapa anterior");
+        }
+        this.arquivoEntregueNome = nomeDoArquivo;
+        this.arquivoEntregueCaminho = caminho;
+        this.entregueEm = agora;
+        this.status = StatusEtapaOrdemServico.ENTREGUE;
+    }
+
+    /** US-013 CA.7: a etapa é deste profissional? */
+    public boolean pertenceA(Recurso candidato) {
+        return recurso != null && candidato != null && recurso.getId().equals(candidato.getId());
     }
 
     /**
      * US-012 RN.3: a partir daqui o recurso já começou e a troca deixa de ser livre.
      *
-     * <p>Hoje nenhum status existente significa "em andamento" — a US-013 (aceite do
-     * recurso) e a US-014 (entrega) é que vão criá-los. Quando criarem, basta esta linha
-     * mudar: o service e o controller não sabem o que é "iniciada".
+     * <p>US-013: o gancho que a US-012 deixou agora responde de verdade. Começar é
+     * aceitar — enquanto o convite está só de pé (ALOCADO ou DISPARADA), ninguém
+     * trabalhou ainda e o gestor pode corrigir a escolha livremente.
      */
     public boolean iniciada() {
-        return false;
+        return status == StatusEtapaOrdemServico.ACEITA || status == StatusEtapaOrdemServico.ENTREGUE;
     }
 
     /**

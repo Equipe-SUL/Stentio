@@ -2,19 +2,19 @@ package com.stentio.core.service;
 
 import com.stentio.core.dto.DemandaRecursoResponse;
 import com.stentio.core.dto.RecursoResponse;
-import com.stentio.core.exception.AutoCadastroInvalidoException;
 import com.stentio.core.mapper.RecursoMapper;
 import com.stentio.core.model.EtapaOrdemServico;
-import com.stentio.core.model.Recurso;
 import com.stentio.core.model.Solicitacao;
+import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
-import com.stentio.core.repository.RecursoRepository;
 import com.stentio.core.support.CodigoVisual;
 import com.stentio.core.support.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  * US-023: o portal do profissional.
@@ -26,14 +26,14 @@ import java.util.List;
 @Service
 public class PortalRecursoService {
 
-    private final RecursoRepository recursos;
+    private final RecursoAutenticadoService recursoAutenticado;
     private final EtapaOrdemServicoRepository etapas;
     private final RecursoMapper recursoMapper;
 
-    public PortalRecursoService(RecursoRepository recursos,
+    public PortalRecursoService(RecursoAutenticadoService recursoAutenticado,
                                 EtapaOrdemServicoRepository etapas,
                                 RecursoMapper recursoMapper) {
-        this.recursos = recursos;
+        this.recursoAutenticado = recursoAutenticado;
         this.etapas = etapas;
         this.recursoMapper = recursoMapper;
     }
@@ -41,25 +41,28 @@ public class PortalRecursoService {
     // CA.5: "Meu perfil"
     @Transactional(readOnly = true)
     public RecursoResponse meuPerfil(UsuarioAutenticado ator) {
-        return recursoMapper.paraResponse(meuRecurso(ator));
+        return recursoMapper.paraResponse(recursoAutenticado.resolver(ator));
     }
 
-    // CA.5: "Minhas demandas", somente leitura
+    /**
+     * US-023 CA.5 e US-013 CA.4: o que está com o profissional e o que ele pode pegar.
+     *
+     * <p>Uma lista só, porque o status já separa as duas coisas sem ambiguidade: DISPARADA
+     * é convite aberto — nunca tem dono —, e ALOCADO, ACEITA ou ENTREGUE só aparecem aqui
+     * quando são desta pessoa. Um campo "minha" ao lado do status seria o mesmo dado
+     * escrito duas vezes, com uma chance a mais de divergirem.
+     *
+     * <p>CA.7 continua valendo: as duas consultas partem do recurso do token.
+     */
     @Transactional(readOnly = true)
     public List<DemandaRecursoResponse> minhasDemandas(UsuarioAutenticado ator) {
-        return etapas.listarPorRecurso(meuRecurso(ator).getId()).stream()
+        UUID recursoId = recursoAutenticado.resolver(ator).getId();
+
+        return Stream.concat(
+                        etapas.listarPorRecurso(recursoId).stream(),
+                        etapas.listarDisponiveisPara(recursoId, StatusEtapaOrdemServico.DISPARADA).stream())
                 .map(PortalRecursoService::paraDemanda)
                 .toList();
-    }
-
-    private Recurso meuRecurso(UsuarioAutenticado ator) {
-        if (!ator.temUsuarioId()) {
-            throw new AutoCadastroInvalidoException(
-                    "Sessão sem identificação de usuário. Entre novamente para acessar o portal");
-        }
-        return recursos.buscarPorUsuario(ator.usuarioId())
-                .orElseThrow(() -> new AutoCadastroInvalidoException(
-                        "Esta conta ainda não tem perfil de recurso. Conclua o cadastro para ver suas demandas"));
     }
 
     private static DemandaRecursoResponse paraDemanda(EtapaOrdemServico etapa) {
@@ -74,7 +77,7 @@ public class PortalRecursoService {
                 etapa.getTipoServico().getNome(),
                 solicitacao.getIdiomaOrigem().getNome(),
                 solicitacao.getIdiomaDestino().getNome(),
-                etapa.situacao(),
+                etapa.getStatus(),
                 etapa.getPrazoEstimadoHoras(),
                 etapa.getDataLimiteEntrega());
     }

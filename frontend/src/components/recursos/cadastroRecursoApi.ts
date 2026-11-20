@@ -45,6 +45,16 @@ export interface ErroCampoCadastro {
   mensagem: string;
 }
 
+export function perfilRecursoAusente(error: unknown): boolean {
+  if (!isAxiosError(error)) return false;
+  if (error.response?.status === 404) return true;
+  if (error.response?.status !== 400) return false;
+
+  const data = error.response.data as { message?: unknown } | undefined;
+  return data?.message ===
+    "Esta conta ainda não tem perfil de recurso. Conclua o cadastro para ver suas demandas";
+}
+
 export function errosDeCadastro(error: unknown): {
   campos: Record<string, string>;
   geral: string;

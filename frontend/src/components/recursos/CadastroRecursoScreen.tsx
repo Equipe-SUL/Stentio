@@ -10,6 +10,7 @@ import {
   criarContaRecurso,
   enviarPerfilRecurso,
   errosDeCadastro,
+  perfilRecursoAusente,
   type OpcaoCatalogoRecurso,
   type PrecoCadastroRecurso,
   type UnidadePrecoRecurso,
@@ -128,7 +129,7 @@ export function CadastroRecursoScreen() {
         .get("/api/v1/recurso/perfil")
         .then(() => router.replace("/portal"))
         .catch((error) => {
-          if (error?.response?.status === 404) {
+          if (perfilRecursoAusente(error)) {
             setCarregandoCatalogos(true);
             setEtapa("perfil");
           } else {

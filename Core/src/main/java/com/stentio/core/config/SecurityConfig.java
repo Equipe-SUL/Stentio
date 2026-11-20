@@ -1,5 +1,6 @@
 package com.stentio.core.config;
 
+import jakarta.servlet.DispatcherType;
 import com.stentio.core.model.Role;
 import com.stentio.core.service.TokenService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -56,6 +57,7 @@ public class SecurityConfig {
     private static final String ROTAS_ORDENS_SERVICO = "/api/v1/ordens-servico/**";
     private static final String ROTAS_MODELOS_WORKFLOW = "/api/v1/modelos-workflow/**";
     private static final String ROTAS_DASHBOARD = "/api/v1/dashboard/**";
+    private static final String ROTAS_AUDITORIA = "/api/v1/auditoria/**";
     private static final String ROTA_ENVIAR_ORCAMENTO = "/api/v1/orcamentos/*/enviar-aprovacao";
     private static final String ROTAS_ORCAMENTOS = "/api/v1/orcamentos/**";
 
@@ -75,6 +77,11 @@ public class SecurityConfig {
                                 escreverErro(response, HttpStatus.FORBIDDEN, "Perfil sem permissão para esta operação"))
                 )
                 .authorizeHttpRequests(rotas -> rotas
+                        // Um 500 vira um encaminhamento interno para /error, que volta a
+                        // passar por aqui. Sem esta linha ele cai na regra final de perfis e
+                        // o erro real é respondido como 401 ou 403 — o problema de verdade
+                        // fica invisível para quem está depurando.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         // Liberação das rotas do Swagger / OpenAPI
                         .requestMatchers(
                                 "/v3/api-docs/**",
@@ -82,6 +89,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        // US22-T1: somente leitura das opções e criação da solicitação são públicas.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/solicitacoes/opcoes").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/public/solicitacoes").permitAll()
                         // Links de orçamento autorizam somente estas operações públicas.
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/orcamentos").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/orcamentos/arquivos/**").permitAll()
@@ -139,6 +149,8 @@ public class SecurityConfig {
                         // é restrito ao Admin e ao Gestor de Projeto.
                         .requestMatchers(ROTAS_DASHBOARD)
                         .hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
+                        // US-019 RN.2: o log de auditoria é exclusivo do Administrador (403 para os demais).
+                        .requestMatchers(ROTAS_AUDITORIA).hasRole(Role.ADMIN.name())
                         // US-023 CA.7: o padrão deixa de ser "qualquer autenticado" e passa a
                         // ser "qualquer um da equipe". Assim uma rota nova criada amanhã não
                         // nasce aberta ao profissional por esquecimento — para liberá-la a ele

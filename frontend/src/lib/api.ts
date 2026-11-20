@@ -89,17 +89,17 @@ const DEFAULT_CORE_API_URL =
   Platform.OS === "android" ? "http://10.0.2.2:8082" : "http://localhost:8082";
 
 /**
- * Mesma regra do client de auth, e pelo mesmo motivo: no web a sessão vive em
- * cookie HttpOnly, e o cookie só é enviado para o host que o emitiu.
- *
- * Sem isso o Core ficava no host do .env (ex.: 10.0.0.138) enquanto o cookie
- * nascia no host da página (ex.: localhost) — o browser não mandava o cookie e
- * toda rota protegida do Core voltava 401, mesmo com login válido.
+ * O web de produção usa o proxy reverso do Nginx para manter a API same-origin
+ * com a página; no Expo web de desenvolvimento e no nativo usa a URL do serviço.
  */
 function resolveCoreApiUrl(): string {
   const configured = process.env.EXPO_PUBLIC_CORE_API_URL ?? DEFAULT_CORE_API_URL;
 
   if (Platform.OS === "web" && typeof window !== "undefined") {
+    if (process.env.NODE_ENV === "production") {
+      return "/";
+    }
+
     try {
       const url = new URL(configured);
       if (url.hostname !== window.location.hostname) {
