@@ -53,6 +53,11 @@ public class DisparoEtapaService {
         EtapaOrdemServico etapa = etapas.buscarParaAlocacao(ordemServicoId, etapaId)
                 .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
 
+        // US-014 CA.1: antes de procurar elegíveis. Etapa fora de ordem é 409 mesmo que
+        // não haja ninguém para convidar — o problema é a ordem, não a falta de gente.
+        EtapaOrdemServico anterior = etapas.anteriorDe(etapa);
+        etapa.garantirLiberada(anterior);
+
         List<Recurso> elegiveis = elegiveisPara(etapa);
         if (elegiveis.isEmpty()) {
             // Disparar para ninguém deixaria a etapa presa em DISPARADA esperando um
@@ -65,7 +70,7 @@ public class DisparoEtapaService {
         Instant agora = clock.instant();
 
         // A RN.6 mora na entidade: etapa já assumida ou entregue não volta para a fila.
-        etapa.disparar(agora);
+        etapa.disparar(anterior, agora);
         etapas.save(etapa);
 
         // CA.2: os convites entram na mesma transação do disparo. Em transações separadas,
