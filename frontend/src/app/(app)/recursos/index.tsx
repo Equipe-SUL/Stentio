@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, View, Text, Pressable, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { DataTable } from "../../../components/usuarios/DataTable";
@@ -7,6 +7,7 @@ import { StatusBadge } from "../../../components/usuarios/Badge";
 import { RecursoFormModal, RecursoFormValues, UnidadeCobranca } from "../../../components/usuarios/RecursoFormModal";
 import { CabecalhoTela } from "../../../components/navegacao/CabecalhoTela";
 import { coreApi, getApiErrorMessage } from "../../../lib/api";
+import { useSession } from "../../../lib/session";
 import type { ColumnDef, FiltroStatus } from "../../../components/usuarios/types";
 
 interface TipoServicoResumo {
@@ -34,6 +35,7 @@ interface Recurso {
   email: string;
   telefone: string;
   ativo: boolean;
+  verificado: boolean;
   tiposServico: TipoServicoResumo[];
   precos: PrecoRecurso[];
 }
@@ -62,16 +64,17 @@ function ativoDeFiltro(status: FiltroStatus): boolean | undefined {
 // RecursoFiltro.java só aceita tipoServicoId, idiomaOrigemId, idiomaDestinoId e ativo.
 // Mandar ?nome= não filtra nada (o Spring descarta o parâmetro), então a busca por nome
 // é feita no cliente, sobre os recursos que a listagem devolve.
-function montarQueryRecurso(ativo?: boolean): string {
+function montarQueryRecurso(ativo?: boolean, verificado?: boolean): string {
   const params = new URLSearchParams();
   if (ativo !== undefined) params.set("ativo", String(ativo));
+  if (verificado !== undefined) params.set("verificado", String(verificado));
   params.set("size", "100");
   return params.toString();
 }
 
-async function listarRecursos(ativo?: boolean): Promise<Recurso[]> {
+async function listarRecursos(ativo?: boolean, verificado?: boolean): Promise<Recurso[]> {
   const { data } = await coreApi.get<{ content: Recurso[] }>(
-    `/api/v1/recursos?${montarQueryRecurso(ativo)}`
+    `/api/v1/recursos?${montarQueryRecurso(ativo, verificado)}`
   );
   return data.content ?? [];
 }
@@ -128,8 +131,10 @@ const VALORES_INICIAIS_VAZIOS: RecursoFormValues = {
 };
 
 export default function RecursosPage() {
+  const { usuario } = useSession();
   const [termo, setTermo] = useState("");
   const [status, setStatus] = useState<FiltroStatus>("todos");
+  const [filtroVerificacao, setFiltroVerificacao] = useState<"todos" | "pendentes">("todos");
 
   const [recursos, setRecursos] = useState<Recurso[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -143,15 +148,18 @@ export default function RecursosPage() {
   const [erroCriacao, setErroCriacao] = useState("");
   const [erroEdicao, setErroEdicao] = useState("");
   const [erroAcao, setErroAcao] = useState("");
+  const [verificandoId, setVerificandoId] = useState<string | null>(null);
+
+  const podeVerificar = usuario?.role === "ADMIN" || usuario?.role === "GESTOR_PROJETO";
 
   const recarregar = useCallback(() => {
     setCarregando(true);
     setErroLista("");
-    return listarRecursos(ativoDeFiltro(status))
+    return listarRecursos(ativoDeFiltro(status), filtroVerificacao === "pendentes" ? false : undefined)
       .then(setRecursos)
       .catch((error) => setErroLista(getApiErrorMessage(error)))
       .finally(() => setCarregando(false));
-  }, [status]);
+  }, [filtroVerificacao, status]);
 
   // Digitação não vai mais no ar: filtra o que já veio da listagem, sem novo fetch.
   const recursosFiltrados = useMemo(() => {
@@ -161,8 +169,13 @@ export default function RecursosPage() {
   }, [recursos, termo]);
 
   useEffect(() => {
-    recarregar();
-  }, [recarregar]);
+    let ativo = true;
+    listarRecursos(ativoDeFiltro(status), filtroVerificacao === "pendentes" ? false : undefined)
+      .then((lista) => { if (ativo) setRecursos(lista); })
+      .catch((error) => { if (ativo) setErroLista(getApiErrorMessage(error)); })
+      .finally(() => { if (ativo) setCarregando(false); });
+    return () => { ativo = false; };
+  }, [filtroVerificacao, status]);
 
   useEffect(() => {
     Promise.all([listarTiposServicoAtivos(), listarIdiomasAtivos()])
@@ -228,6 +241,19 @@ export default function RecursosPage() {
       .catch((error) => setErroEdicao(getApiErrorMessage(error)));
   }
 
+  async function handleVerificar(recurso: Recurso) {
+    setErroAcao("");
+    setVerificandoId(recurso.id);
+    try {
+      await coreApi.patch(`/api/v1/recursos/${recurso.id}/verificacao`, { verificado: true });
+      await recarregar();
+    } catch (error) {
+      setErroAcao(getApiErrorMessage(error));
+    } finally {
+      setVerificandoId(null);
+    }
+  }
+
   const columns: ColumnDef<Recurso>[] = [
     { key: "nome", header: "Nome" },
     { key: "email", header: "Email", hideOnMobile: true },
@@ -257,19 +283,44 @@ export default function RecursosPage() {
       ),
     },
     {
+      key: "verificado",
+      header: "Verificação",
+      render: (recurso) => (
+        <View className={`self-start rounded-md px-2.5 py-1 ${recurso.verificado ? "bg-emerald-50" : "bg-amber-50"}`}>
+          <Text className={`text-xs font-medium ${recurso.verificado ? "text-emerald-700" : "text-amber-700"}`}>
+            {recurso.verificado ? "Verificado" : "Pendente"}
+          </Text>
+        </View>
+      ),
+    },
+    {
       key: "id",
       header: "",
-      width: 92,
+      width: podeVerificar ? 170 : 92,
       align: "right",
       render: (recurso) => (
-        <RowActions
-          onEdit={() => {
-            setErroEdicao("");
-            setRecursoEmEdicao(recurso);
-          }}
-          onToggle={() => handleToggleStatus(recurso)}
-          toggleLabel={recurso.ativo ? "Desativar" : "Ativar"}
-        />
+        <View className="flex-row items-center justify-end gap-1">
+          {podeVerificar && !recurso.verificado ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Verificar recurso ${recurso.nome}`}
+              disabled={verificandoId === recurso.id}
+              onPress={() => void handleVerificar(recurso)}
+              className="flex-row items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-2"
+            >
+              {verificandoId === recurso.id ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="checkmark-circle-outline" size={15} color="#fff" />}
+              <Text className="text-xs font-semibold text-white">Verificar</Text>
+            </Pressable>
+          ) : null}
+          <RowActions
+            onEdit={() => {
+              setErroEdicao("");
+              setRecursoEmEdicao(recurso);
+            }}
+            onToggle={() => handleToggleStatus(recurso)}
+            toggleLabel={recurso.ativo ? "Desativar" : "Ativar"}
+          />
+        </View>
       ),
     },
   ];
@@ -314,17 +365,44 @@ export default function RecursosPage() {
             />
           </View>
 
-          <View className="flex-row gap-1 self-start rounded-lg bg-neutral-100 p-1">
+          <View className="flex-row flex-wrap gap-1 self-start rounded-lg bg-neutral-100 p-1">
             {(["todos", "ativos", "inativos"] as FiltroStatus[]).map((opcao) => {
               const selecionado = status === opcao;
               return (
                 <Pressable
                   key={opcao}
-                  onPress={() => setStatus(opcao)}
+                  onPress={() => {
+                    setErroLista("");
+                    setCarregando(true);
+                    setStatus(opcao);
+                  }}
                   className={`items-center rounded-md px-3 py-1.5 ${selecionado ? "bg-white shadow-sm" : ""}`}
                 >
                   <Text className={`text-xs font-medium ${selecionado ? "text-neutral-900" : "text-neutral-500"}`}>
                     {opcao === "todos" ? "Todos" : opcao === "ativos" ? "Ativos" : "Inativos"}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <View className="flex-row gap-1 self-start rounded-lg bg-neutral-100 p-1">
+            {(["todos", "pendentes"] as const).map((opcao) => {
+              const selecionado = filtroVerificacao === opcao;
+              return (
+                <Pressable
+                  key={opcao}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: selecionado }}
+                  onPress={() => {
+                    setErroLista("");
+                    setCarregando(true);
+                    setFiltroVerificacao(opcao);
+                  }}
+                  className={`flex-row items-center gap-1.5 rounded-md px-3 py-1.5 ${selecionado ? "bg-white shadow-sm" : ""}`}
+                >
+                  {opcao === "pendentes" ? <Ionicons name="time-outline" size={14} color={selecionado ? "#b45309" : "#737373"} /> : null}
+                  <Text className={`text-xs font-medium ${selecionado ? "text-neutral-900" : "text-neutral-500"}`}>
+                    {opcao === "todos" ? "Todas as verificações" : "Pendentes de verificação"}
                   </Text>
                 </Pressable>
               );

@@ -4,11 +4,12 @@ const ROLES_OPERACIONAIS: readonly Role[] = ["ADMIN", "ATENDENTE", "GESTOR_PROJE
 const ROLES_CATALOGO: readonly Role[] = ["ADMIN", "FINANCEIRO", "GESTOR_PROJETO"];
 const ROLES_GESTAO: readonly Role[] = ["ADMIN", "GESTOR_PROJETO"];
 
-const ROLE_HOME: Record<Role, "/admin" | "/orcamentos" | "/ordens" | "/clientes"> = {
+const ROLE_HOME: Record<Role, "/admin" | "/orcamentos" | "/ordens" | "/clientes" | "/portal"> = {
   ADMIN: "/admin",
   ATENDENTE: "/orcamentos",
   GESTOR_PROJETO: "/ordens",
   FINANCEIRO: "/clientes",
+  RECURSO: "/portal",
 };
 
 export function homeRouteForRole(role: Role) {
@@ -20,6 +21,8 @@ function correspondeARota(pathname: string, prefixo: string): boolean {
 }
 
 export function podeAcessarRota(pathname: string, role: Role): boolean {
+  if (correspondeARota(pathname, "/portal")) return role === "RECURSO";
+  if (role === "RECURSO") return false;
   if (correspondeARota(pathname, "/auditoria")) return role === "ADMIN";
   if (correspondeARota(pathname, "/dashboard")) return ROLES_GESTAO.includes(role);
   if (role === "ADMIN") return true;

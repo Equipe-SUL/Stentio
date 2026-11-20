@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import Svg, { Defs, Pattern, Rect, Circle, G } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, router, type Href } from 'expo-router';
-import { getApiErrorMessage } from '../lib/api';
+import { router, type Href } from 'expo-router';
+import { coreApi, getApiErrorMessage } from '../lib/api';
 import { useSession } from '../lib/session';
 import { homeRouteForRole } from '../lib/routePermissions';
+import { perfilRecursoAusente } from '../components/recursos/cadastroRecursoApi';
 
 const languagesListA = [
   "Hallo, Willkommen", "مرحبا بك", "你好，歡迎", "안녕하세요, 환영합니다",
@@ -234,6 +235,30 @@ export default function LoginScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    if (carregando || !usuario) return;
+    let ativo = true;
+    if (usuario.role !== "RECURSO") {
+      router.replace(homeRouteForRole(usuario.role) as Href);
+      return () => { ativo = false; };
+    }
+
+    coreApi
+      .get("/api/v1/recurso/perfil")
+      .then(() => {
+        if (ativo) router.replace("/portal");
+      })
+      .catch((error) => {
+        if (!ativo) return;
+        if (perfilRecursoAusente(error)) {
+          router.replace("/cadastro-recurso?completarPerfil=1" as Href);
+        } else {
+          setErrorMessage("Não foi possível validar seu perfil. Tente novamente.");
+        }
+      });
+    return () => { ativo = false; };
+  }, [carregando, usuario]);
+
   const handleLogin = async () => {
     setErrorMessage('');
     if (!email || !password) {
@@ -244,16 +269,28 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       const perfil = await entrar(email, password, rememberSession);
+      if (perfil.role === "RECURSO") {
+        await coreApi.get("/api/v1/recurso/perfil");
+      }
       router.replace(homeRouteForRole(perfil.role) as Href);
     } catch (error) {
+      if (perfilRecursoAusente(error)) {
+        router.replace("/cadastro-recurso?completarPerfil=1" as Href);
+        return;
+      }
       setErrorMessage(getApiErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!carregando && usuario) {
-    return <Redirect href={homeRouteForRole(usuario.role) as Href} />;
+  if (!carregando && usuario && !errorMessage) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#8c5230" />
+        <Text className="mt-3 text-sm text-neutral-500">Abrindo seu espaço...</Text>
+      </View>
+    );
   }
 
   return (
@@ -339,6 +376,10 @@ export default function LoginScreen() {
                   <Text className="text-white font-bold text-lg tracking-wide">Entrar</Text>
                 )}
               </TouchableOpacity>
+
+              <Pressable onPress={() => router.push("/cadastro-recurso")} className="mt-5 items-center py-2">
+                <Text className="text-sm text-neutral-600">É profissional? <Text className="font-semibold text-[#8c5230]">Cadastre-se como recurso</Text></Text>
+              </Pressable>
 
             </View>
 
