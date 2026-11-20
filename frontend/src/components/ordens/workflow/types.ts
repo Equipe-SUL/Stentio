@@ -1,7 +1,10 @@
 export type StatusEtapaWorkflow =
   | "PENDENTE"
   | "AGUARDANDO_ETAPA_ANTERIOR"
-  | "ALOCADO";
+  | "ALOCADO"
+  | "DISPARADA"
+  | "ACEITA"
+  | "ENTREGUE";
 
 export interface EtapaWorkflow {
   id?: string;
@@ -14,6 +17,17 @@ export interface EtapaWorkflow {
   recurso_id?: string | null;
   recurso_nome?: string | null;
   data_limite_entrega?: string | null;
+  recurso_aceite_nome?: string | null;
+  aceito_em?: string | null;
+  arquivo_entrega_url?: string | null;
+  arquivo_entrega_nome?: string | null;
+  entregue_em?: string | null;
+}
+
+export interface DisparoEtapaResponse {
+  etapaId: string;
+  status: "DISPARADA";
+  recursosNotificados: number;
 }
 
 export interface OrdemServicoWorkflowResponse {

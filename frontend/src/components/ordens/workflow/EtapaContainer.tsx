@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, TextInput } from "react-native";
+import { ActivityIndicator, View, Text, Pressable, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import type { EtapaWorkflow, TipoServicoOption } from "./types";
@@ -16,6 +16,11 @@ interface EtapaContainerProps {
   onDescer: () => void;
   onRemover: () => void;
   onAlocarRecurso: () => void;
+  onDisparar: () => void;
+  confirmandoDisparo: boolean;
+  disparando: boolean;
+  onConfirmarDisparo: () => void;
+  onCancelarDisparo: () => void;
   onAtualizarCampo: (campo: keyof EtapaWorkflow, valor: any) => void;
 }
 
@@ -38,6 +43,11 @@ export function EtapaContainer({
   onDescer,
   onRemover,
   onAlocarRecurso,
+  onDisparar,
+  confirmandoDisparo,
+  disparando,
+  onConfirmarDisparo,
+  onCancelarDisparo,
   onAtualizarCampo,
 }: EtapaContainerProps) {
   const isAlocada = etapa.status === "ALOCADO";
@@ -299,6 +309,38 @@ export function EtapaContainer({
                 ) : null}
               </>
             )}
+            {etapa.status === "PENDENTE" && etapa.id ? (
+              <>
+                {disparando ? (
+                  <View className="flex-row items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-2.5 px-3">
+                    <ActivityIndicator size="small" color="#1d4ed8" />
+                    <Text className="text-xs font-semibold text-blue-800">Disparando...</Text>
+                  </View>
+                ) : confirmandoDisparo ? (
+                  <View className="gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                    <Text className="text-xs text-blue-900">Disparar para todos os recursos elegíveis?</Text>
+                    <View className="flex-row gap-2">
+                      <Pressable onPress={onConfirmarDisparo} disabled={disparando} className="rounded-lg bg-blue-700 px-3 py-2">
+                        <Text className="text-xs font-semibold text-white">Confirmar disparo</Text>
+                      </Pressable>
+                      <Pressable onPress={onCancelarDisparo} className="rounded-lg border border-neutral-300 bg-white px-3 py-2">
+                        <Text className="text-xs font-semibold text-neutral-700">Cancelar</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : (
+                  <Pressable onPress={onDisparar} className="flex-row items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 py-2.5 px-3">
+                    <Ionicons name="send-outline" size={15} color="#1d4ed8" />
+                    <Text className="text-xs font-semibold text-blue-800">Disparar para elegíveis</Text>
+                  </Pressable>
+                )}
+              </>
+            ) : null}
+            {etapa.status === "ACEITA" && etapa.recurso_aceite_nome ? (
+              <Text className="text-xs font-medium text-emerald-800">
+                Aceita por {etapa.recurso_aceite_nome}{etapa.aceito_em ? ` em ${new Date(etapa.aceito_em).toLocaleString("pt-BR")}` : ""}
+              </Text>
+            ) : null}
           </View>
         </View>
 

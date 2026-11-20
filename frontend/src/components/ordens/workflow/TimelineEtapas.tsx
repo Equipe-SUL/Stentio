@@ -15,6 +15,11 @@ interface TimelineEtapasProps {
   onAbrirAlocacao: (etapa: EtapaWorkflow) => void;
   onAtualizarCampoEtapa: (index: number, campo: keyof EtapaWorkflow, valor: any) => void;
   onAbrirCarregarModelo: () => void;
+  etapaConfirmandoDisparoId: string | null;
+  etapaDisparandoId: string | null;
+  onDisparar: (etapa: EtapaWorkflow) => void;
+  onConfirmarDisparo: (etapa: EtapaWorkflow) => void;
+  onCancelarDisparo: () => void;
 }
 
 export function TimelineEtapas({
@@ -28,6 +33,11 @@ export function TimelineEtapas({
   onAbrirAlocacao,
   onAtualizarCampoEtapa,
   onAbrirCarregarModelo,
+  etapaConfirmandoDisparoId,
+  etapaDisparandoId,
+  onDisparar,
+  onConfirmarDisparo,
+  onCancelarDisparo,
 }: TimelineEtapasProps) {
   const totalHoras = etapas.reduce(
     (acc, e) => acc + (Number(e.prazo_estimado_horas) || 0),
@@ -180,6 +190,11 @@ export function TimelineEtapas({
             onDescer={() => onDescerEtapa(idx)}
             onRemover={() => onRemoverEtapa(idx)}
             onAlocarRecurso={() => onAbrirAlocacao(etapa)}
+            onDisparar={() => onDisparar(etapa)}
+            confirmandoDisparo={etapaConfirmandoDisparoId === etapa.id}
+            disparando={etapaDisparandoId === etapa.id}
+            onConfirmarDisparo={() => onConfirmarDisparo(etapa)}
+            onCancelarDisparo={onCancelarDisparo}
             onAtualizarCampo={(campo, valor) => onAtualizarCampoEtapa(idx, campo, valor)}
           />
         ))}

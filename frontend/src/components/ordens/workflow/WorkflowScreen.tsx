@@ -14,6 +14,7 @@ import { buscarOrdemServicoPorId } from "../ordensApi";
 import type { OrdemServicoDetalhe } from "../types";
 import {
   alocarRecursoEtapa,
+  dispararEtapaParaElegiveis,
   aplicarModeloWorkflow,
   buscarWorkflowOrdem,
   listarModelosWorkflow,
@@ -62,6 +63,8 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
   const [modalAlocacaoEtapa, setModalAlocacaoEtapa] = useState<EtapaWorkflow | null>(null);
   const [modalCarregarModeloAberto, setModalCarregarModeloAberto] = useState(false);
   const [modalSalvarModeloAberto, setModalSalvarModeloAberto] = useState(false);
+  const [etapaConfirmandoDisparoId, setEtapaConfirmandoDisparoId] = useState<string | null>(null);
+  const [disparandoEtapaId, setDisparandoEtapaId] = useState<string | null>(null);
 
   // Mantém a etapa em memória e o status exibido da OS em sincronia com o backend
   const aplicarWorkflow = (dados: OrdemServicoWorkflowResponse) => {
@@ -255,6 +258,24 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
       aplicarWorkflow(dadosAtualizados);
     } catch (err) {
       setErro(getApiErrorMessage(err));
+    }
+  };
+
+  const handleConfirmarDisparo = async (etapa: EtapaWorkflow) => {
+    if (!etapa.id || etapa.status !== "PENDENTE") return;
+    try {
+      setDisparandoEtapaId(etapa.id);
+      setEtapaConfirmandoDisparoId(null);
+      setErro(null);
+      const resultado = await dispararEtapaParaElegiveis(ordemId, etapa.id);
+      setMensagemSucesso(resultado.recursosNotificados > 0
+        ? `Etapa disparada. ${resultado.recursosNotificados} ${resultado.recursosNotificados === 1 ? "recurso notificado" : "recursos notificados"}.`
+        : "Nenhum recurso elegível foi encontrado para esta etapa.");
+      aplicarWorkflow(await buscarWorkflowOrdem(ordemId));
+    } catch (err) {
+      setErro(getApiErrorMessage(err));
+    } finally {
+      setDisparandoEtapaId(null);
     }
   };
 
@@ -517,6 +538,11 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
           onAbrirAlocacao={handleAbrirAlocacao}
           onAtualizarCampoEtapa={handleAtualizarCampoEtapa}
           onAbrirCarregarModelo={abrirModalCarregarModelo}
+          etapaConfirmandoDisparoId={etapaConfirmandoDisparoId}
+          etapaDisparandoId={disparandoEtapaId}
+          onDisparar={(etapa) => setEtapaConfirmandoDisparoId(etapa.id ?? null)}
+          onConfirmarDisparo={(etapa) => void handleConfirmarDisparo(etapa)}
+          onCancelarDisparo={() => setEtapaConfirmandoDisparoId(null)}
         />
       </View>
 

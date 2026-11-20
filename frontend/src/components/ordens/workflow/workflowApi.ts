@@ -2,6 +2,7 @@ import { coreApi } from "../../../lib/api";
 import type {
   AlocarRecursoPayload,
   CriarModeloWorkflowPayload,
+  DisparoEtapaResponse,
   EtapaWorkflow,
   ModeloWorkflow,
   OrdemServicoWorkflowResponse,
@@ -16,6 +17,8 @@ const ENDPOINTS = {
     `/api/v1/ordens-servico/${osId}/etapas/aplicar-modelo/${modeloId}`,
   alocacao: (osId: string, etapaId: string) =>
     `/api/v1/ordens-servico/${osId}/etapas/${etapaId}/alocacao`,
+  disparo: (osId: string, etapaId: string) =>
+    `/api/v1/ordens-servico/${osId}/etapas/${etapaId}/disparo`,
   modelosWorkflow: "/api/v1/modelos-workflow",
   tiposServico: "/api/v1/tipos-servico",
   recursos: "/api/v1/recursos",
@@ -148,6 +151,14 @@ export async function alocarRecursoEtapa(
   payload: AlocarRecursoPayload,
 ): Promise<void> {
   await coreApi.post(ENDPOINTS.alocacao(osId, etapaId), payload);
+}
+
+export async function dispararEtapaParaElegiveis(
+  osId: string,
+  etapaId: string,
+): Promise<DisparoEtapaResponse> {
+  const { data } = await coreApi.post<DisparoEtapaResponse>(ENDPOINTS.disparo(osId, etapaId));
+  return data;
 }
 
 /**
