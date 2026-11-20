@@ -81,6 +81,7 @@ services:
       # máquina do dev isto precisa ser o endereço público.
       ORCAMENTO_URL_CONSULTA_PUBLICA: ${ORCAMENTO_URL_CONSULTA_PUBLICA:-http://localhost/orcamento}
       APP_PORTAL_RECURSO_URL: ${PORTAL_RECURSO_URL:-http://localhost/recurso/demandas}
+      APP_EQUIPE_EMAIL: ${EQUIPE_EMAIL:-operacoes@stentio.local}
       APP_ARQUIVOS_DIRETORIO: /app/uploads
 
     ports:

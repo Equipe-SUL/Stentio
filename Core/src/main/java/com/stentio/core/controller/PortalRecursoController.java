@@ -2,9 +2,11 @@ package com.stentio.core.controller;
 
 import com.stentio.core.dto.AceiteEtapaResponse;
 import com.stentio.core.dto.DemandaRecursoResponse;
+import com.stentio.core.dto.EtapaStatusResponse;
 import com.stentio.core.dto.RecursoResponse;
 import com.stentio.core.service.AceiteEtapaService;
 import com.stentio.core.service.PortalRecursoService;
+import com.stentio.core.service.RecusaEtapaService;
 import com.stentio.core.support.UsuarioAutenticado;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.security.core.Authentication;
@@ -35,11 +37,14 @@ public class PortalRecursoController {
 
     private final PortalRecursoService portalRecursoService;
     private final AceiteEtapaService aceiteEtapaService;
+    private final RecusaEtapaService recusaEtapaService;
 
     public PortalRecursoController(PortalRecursoService portalRecursoService,
-                                   AceiteEtapaService aceiteEtapaService) {
+                                   AceiteEtapaService aceiteEtapaService,
+                                   RecusaEtapaService recusaEtapaService) {
         this.portalRecursoService = portalRecursoService;
         this.aceiteEtapaService = aceiteEtapaService;
+        this.recusaEtapaService = recusaEtapaService;
     }
 
     /**
@@ -50,6 +55,13 @@ public class PortalRecursoController {
     @Operation(summary = "Aceita uma etapa disparada; quem aceitar primeiro fica com ela")
     public AceiteEtapaResponse aceitar(@PathVariable UUID etapaId, Authentication autenticacao) {
         return aceiteEtapaService.aceitar(etapaId, UsuarioAutenticado.de(autenticacao));
+    }
+
+    /** US-013 CA.6: recusar a alocação direta. A etapa volta a pendente. */
+    @PostMapping("/etapas/{etapaId}/recusar")
+    @Operation(summary = "Recusa uma etapa alocada diretamente ao profissional autenticado")
+    public EtapaStatusResponse recusar(@PathVariable UUID etapaId, Authentication autenticacao) {
+        return recusaEtapaService.recusar(etapaId, UsuarioAutenticado.de(autenticacao));
     }
 
     @GetMapping("/etapas")

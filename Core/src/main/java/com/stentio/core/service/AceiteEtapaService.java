@@ -45,7 +45,7 @@ public class AceiteEtapaService {
         EtapaOrdemServico etapa = etapas.buscarParaAceite(etapaId)
                 .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
 
-        garantirQuePodeAceitar(etapa, recurso);
+        StatusEtapaOrdemServico esperado = estadoDeOndeSaiOAceite(etapa, recurso);
 
         // CA.3: o status esperado entra na condição do UPDATE. Quem perder a corrida
         // atualiza zero linhas, e zero linhas é a resposta 409 — não um aceite silencioso
@@ -55,10 +55,11 @@ public class AceiteEtapaService {
                 recurso,
                 clock.instant(),
                 StatusEtapaOrdemServico.ACEITA,
-                StatusEtapaOrdemServico.DISPARADA);
+                esperado);
 
         if (atualizadas == 0) {
-            throw new TransicaoEtapaInvalidaException("Esta etapa já foi aceita por outro profissional");
+            throw new TransicaoEtapaInvalidaException(
+                    "Esta etapa mudou de estado antes do seu aceite. Recarregue a lista");
         }
 
         // O UPDATE em massa limpa o contexto de persistência, então a etapa em memória
@@ -74,15 +75,41 @@ public class AceiteEtapaService {
     }
 
     /**
-     * CA.4: só aceita quem poderia ter sido convidado. O convite vai por e-mail e o id da
-     * etapa viaja em texto; sem esta conferência, um link repassado valeria como permissão.
+     * De que estado este aceite pode sair — e, portanto, qual condição vai no UPDATE.
+     *
+     * <p>São dois caminhos até a mesma etapa. No convite aberto (DISPARADA) qualquer
+     * elegível pode aceitar, e a conferência é de perfil. Na alocação direta (ALOCADO) o
+     * gestor já escolheu a pessoa, e a conferência é de dono: aceitar o convite de outro
+     * não é questão de competência.
      */
-    private void garantirQuePodeAceitar(EtapaOrdemServico etapa, Recurso recurso) {
+    private StatusEtapaOrdemServico estadoDeOndeSaiOAceite(EtapaOrdemServico etapa, Recurso recurso) {
         if (!recurso.elegivelParaAlocacao()) {
             throw new AlocacaoInvalidaException(
                     "Seu cadastro ainda não foi verificado pela equipe da Aliança");
         }
 
+        return switch (etapa.getStatus()) {
+            case DISPARADA -> {
+                garantirQueOPerfilAtende(etapa, recurso);
+                yield StatusEtapaOrdemServico.DISPARADA;
+            }
+            // CA.6: a alocação direta também espera aceite — só que de uma pessoa só.
+            case ALOCADO -> {
+                if (!etapa.pertenceA(recurso)) {
+                    throw new AlocacaoInvalidaException("Esta etapa foi alocada a outro profissional");
+                }
+                yield StatusEtapaOrdemServico.ALOCADO;
+            }
+            default -> throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + etapa.getNome() + " não está disponível para aceite");
+        };
+    }
+
+    /**
+     * CA.4: só aceita quem poderia ter sido convidado. O convite vai por e-mail e o id da
+     * etapa viaja em texto; sem esta conferência, um link repassado valeria como permissão.
+     */
+    private void garantirQueOPerfilAtende(EtapaOrdemServico etapa, Recurso recurso) {
         Solicitacao solicitacao = etapa.getOrdemServico().getSolicitacao();
         boolean atende = recurso.atendePar(
                         solicitacao.getIdiomaOrigem().getId(),

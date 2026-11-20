@@ -19,22 +19,22 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * US-013 CA.2: um convite à espera de ser publicado na fila de e-mail.
+ * US-013 CA.2: uma notificação à espera de ser publicado na fila de e-mail.
  *
  * <p>Mesma mecânica da outbox do orçamento, e pelo mesmo motivo: a linha é gravada na
  * transação do disparo. Se o RabbitMQ estiver fora do ar, o disparo não deixa de
- * acontecer e o convite não se perde — ele sai quando a fila voltar. Mandar direto da
+ * acontecer e a notificação não se perde — ele sai quando a fila voltar. Mandar direto da
  * transação daria o contrário nos dois sentidos: e-mail enviado de uma transação que
  * depois falhou, ou disparo desfeito porque o e-mail não saiu.
  */
 @Entity
-@Table(name = "convite_etapa_outbox",
-        indexes = @Index(name = "ix_convite_etapa_outbox_pendentes",
+@Table(name = "notificacao_etapa_outbox",
+        indexes = @Index(name = "ix_notificacao_etapa_outbox_pendentes",
                 columnList = "enviado_em, proxima_tentativa_em"))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ConviteEtapaOutbox {
+public class NotificacaoEtapaOutbox {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -63,7 +63,7 @@ public class ConviteEtapaOutbox {
     @Column(nullable = false)
     private int tentativas;
 
-    public ConviteEtapaOutbox(EtapaOrdemServico etapa, String destinatario, String payload, Instant agora) {
+    public NotificacaoEtapaOutbox(EtapaOrdemServico etapa, String destinatario, String payload, Instant agora) {
         this.etapa = etapa;
         this.destinatario = destinatario;
         this.payload = payload;

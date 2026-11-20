@@ -1,11 +1,11 @@
 package com.stentio.core.service;
 
-import com.stentio.core.dto.ConviteEtapaMensagem;
-import com.stentio.core.model.ConviteEtapaOutbox;
+import com.stentio.core.dto.NotificacaoEtapaMensagem;
+import com.stentio.core.model.NotificacaoEtapaOutbox;
 import com.stentio.core.model.EtapaOrdemServico;
 import com.stentio.core.model.Recurso;
 import com.stentio.core.model.Solicitacao;
-import com.stentio.core.repository.ConviteEtapaOutboxRepository;
+import com.stentio.core.repository.NotificacaoEtapaOutboxRepository;
 import com.stentio.core.support.CodigoVisual;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,11 +35,11 @@ public class ConviteEtapaEmailService {
     private static final DateTimeFormatter DATA_HORA =
             DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm", new Locale("pt", "BR"));
 
-    private final ConviteEtapaOutboxRepository outbox;
+    private final NotificacaoEtapaOutboxRepository outbox;
     private final ObjectMapper objectMapper;
     private final String urlPortal;
 
-    public ConviteEtapaEmailService(ConviteEtapaOutboxRepository outbox,
+    public ConviteEtapaEmailService(NotificacaoEtapaOutboxRepository outbox,
                                     ObjectMapper objectMapper,
                                     @Value("${app.portal-recurso.url:http://localhost/recurso/demandas}") String urlPortal) {
         this.outbox = outbox;
@@ -58,12 +58,12 @@ public class ConviteEtapaEmailService {
     public void convidar(EtapaOrdemServico etapa, List<Recurso> elegiveis, Instant agora) {
         String assunto = "Nova etapa disponível: " + etapa.getNome();
 
-        List<ConviteEtapaOutbox> convites = elegiveis.stream()
-                .map(recurso -> new ConviteEtapaOutbox(
+        List<NotificacaoEtapaOutbox> convites = elegiveis.stream()
+                .map(recurso -> new NotificacaoEtapaOutbox(
                         etapa,
                         recurso.getEmail(),
                         objectMapper.writeValueAsString(
-                                new ConviteEtapaMensagem(recurso.getEmail(), assunto, corpo(etapa, recurso))),
+                                new NotificacaoEtapaMensagem(recurso.getEmail(), assunto, corpo(etapa, recurso))),
                         agora))
                 .toList();
 

@@ -5,6 +5,7 @@ import com.stentio.core.exception.AutoCadastroInvalidoException;
 import com.stentio.core.exception.GlobalExceptionHandler;
 import com.stentio.core.service.AceiteEtapaService;
 import com.stentio.core.service.PortalRecursoService;
+import com.stentio.core.service.RecusaEtapaService;
 import com.stentio.core.service.TokenService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,9 @@ class PortalRecursoControllerTest {
 
     @MockitoBean
     private AceiteEtapaService aceiteEtapaService;
+
+    @MockitoBean
+    private RecusaEtapaService recusaEtapaService;
 
     @MockitoBean
     private TokenService tokenService;
