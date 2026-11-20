@@ -160,6 +160,15 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(SolicitacaoPublicaValidacaoException.class)
+    public ResponseEntity<ErroResponse> handleSolicitacaoPublicaValidacao(SolicitacaoPublicaValidacaoException ex) {
+        List<CampoErro> erros = ex.erros();
+        String mensagem = erros.size() == 1
+                ? erros.getFirst().mensagem()
+                : "Existem " + erros.size() + " campos inválidos";
+        return ResponseEntity.badRequest().body(ErroResponse.deValidacao(mensagem, erros));
+    }
+
     // Id enviado no corpo que não existe: o erro está no dado enviado, por isso 400 e não 404.
     @ExceptionHandler(ReferenciaInvalidaException.class)
     public ResponseEntity<ErroResponse> handleReferenciaInvalida(ReferenciaInvalidaException ex) {

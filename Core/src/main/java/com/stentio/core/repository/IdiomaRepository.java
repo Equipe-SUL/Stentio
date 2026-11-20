@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface IdiomaRepository extends JpaRepository<Idioma, UUID> {
@@ -15,6 +16,8 @@ public interface IdiomaRepository extends JpaRepository<Idioma, UUID> {
     
     // filtra idiomas pelo status (ativos/inativos), útil para dropdowns de recursos
     Page<Idioma> findByAtivo(Boolean ativo, Pageable pageable);
+
+    List<Idioma> findByAtivoTrueOrderByNomeAsc();
     
     // combina busca por nome com filtro de status
     Page<Idioma> findByNomeContainingIgnoreCaseAndAtivo(String nome, Boolean ativo, Pageable pageable);
