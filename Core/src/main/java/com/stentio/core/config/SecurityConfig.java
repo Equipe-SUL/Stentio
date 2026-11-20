@@ -1,5 +1,6 @@
 package com.stentio.core.config;
 
+import jakarta.servlet.DispatcherType;
 import com.stentio.core.model.Role;
 import com.stentio.core.service.TokenService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -76,6 +77,11 @@ public class SecurityConfig {
                                 escreverErro(response, HttpStatus.FORBIDDEN, "Perfil sem permissão para esta operação"))
                 )
                 .authorizeHttpRequests(rotas -> rotas
+                        // Um 500 vira um encaminhamento interno para /error, que volta a
+                        // passar por aqui. Sem esta linha ele cai na regra final de perfis e
+                        // o erro real é respondido como 401 ou 403 — o problema de verdade
+                        // fica invisível para quem está depurando.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         // Liberação das rotas do Swagger / OpenAPI
                         .requestMatchers(
                                 "/v3/api-docs/**",
