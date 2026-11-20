@@ -66,11 +66,31 @@ class EtapaOrdemServicoTransicoesTest {
     }
 
     @Test
+    @DisplayName("a primeira etapa da sequência está liberada")
+    void primeiraEtapaEstaLiberada() {
+        assertTrue(etapa.liberada(null));
+    }
+
+    @Test
+    @DisplayName("uma etapa posterior só fica liberada depois da entrega da anterior")
+    void etapaPosteriorDependeDaEntregaAnterior() {
+        TipoServico tipo = new TipoServico();
+        tipo.setId(UUID.randomUUID());
+        tipo.setNome("Revisão");
+        EtapaOrdemServico posterior =
+                new EtapaOrdemServico(mock(OrdemServico.class), 2, "Revisão", tipo, 12);
+
+        assertFalse(posterior.liberada(null));
+        assertFalse(posterior.liberada(StatusEtapaOrdemServico.PENDENTE));
+        assertTrue(posterior.liberada(StatusEtapaOrdemServico.ENTREGUE));
+    }
+
+    @Test
     @DisplayName("disparar abre a etapa e descarta a alocação nominal anterior")
     void dispararDescartaAlocacao() {
         etapa.alocar(ana, PRAZO, AGORA);
 
-        etapa.disparar(AGORA);
+        etapa.disparar(AGORA, true);
 
         assertEquals(StatusEtapaOrdemServico.DISPARADA, etapa.getStatus());
         assertNull(etapa.getRecurso());
@@ -80,10 +100,10 @@ class EtapaOrdemServicoTransicoesTest {
     @Test
     @DisplayName("RN.6: etapa já aceita não volta para a fila")
     void naoDisparaEtapaAceita() {
-        etapa.disparar(AGORA);
-        etapa.aceitarPor(ana, AGORA);
+        etapa.disparar(AGORA, true);
+        etapa.aceitarPor(ana, AGORA, true);
 
-        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.disparar(AGORA));
+        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.disparar(AGORA, true));
         assertEquals(StatusEtapaOrdemServico.ACEITA, etapa.getStatus());
         assertTrue(etapa.pertenceA(ana));
     }
@@ -98,23 +118,37 @@ class EtapaOrdemServicoTransicoesTest {
                 new EtapaOrdemServico(mock(OrdemServico.class), 2, "Revisão", tipo, 12);
 
         assertEquals(StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, etapaBloqueada.getStatus());
-        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapaBloqueada.disparar(AGORA));
+        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapaBloqueada.disparar(AGORA, false));
+    }
+
+    @Test
+    @DisplayName("etapa alocada antecipadamente ainda não pode ser disparada")
+    void naoDisparaAlocacaoAntecipada() {
+        TipoServico tipo = new TipoServico();
+        tipo.setId(UUID.randomUUID());
+        tipo.setNome("Revisão");
+        EtapaOrdemServico posterior =
+                new EtapaOrdemServico(mock(OrdemServico.class), 2, "Revisão", tipo, 12);
+        posterior.alocar(ana, PRAZO, AGORA);
+
+        assertThrows(TransicaoEtapaInvalidaException.class, () -> posterior.disparar(AGORA, false));
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, posterior.getStatus());
     }
 
     @Test
     @DisplayName("uma etapa já disparada não envia convites duplicados")
     void naoDisparaEtapaJaDisparada() {
-        etapa.disparar(AGORA);
+        etapa.disparar(AGORA, true);
 
-        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.disparar(AGORA));
+        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.disparar(AGORA, true));
     }
 
     @Test
     @DisplayName("aceitar marca o dono, o instante e congela a etapa para troca")
     void aceitarCongelaAEtapa() {
-        etapa.disparar(AGORA);
+        etapa.disparar(AGORA, true);
 
-        etapa.aceitarPor(bruno, AGORA);
+        etapa.aceitarPor(bruno, AGORA, true);
 
         assertEquals(StatusEtapaOrdemServico.ACEITA, etapa.getStatus());
         assertEquals(AGORA, etapa.getAceitoEm());
@@ -128,7 +162,7 @@ class EtapaOrdemServicoTransicoesTest {
     void recusarLiberaAEtapa() {
         etapa.alocar(ana, PRAZO, AGORA);
 
-        etapa.recusar();
+        etapa.recusar(true);
 
         assertEquals(StatusEtapaOrdemServico.PENDENTE, etapa.getStatus());
         assertNull(etapa.getRecurso());
@@ -136,20 +170,37 @@ class EtapaOrdemServicoTransicoesTest {
     }
 
     @Test
+    @DisplayName("recusar alocação antecipada mantém a etapa bloqueada")
+    void recusarEtapaAindaBloqueada() {
+        TipoServico tipo = new TipoServico();
+        tipo.setId(UUID.randomUUID());
+        tipo.setNome("Revisão");
+        EtapaOrdemServico posterior =
+                new EtapaOrdemServico(mock(OrdemServico.class), 2, "Revisão", tipo, 12);
+        posterior.alocar(ana, PRAZO, AGORA);
+
+        posterior.recusar(false);
+
+        assertEquals(StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, posterior.getStatus());
+        assertNull(posterior.getRecurso());
+        assertNull(posterior.getDataLimiteEntrega());
+    }
+
+    @Test
     @DisplayName("só se recusa um convite nominal: etapa disparada não tem o que recusar")
     void naoRecusaEtapaDisparada() {
-        etapa.disparar(AGORA);
+        etapa.disparar(AGORA, true);
 
-        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.recusar());
+        assertThrows(TransicaoEtapaInvalidaException.class, () -> etapa.recusar(true));
     }
 
     @Test
     @DisplayName("CA.5: entregar guarda nome e caminho e fecha a etapa")
     void entregarFechaAEtapa() {
-        etapa.disparar(AGORA);
-        etapa.aceitarPor(ana, AGORA);
+        etapa.disparar(AGORA, true);
+        etapa.aceitarPor(ana, AGORA, true);
 
-        etapa.entregar("traducao-final.docx", "2026/11/abc.docx", AGORA);
+        etapa.entregar("traducao-final.docx", "2026/11/abc.docx", AGORA, true);
 
         assertEquals(StatusEtapaOrdemServico.ENTREGUE, etapa.getStatus());
         assertEquals("traducao-final.docx", etapa.getArquivoEntregueNome());
@@ -160,10 +211,46 @@ class EtapaOrdemServicoTransicoesTest {
     @Test
     @DisplayName("RN.4: não se entrega uma etapa que ninguém assumiu")
     void naoEntregaEtapaNaoAceita() {
-        etapa.disparar(AGORA);
+        etapa.disparar(AGORA, true);
 
         assertThrows(TransicaoEtapaInvalidaException.class,
-                () -> etapa.entregar("x.docx", "2026/11/x.docx", AGORA));
+                () -> etapa.entregar("x.docx", "2026/11/x.docx", AGORA, true));
         assertNull(etapa.getArquivoEntregueCaminho());
+    }
+
+    @Test
+    @DisplayName("etapa aceita com antecedência não pode ser entregue antes da liberação")
+    void naoEntregaEtapaAceitaAindaBloqueada() {
+        TipoServico tipo = new TipoServico();
+        tipo.setId(UUID.randomUUID());
+        tipo.setNome("Revisão");
+        EtapaOrdemServico posterior =
+                new EtapaOrdemServico(mock(OrdemServico.class), 2, "Revisão", tipo, 12);
+        posterior.alocar(ana, PRAZO, AGORA);
+        posterior.aceitarPor(ana, AGORA, false);
+
+        assertThrows(TransicaoEtapaInvalidaException.class,
+                () -> posterior.entregar("x.docx", "2026/11/x.docx", AGORA, false));
+        assertNull(posterior.getArquivoEntregueCaminho());
+    }
+
+    @Test
+    @DisplayName("aceite nominal pode acontecer antes da liberação")
+    void aceitaConviteNominalAntecipado() {
+        etapa.alocar(ana, PRAZO, AGORA);
+
+        etapa.aceitarPor(ana, AGORA, false);
+
+        assertEquals(StatusEtapaOrdemServico.ACEITA, etapa.getStatus());
+    }
+
+    @Test
+    @DisplayName("convite aberto exige etapa liberada para aceite")
+    void naoAceitaConviteAbertoAntecipado() {
+        etapa.disparar(AGORA, true);
+
+        assertThrows(TransicaoEtapaInvalidaException.class,
+                () -> etapa.aceitarPor(ana, AGORA, false));
+        assertEquals(StatusEtapaOrdemServico.DISPARADA, etapa.getStatus());
     }
 }

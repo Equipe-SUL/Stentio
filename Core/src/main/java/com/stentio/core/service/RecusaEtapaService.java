@@ -27,17 +27,20 @@ import java.util.UUID;
 public class RecusaEtapaService {
 
     private final EtapaOrdemServicoRepository etapas;
+    private final EtapaLiberacaoService liberacao;
     private final RecursoAutenticadoService recursoAutenticado;
     private final RecusaEtapaEmailService avisos;
     private final HistoricoEtapaRepository historico;
     private final Clock clock;
 
     public RecusaEtapaService(EtapaOrdemServicoRepository etapas,
+                              EtapaLiberacaoService liberacao,
                               RecursoAutenticadoService recursoAutenticado,
                               RecusaEtapaEmailService avisos,
                               HistoricoEtapaRepository historico,
                               Clock clock) {
         this.etapas = etapas;
+        this.liberacao = liberacao;
         this.recursoAutenticado = recursoAutenticado;
         this.avisos = avisos;
         this.historico = historico;
@@ -55,14 +58,14 @@ public class RecusaEtapaService {
             throw new AlocacaoInvalidaException("Esta etapa não está alocada a você");
         }
 
+        boolean estaLiberada = liberacao.estaLiberada(etapa);
+
         // CA.8: montado antes de recusar(), que apaga o prazo que o histórico registra.
         HistoricoEtapa registro =
                 new HistoricoEtapa(etapa, EventoEtapa.RECUSA, recurso, ator.email(), agora);
 
-        // RN.5: volta a PENDENTE, sem recurso e sem prazo — livre para outra alocação ou
-        // para o disparo aberto. A entidade recusa qualquer estado que não seja ALOCADO,
-        // então uma etapa já aceita não passa daqui.
-        etapa.recusar();
+        // RN.1: recusada volta à fila apenas se a etapa já estiver liberada.
+        etapa.recusar(estaLiberada);
         etapas.save(etapa);
         historico.save(registro);
 

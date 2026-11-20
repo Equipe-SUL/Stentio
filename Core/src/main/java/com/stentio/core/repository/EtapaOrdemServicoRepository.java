@@ -93,6 +93,14 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
             """)
     Optional<EtapaOrdemServico> buscarParaAceite(@Param("etapaId") UUID etapaId);
 
+    @Query("""
+            select e.status from EtapaOrdemServico e
+             where e.ordemServico.id = :ordemServicoId
+               and e.ordem = :ordem
+            """)
+    Optional<StatusEtapaOrdemServico> buscarStatusPorOrdem(@Param("ordemServicoId") UUID ordemServicoId,
+                                                           @Param("ordem") int ordem);
+
     /**
      * US-013 CA.4: as etapas abertas que este profissional pode assumir.
      *

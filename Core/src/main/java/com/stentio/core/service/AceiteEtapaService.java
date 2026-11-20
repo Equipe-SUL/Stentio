@@ -31,15 +31,18 @@ import java.util.UUID;
 public class AceiteEtapaService {
 
     private final EtapaOrdemServicoRepository etapas;
+    private final EtapaLiberacaoService liberacao;
     private final RecursoAutenticadoService recursoAutenticado;
     private final HistoricoEtapaRepository historico;
     private final Clock clock;
 
     public AceiteEtapaService(EtapaOrdemServicoRepository etapas,
+                              EtapaLiberacaoService liberacao,
                               RecursoAutenticadoService recursoAutenticado,
                               HistoricoEtapaRepository historico,
                               Clock clock) {
         this.etapas = etapas;
+        this.liberacao = liberacao;
         this.recursoAutenticado = recursoAutenticado;
         this.historico = historico;
         this.clock = clock;
@@ -99,6 +102,10 @@ public class AceiteEtapaService {
 
         return switch (etapa.getStatus()) {
             case DISPARADA -> {
+                if (!liberacao.estaLiberada(etapa)) {
+                    throw new TransicaoEtapaInvalidaException(
+                            "A etapa " + etapa.getNome() + " aguarda a entrega da etapa anterior");
+                }
                 garantirQueOPerfilAtende(etapa, recurso);
                 yield StatusEtapaOrdemServico.DISPARADA;
             }

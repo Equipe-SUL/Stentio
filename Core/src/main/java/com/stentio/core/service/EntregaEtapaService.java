@@ -33,17 +33,20 @@ import java.util.UUID;
 public class EntregaEtapaService {
 
     private final EtapaOrdemServicoRepository etapas;
+    private final EtapaLiberacaoService liberacao;
     private final RecursoAutenticadoService recursoAutenticado;
     private final ArquivoStorageService storage;
     private final HistoricoEtapaRepository historico;
     private final Clock clock;
 
     public EntregaEtapaService(EtapaOrdemServicoRepository etapas,
+                               EtapaLiberacaoService liberacao,
                                RecursoAutenticadoService recursoAutenticado,
                                ArquivoStorageService storage,
                                HistoricoEtapaRepository historico,
                                Clock clock) {
         this.etapas = etapas;
+        this.liberacao = liberacao;
         this.recursoAutenticado = recursoAutenticado;
         this.storage = storage;
         this.historico = historico;
@@ -70,10 +73,15 @@ public class EntregaEtapaService {
             throw new TransicaoEtapaInvalidaException(
                     "A etapa " + etapa.getNome() + " não está em execução para receber entrega");
         }
+        boolean estaLiberada = liberacao.estaLiberada(etapa);
+        if (!estaLiberada) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + etapa.getNome() + " aguarda a entrega da etapa anterior");
+        }
 
         ArquivoArmazenado salvo = storage.salvarTodos(List.of(arquivo)).getFirst();
         try {
-            etapa.entregar(salvo.nomeOriginal(), salvo.caminho(), clock.instant());
+            etapa.entregar(salvo.nomeOriginal(), salvo.caminho(), clock.instant(), estaLiberada);
             etapas.save(etapa);
         } catch (RuntimeException ex) {
             // O arquivo já está no disco e o banco não vai registrá-lo: apaga agora, senão

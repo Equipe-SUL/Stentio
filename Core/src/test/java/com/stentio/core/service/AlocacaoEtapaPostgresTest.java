@@ -66,6 +66,7 @@ class AlocacaoEtapaPostgresTest {
     @Autowired AlocacaoEtapaService alocacao;
     @Autowired EtapaOrdemServicoService etapasService;
     @Autowired EtapaOrdemServicoRepository etapas;
+    @Autowired EtapaLiberacaoService liberacao;
     @Autowired ClienteRepository clientes;
     @Autowired CategoriaProjetoRepository categorias;
     @Autowired IdiomaRepository idiomas;
@@ -205,6 +206,26 @@ class AlocacaoEtapaPostgresTest {
     }
 
     // ------------------------------------------------------------------ testes
+
+    @Test
+    @DisplayName("etapa posterior só é liberada quando a anterior está entregue")
+    void liberaPelaEntregaDaEtapaAnterior() {
+        List<UUID> ids = montarEtapas();
+        EtapaOrdemServico primeira = etapas.findById(ids.getFirst()).orElseThrow();
+        alocacao.alocar(osId, ids.get(1),
+                new AlocacaoEtapaRequest(danielaId, DAQUI_A_UM_MES), gestor);
+        EtapaOrdemServico segunda = etapas.findById(ids.get(1)).orElseThrow();
+
+        assertTrue(liberacao.estaLiberada(primeira));
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, segunda.getStatus());
+        assertFalse(liberacao.estaLiberada(segunda));
+
+        jdbc.update("update etapas_os set status = 'ENTREGUE' where id = ?", primeira.getId());
+
+        EtapaOrdemServico segundaAtualizada = etapas.findById(ids.get(1)).orElseThrow();
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, segundaAtualizada.getStatus());
+        assertTrue(liberacao.estaLiberada(segundaAtualizada));
+    }
 
     @Test
     @DisplayName("a constraint do histórico aceita o evento AVANCO")
