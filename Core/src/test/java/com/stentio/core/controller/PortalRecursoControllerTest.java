@@ -4,6 +4,7 @@ import com.stentio.core.config.SecurityConfig;
 import com.stentio.core.exception.AutoCadastroInvalidoException;
 import com.stentio.core.exception.GlobalExceptionHandler;
 import com.stentio.core.service.AceiteEtapaService;
+import com.stentio.core.service.EntregaEtapaService;
 import com.stentio.core.service.PortalRecursoService;
 import com.stentio.core.service.RecusaEtapaService;
 import com.stentio.core.service.TokenService;
@@ -50,6 +51,9 @@ class PortalRecursoControllerTest {
 
     @MockitoBean
     private RecusaEtapaService recusaEtapaService;
+
+    @MockitoBean
+    private EntregaEtapaService entregaEtapaService;
 
     @MockitoBean
     private TokenService tokenService;
