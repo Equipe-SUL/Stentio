@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,13 +28,16 @@ public class DisparoEtapaService {
 
     private final EtapaOrdemServicoRepository etapas;
     private final RecursoRepository recursos;
+    private final ConviteEtapaEmailService convites;
     private final Clock clock;
 
     public DisparoEtapaService(EtapaOrdemServicoRepository etapas,
                                RecursoRepository recursos,
+                               ConviteEtapaEmailService convites,
                                Clock clock) {
         this.etapas = etapas;
         this.recursos = recursos;
+        this.convites = convites;
         this.clock = clock;
     }
 
@@ -51,9 +55,16 @@ public class DisparoEtapaService {
                     "Nenhum recurso verificado atende o par de idiomas e o tipo de serviço desta etapa");
         }
 
+        Instant agora = clock.instant();
+
         // A RN.6 mora na entidade: etapa já assumida ou entregue não volta para a fila.
-        etapa.disparar(clock.instant());
+        etapa.disparar(agora);
         etapas.save(etapa);
+
+        // CA.2: os convites entram na mesma transação do disparo. Em transações separadas,
+        // daria para ter etapa disparada sem convite nenhum, ou convite de um disparo que
+        // acabou falhando.
+        convites.convidar(etapa, elegiveis, agora);
 
         return new DisparoEtapaResponse(etapa.getId(), etapa.getStatus(), elegiveis.size());
     }

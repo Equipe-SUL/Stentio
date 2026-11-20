@@ -1,5 +1,6 @@
 package com.stentio.core.config;
 
+import com.stentio.core.service.ConviteEtapaOutboxDispatcher;
 import com.stentio.core.service.OrcamentoEmailOutboxDispatcher;
 import com.stentio.core.service.OrcamentoOutboxDispatcher;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,11 +14,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 public class OrcamentoOutboxScheduler {
     private final OrcamentoOutboxDispatcher dispatcher;
     private final OrcamentoEmailOutboxDispatcher emailDispatcher;
+    private final ConviteEtapaOutboxDispatcher conviteDispatcher;
 
     public OrcamentoOutboxScheduler(OrcamentoOutboxDispatcher dispatcher,
-                                    OrcamentoEmailOutboxDispatcher emailDispatcher) {
+                                    OrcamentoEmailOutboxDispatcher emailDispatcher,
+                                    ConviteEtapaOutboxDispatcher conviteDispatcher) {
         this.dispatcher = dispatcher;
         this.emailDispatcher = emailDispatcher;
+        this.conviteDispatcher = conviteDispatcher;
     }
 
     @Scheduled(fixedDelayString = "${app.orcamentos.outbox.intervalo-ms:5000}")
@@ -28,6 +32,11 @@ public class OrcamentoOutboxScheduler {
         }
         for (int i = 0; i < 20 && !Thread.currentThread().isInterrupted(); i++) {
             if (!emailDispatcher.processarProximo()) break;
+        }
+        // US-013: um disparo gera um convite por elegível, então esta fila cresce mais
+        // depressa que as outras duas em uma rodada só.
+        for (int i = 0; i < 50 && !Thread.currentThread().isInterrupted(); i++) {
+            if (!conviteDispatcher.processarProximo()) break;
         }
     }
 }

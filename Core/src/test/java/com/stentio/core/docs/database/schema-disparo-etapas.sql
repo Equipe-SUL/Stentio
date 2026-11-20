@@ -41,3 +41,22 @@ ALTER TABLE etapas_os ADD CONSTRAINT ck_etapas_os_status CHECK (status IN (
 -- ser trazidas para o modelo novo — senão aparecem como livres para disparo.
 
 UPDATE etapas_os SET status = 'ALOCADO' WHERE recurso_id IS NOT NULL AND status = 'PENDENTE';
+
+-- ---------------------------------------------------------------- outbox dos convites
+
+-- Sobe sozinha com ddl-auto; fica aqui como referência do que o Hibernate gera.
+CREATE TABLE IF NOT EXISTS convite_etapa_outbox (
+    id                   UUID PRIMARY KEY,
+    etapa_id             UUID NOT NULL REFERENCES etapas_os (id),
+    destinatario         VARCHAR(150) NOT NULL,
+    payload              TEXT,
+    criado_em            TIMESTAMP(6) WITH TIME ZONE NOT NULL,
+    enviado_em           TIMESTAMP(6) WITH TIME ZONE,
+    proxima_tentativa_em TIMESTAMP(6) WITH TIME ZONE NOT NULL,
+    tentativas           INTEGER NOT NULL DEFAULT 0
+);
+
+-- O dispatcher procura sempre por pendente e vencido; sem o índice, a varredura cresce
+-- junto com o histórico de convites já enviados.
+CREATE INDEX IF NOT EXISTS ix_convite_etapa_outbox_pendentes
+    ON convite_etapa_outbox (enviado_em, proxima_tentativa_em);

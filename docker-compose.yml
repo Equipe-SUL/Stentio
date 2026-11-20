@@ -80,6 +80,7 @@ services:
       # pelo nginx do front. O cliente é externo, então em qualquer ambiente que não seja a
       # máquina do dev isto precisa ser o endereço público.
       ORCAMENTO_URL_CONSULTA_PUBLICA: ${ORCAMENTO_URL_CONSULTA_PUBLICA:-http://localhost/orcamento}
+      APP_PORTAL_RECURSO_URL: ${PORTAL_RECURSO_URL:-http://localhost/recurso/demandas}
       APP_ARQUIVOS_DIRETORIO: /app/uploads
 
     ports:
