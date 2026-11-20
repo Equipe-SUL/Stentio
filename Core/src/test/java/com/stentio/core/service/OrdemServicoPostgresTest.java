@@ -98,6 +98,18 @@ class OrdemServicoPostgresTest {
     }
 
     @Test
+    void checksDaOrdemAceitamOsNovosStatusDeExecucao() {
+        service.criarParaOrcamentoAprovado(orcamentoId);
+
+        assertEquals(1, jdbc.update(
+                "update ordens_servico set status = ? where orcamento_id = ?",
+                "EM_EXECUCAO", orcamentoId));
+        assertEquals(1, jdbc.update(
+                "update ordens_servico set status = ? where orcamento_id = ?",
+                "AGUARDANDO_VERIFICACAO", orcamentoId));
+    }
+
+    @Test
     void eventoRealDaAprovacaoCriaUmaOrdemMesmoQuandoReprocessado() {
         jdbc.update("update orcamentos set status = 'AGUARDANDO_APROVACAO' where id = ?", orcamentoId);
         String token = tokens.emitir(orcamentoId, Instant.now().plusSeconds(3600)).toString();

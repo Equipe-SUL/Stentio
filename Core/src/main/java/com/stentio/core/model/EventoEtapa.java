@@ -17,5 +17,7 @@ public enum EventoEtapa {
     /** O profissional recusou a alocação direta. */
     RECUSA,
     /** O arquivo da etapa foi entregue. */
-    ENTREGA
+    ENTREGA,
+    /** A entrega liberou a próxima etapa do workflow ou concluiu a sequência. */
+    AVANCO
 }

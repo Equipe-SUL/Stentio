@@ -207,6 +207,20 @@ class AlocacaoEtapaPostgresTest {
     // ------------------------------------------------------------------ testes
 
     @Test
+    @DisplayName("a constraint do histórico aceita o evento AVANCO")
+    void checkHistoricoAceitaEventoAvanco() {
+        UUID etapaId = montarEtapas().getFirst();
+        UUID historicoId = UUID.randomUUID();
+
+        assertEquals(1, jdbc.update("""
+                insert into etapas_os_historico (id, etapa_id, evento, realizado_por, realizado_em)
+                values (?, ?, ?, ?, ?)
+                """, historicoId, etapaId, "AVANCO", "sistema", Timestamp.from(Instant.now())));
+        assertEquals("AVANCO", jdbc.queryForObject(
+                "select evento from etapas_os_historico where id = ?", String.class, historicoId));
+    }
+
+    @Test
     @DisplayName("A contagem inclui somente etapas alocadas com prazo estritamente vencido")
     void contaEtapasAtrasadasAlocadasSemCarregarEntidades() {
         Instant agora = Instant.parse("2030-01-01T00:00:00Z");
