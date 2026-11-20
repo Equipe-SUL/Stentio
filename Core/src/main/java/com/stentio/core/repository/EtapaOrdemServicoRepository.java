@@ -74,6 +74,38 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
     Optional<EtapaOrdemServico> buscarParaAceite(@Param("etapaId") UUID etapaId);
 
     /**
+     * US-013 CA.4: as etapas abertas que este profissional pode assumir.
+     *
+     * <p>É a consulta da US-012 ao contrário. Lá, dada a etapa, quem pode executá-la; aqui,
+     * dado o profissional, quais etapas ele pode pegar. As duas competências são as mesmas
+     * — par de idiomas em recursos_precos e especialidade em recursos_tipos_servico —, e o
+     * exists mantém ativo e verificado no mesmo lugar: um cadastro ainda não verificado
+     * simplesmente não casa, em vez de depender de uma segunda conferência no serviço.
+     */
+    @Query("""
+            select distinct e from EtapaOrdemServico e
+              join fetch e.tipoServico ts
+              join fetch e.ordemServico o
+              join fetch o.solicitacao s
+              join fetch s.idiomaOrigem origem
+              join fetch s.idiomaDestino destino
+             where e.status = :disparada
+               and exists (
+                   select 1 from Recurso r
+                     join r.tiposServico t
+                     join r.precos p
+                    where r.id = :recursoId
+                      and r.ativo = true
+                      and r.verificado = true
+                      and t.id = ts.id
+                      and p.idiomaOrigem.id = origem.id
+                      and p.idiomaDestino.id = destino.id)
+             order by e.dataLimiteEntrega asc nulls last, e.ordem asc
+            """)
+    List<EtapaOrdemServico> listarDisponiveisPara(@Param("recursoId") UUID recursoId,
+                                                  @Param("disparada") StatusEtapaOrdemServico disparada);
+
+    /**
      * US-023 CA.5: as etapas alocadas a um profissional — a tela "Minhas demandas".
      *
      * <p>Desce até a solicitação porque o par de idiomas mora lá, e o profissional precisa
