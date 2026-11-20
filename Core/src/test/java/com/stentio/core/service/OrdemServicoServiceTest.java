@@ -25,6 +25,7 @@ import static org.mockito.Mockito.*;
 class OrdemServicoServiceTest {
     @Mock OrcamentoRepository orcamentos;
     @Mock OrdemServicoRepository ordensServico;
+    @Mock org.springframework.context.ApplicationEventPublisher eventos;
     @InjectMocks OrdemServicoService service;
     private Orcamento orcamento;
 
@@ -39,7 +40,12 @@ class OrdemServicoServiceTest {
     @Test
     void criaOrdemComVinculosDoBancoEStatusPendenteAlocacao() {
         when(orcamentos.buscarPorIdComLock(orcamento.getId())).thenReturn(Optional.of(orcamento));
-        when(ordensServico.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(ordensServico.save(any())).thenAnswer(invocation -> {
+            // Como o JPA, devolve a OS com id: o evento de auditoria (US-019) depende dele.
+            OrdemServico salva = invocation.getArgument(0);
+            org.springframework.test.util.ReflectionTestUtils.setField(salva, "id", UUID.randomUUID());
+            return salva;
+        });
 
         OrdemServico ordem = service.criarParaOrcamentoAprovado(orcamento.getId());
 

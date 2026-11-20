@@ -25,6 +25,11 @@ public class TokenService {
      * recurso a um dado que o próprio usuário pode trocar.
      */
     private static final String CLAIM_USER_ID = "userId";
+    /**
+     * US-019: o log de auditoria guarda o nome de quem alterou o status como snapshot. O
+     * usuário vive no Auth, então o Core só conhece o que vem no token.
+     */
+    private static final String CLAIM_NOME = "nome";
 
     @Value("${api.security.token.secret}")
     private String secret;
@@ -37,6 +42,7 @@ public class TokenService {
                     .withSubject(usuario.getEmail())
                     .withClaim(CLAIM_ROLE, usuario.getRole().name())
                     .withClaim(CLAIM_USER_ID, usuario.getId().toString())
+                    .withClaim(CLAIM_NOME, usuario.getNome())
                     .withExpiresAt(Instant.now().plus(5, ChronoUnit.DAYS))
                     .sign(algoritmo);
         } catch (Exception exception) {

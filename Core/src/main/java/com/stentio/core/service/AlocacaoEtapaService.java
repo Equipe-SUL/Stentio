@@ -2,6 +2,7 @@ package com.stentio.core.service;
 
 import com.stentio.core.dto.AlocacaoEtapaRequest;
 import com.stentio.core.dto.AlocacaoEtapaResponse;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.exception.RecursoNaoEncontradoException;
@@ -13,6 +14,7 @@ import com.stentio.core.repository.EtapaOrdemServicoRepository;
 import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.repository.RecursoRepository;
 import com.stentio.core.support.UsuarioAutenticado;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,15 +36,18 @@ public class AlocacaoEtapaService {
     private final RecursoRepository recursos;
     private final HistoricoEtapaRepository historico;
     private final Clock clock;
+    private final ApplicationEventPublisher eventos;
 
     public AlocacaoEtapaService(EtapaOrdemServicoRepository etapas,
                                 RecursoRepository recursos,
                                 HistoricoEtapaRepository historico,
-                                Clock clock) {
+                                Clock clock,
+                                ApplicationEventPublisher eventos) {
         this.etapas = etapas;
         this.recursos = recursos;
         this.historico = historico;
         this.clock = clock;
+        this.eventos = eventos;
     }
 
     // CA.3 e CA.4, Cenário 1
@@ -63,6 +68,7 @@ public class AlocacaoEtapaService {
 
         // Lido antes de alocar: depois da troca, quem estava no lugar já se perdeu.
         Recurso anterior = etapa.getRecurso();
+        String statusAnterior = EventosAuditoria.statusEtapa(etapa);
 
         Instant agora = clock.instant();
         etapa.alocar(recurso, requisicao.dataLimiteEntrega(), agora);
@@ -72,6 +78,13 @@ public class AlocacaoEtapaService {
         // uma falha aqui deixaria a etapa alocada sem rastro de quem a alocou.
         historico.save(new HistoricoEtapa(
                 etapa, anterior, recurso, etapa.getDataLimiteEntrega(), ator.email(), agora));
+
+        // US-019: as duas trilhas não se repetem. O histórico da etapa (acima) é o detalhe da
+        // alocação — recurso anterior, recurso novo, prazo —, inclusive nas realocações. O log
+        // de auditoria só registra a mudança de status: na realocação a etapa continua
+        // ALOCADO, e o listener descarta o evento.
+        eventos.publishEvent(EventosAuditoria.etapa(etapa, statusAnterior,
+                "Recurso " + recurso.getNome() + " alocado à etapa.", null));
 
         return AlocacaoEtapaResponse.de(etapa);
     }

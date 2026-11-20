@@ -1,5 +1,6 @@
 package com.stentio.core.support;
 
+import com.stentio.core.config.DadosUsuarioToken;
 import com.stentio.core.model.Role;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -45,9 +46,12 @@ public record UsuarioAutenticado(String email, UUID usuarioId, boolean administr
                 admin);
     }
 
-    /** O JwtAuthFilter guarda o id em details; qualquer outro conteúdo ali é ignorado. */
+    /**
+     * O JwtAuthFilter guarda id e nome (US-019) em details, como {@link DadosUsuarioToken};
+     * qualquer outro conteúdo ali é ignorado.
+     */
     private static UUID usuarioIdDe(Authentication autenticacao) {
-        return autenticacao.getDetails() instanceof UUID id ? id : null;
+        return autenticacao.getDetails() instanceof DadosUsuarioToken dados ? dados.usuarioId() : null;
     }
 
     public boolean temUsuarioId() {
