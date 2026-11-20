@@ -2,12 +2,15 @@ package com.stentio.core.service;
 
 import com.stentio.core.model.ArquivoArmazenado;
 import com.stentio.core.model.EtapaOrdemServico;
+import com.stentio.core.model.EventoEtapa;
+import com.stentio.core.model.HistoricoEtapa;
 import com.stentio.core.model.Recurso;
 import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
 import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.support.UsuarioAutenticado;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.Clock;
@@ -21,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -46,7 +50,7 @@ class EntregaEtapaAvancoTest {
     @Test
     void avancaSomenteDepoisDeRegistrarEntregaDaEtapa() {
         UUID etapaId = UUID.randomUUID();
-        UsuarioAutenticado ator = new UsuarioAutenticado("recurso@teste.invalid", false);
+        UsuarioAutenticado ator = new UsuarioAutenticado("ator@teste.invalid", false);
         Recurso recurso = mock(Recurso.class);
         EtapaOrdemServico etapa = mock(EtapaOrdemServico.class);
         MockMultipartFile arquivo = new MockMultipartFile(
@@ -55,7 +59,11 @@ class EntregaEtapaAvancoTest {
         when(recursoAutenticado.resolver(ator)).thenReturn(recurso);
         when(etapas.buscarParaAceite(etapaId)).thenReturn(Optional.of(etapa));
         when(etapa.pertenceA(recurso)).thenReturn(true);
+        when(recurso.getEmail()).thenReturn("recurso@teste.invalid");
         when(etapa.getNome()).thenReturn("Tradução");
+        when(etapa.getId()).thenReturn(etapaId);
+        when(etapa.getEntregueEm()).thenReturn(AGORA);
+        when(etapa.getArquivoEntregueNome()).thenReturn("entrega.docx");
         when(etapa.getStatus()).thenReturn(StatusEtapaOrdemServico.ACEITA, StatusEtapaOrdemServico.ENTREGUE,
                 StatusEtapaOrdemServico.ENTREGUE);
         when(liberacao.estaLiberada(etapa)).thenReturn(true);
@@ -68,6 +76,12 @@ class EntregaEtapaAvancoTest {
         ordem.verify(etapa).entregar("entrega.docx", "2026/11/entrega.docx", AGORA, true);
         ordem.verify(roteamento).rotear(etapa);
         verify(etapas).save(etapa);
+        ArgumentCaptor<HistoricoEtapa> historicos = ArgumentCaptor.forClass(HistoricoEtapa.class);
+        verify(historico, times(2)).save(historicos.capture());
+        assertEquals(EventoEtapa.ENTREGA, historicos.getAllValues().getFirst().getEvento());
+        assertEquals("recurso@teste.invalid", historicos.getAllValues().getFirst().getRealizadoPor());
+        assertEquals(EventoEtapa.AVANCO, historicos.getAllValues().getLast().getEvento());
+        assertEquals("sistema", historicos.getAllValues().getLast().getRealizadoPor());
         assertEquals(StatusEtapaOrdemServico.ENTREGUE, etapa.getStatus());
     }
 }

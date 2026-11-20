@@ -87,16 +87,16 @@ public class EntregaEtapaService {
             etapa.entregar(salvo.nomeOriginal(), salvo.caminho(), clock.instant(), estaLiberada);
             etapas.save(etapa);
             roteamento.rotear(etapa);
+            historico.save(new HistoricoEtapa(
+                    etapa, EventoEtapa.ENTREGA, recurso, recurso.getEmail(), etapa.getEntregueEm()));
+            historico.save(new HistoricoEtapa(
+                    etapa, EventoEtapa.AVANCO, null, "sistema", etapa.getEntregueEm()));
         } catch (RuntimeException ex) {
             // O arquivo já está no disco e o banco não vai registrá-lo: apaga agora, senão
             // fica ocupando espaço sem ninguém que saiba que ele existe.
             storage.remover(List.of(salvo.caminho()));
             throw ex;
         }
-
-        // CA.8
-        historico.save(new HistoricoEtapa(
-                etapa, EventoEtapa.ENTREGA, recurso, ator.email(), etapa.getEntregueEm()));
 
         return new EntregaEtapaResponse(
                 etapa.getId(),

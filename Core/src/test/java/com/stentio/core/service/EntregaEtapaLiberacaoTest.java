@@ -64,4 +64,28 @@ class EntregaEtapaLiberacaoTest {
         verify(etapas, never()).save(any());
         verify(historico, never()).save(any());
     }
+
+    @Test
+    void segundaEntregaDaEtapaEntregueNaoGeraNovoAvanco() {
+        UUID etapaId = UUID.randomUUID();
+        UsuarioAutenticado ator = new UsuarioAutenticado("recurso@teste.invalid", false);
+        Recurso recurso = mock(Recurso.class);
+        EtapaOrdemServico etapa = mock(EtapaOrdemServico.class);
+        MockMultipartFile arquivo = new MockMultipartFile(
+                "arquivo", "entrega.docx", "application/octet-stream", new byte[]{1});
+
+        when(recursoAutenticado.resolver(ator)).thenReturn(recurso);
+        when(etapas.buscarParaAceite(etapaId)).thenReturn(Optional.of(etapa));
+        when(etapa.pertenceA(recurso)).thenReturn(true);
+        when(etapa.getStatus()).thenReturn(StatusEtapaOrdemServico.ENTREGUE);
+        when(etapa.getNome()).thenReturn("Tradução");
+
+        assertThrows(TransicaoEtapaInvalidaException.class,
+                () -> service.entregar(etapaId, arquivo, ator));
+
+        verify(storage, never()).salvarTodos(anyList());
+        verify(etapas, never()).save(any());
+        verify(roteamento, never()).rotear(any());
+        verify(historico, never()).save(any());
+    }
 }
