@@ -340,6 +340,15 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
+              <TouchableOpacity
+                onPress={() => router.push('/solicitar' as Href)}
+                className="mt-6 items-center py-2 active:opacity-70"
+              >
+                <Text className="text-[#8c5230] font-semibold text-center text-sm md:text-base">
+                  Solicite um serviço de tradução.
+                </Text>
+              </TouchableOpacity>
+
             </View>
 
             <View className="md:hidden w-full bg-white px-6 pt-12 pb-8 mt-12 border-t border-zinc-100 items-center">
