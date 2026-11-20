@@ -38,8 +38,11 @@ class EtapaOrdemServicoServiceTest {
     private final ModeloWorkflowRepository modelos = mock(ModeloWorkflowRepository.class);
     private final TipoServicoRepository tiposServico = mock(TipoServicoRepository.class);
 
+    private final org.springframework.context.ApplicationEventPublisher eventos =
+            mock(org.springframework.context.ApplicationEventPublisher.class);
+
     private final EtapaOrdemServicoService service = new EtapaOrdemServicoService(
-            ordens, etapas, modelos, tiposServico, new EtapaOrdemServicoMapper());
+            ordens, etapas, modelos, tiposServico, new EtapaOrdemServicoMapper(), eventos);
 
     private final UUID osId = UUID.randomUUID();
     private OrdemServico ordem;
@@ -56,7 +59,12 @@ class EtapaOrdemServicoServiceTest {
         traducao = tipo("Tradução");
         revisao = tipo("Revisão");
         when(tiposServico.findAllById(any())).thenReturn(List.of(traducao, revisao));
-        when(etapas.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+        // Como o JPA, o saveAll devolve as etapas com id: o evento de auditoria (US-019) depende dele.
+        when(etapas.saveAll(anyList())).thenAnswer(inv -> {
+            List<EtapaOrdemServico> gravadas = inv.getArgument(0);
+            gravadas.forEach(e -> org.springframework.test.util.ReflectionTestUtils.setField(e, "id", UUID.randomUUID()));
+            return gravadas;
+        });
     }
 
     private static TipoServico tipo(String nome) {

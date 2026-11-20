@@ -47,8 +47,11 @@ class AlocacaoEtapaServiceTest {
     private final RecursoRepository recursos = mock(RecursoRepository.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
 
+    private final org.springframework.context.ApplicationEventPublisher eventos =
+            mock(org.springframework.context.ApplicationEventPublisher.class);
+
     private final AlocacaoEtapaService service = new AlocacaoEtapaService(
-            etapas, recursos, historico, Clock.fixed(AGORA, ZoneOffset.UTC));
+            etapas, recursos, historico, Clock.fixed(AGORA, ZoneOffset.UTC), eventos);
 
     private final UUID osId = UUID.randomUUID();
     private final UUID etapaId = UUID.randomUUID();
@@ -101,7 +104,10 @@ class AlocacaoEtapaServiceTest {
         when(ordem.getId()).thenReturn(osId);
         when(ordem.getSolicitacao()).thenReturn(solicitacao);
 
-        return new EtapaOrdemServico(ordem, 1, "Tradução Principal", tipoDaEtapa, 24);
+        EtapaOrdemServico nova = new EtapaOrdemServico(ordem, 1, "Tradução Principal", tipoDaEtapa, 24);
+        // Etapa carregada do banco sempre tem id; o evento de auditoria (US-019) depende dele.
+        org.springframework.test.util.ReflectionTestUtils.setField(nova, "id", etapaId);
+        return nova;
     }
 
     private Recurso recurso(String nome, TipoServico tipoHabilitado, Idioma origem, Idioma destino) {

@@ -3,12 +3,15 @@ package com.stentio.core.service;
 import com.stentio.core.dto.EmpresaPublicaResponse;
 import com.stentio.core.dto.OrcamentoDecisaoResponse;
 import com.stentio.core.dto.OrcamentoPublicoResponse;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.event.OrcamentoDecisaoEvento;
 import com.stentio.core.exception.LinkOrcamentoInvalidoException;
 import com.stentio.core.model.*;
 import com.stentio.core.repository.*;
 import org.hibernate.Hibernate;
+import com.stentio.core.support.AtorAuditoria;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,16 +33,19 @@ public class OrcamentoPublicoService {
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final RestTemplate emailServiceRestTemplate;
+    private final ApplicationEventPublisher eventos;
 
     public OrcamentoPublicoService(OrcamentoRepository orcamentos, OrcamentoHistoricoRepository historico,
                                   OrcamentoDecisaoOutboxRepository outbox, ObjectMapper objectMapper, Clock clock,
-                                  @Qualifier("emailServiceRestTemplate") RestTemplate emailServiceRestTemplate) {
+                                  @Qualifier("emailServiceRestTemplate") RestTemplate emailServiceRestTemplate,
+                                  ApplicationEventPublisher eventos) {
         this.orcamentos = orcamentos;
         this.historico = historico;
         this.outbox = outbox;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.emailServiceRestTemplate = emailServiceRestTemplate;
+        this.eventos = eventos;
     }
 
     public OrcamentoPublicoResponse consultar(String token) {
@@ -184,6 +190,9 @@ public class OrcamentoPublicoService {
         orcamento.setTokenUtilizadoEm(agora);
         orcamentos.save(orcamento);
         historico.save(registro);
+        // US-019 CA.4: sem login, quem decidiu é o cliente dono do link.
+        eventos.publishEvent(EventosAuditoria.orcamento(orcamento, registro.getStatusAnterior(),
+                observacaoDecisao(decisao, motivo), AtorAuditoria.clienteLinkPublico()));
 
         UUID eventoId = UUID.randomUUID();
         OrcamentoDecisaoEvento evento = new OrcamentoDecisaoEvento(eventoId, 1,
@@ -198,6 +207,13 @@ public class OrcamentoPublicoService {
         outbox.save(pendente);
 
         return new OrcamentoDecisaoResponse(orcamento.getId(), decisao, agora);
+    }
+
+    private static String observacaoDecisao(StatusOrcamento decisao, String motivo) {
+        if (decisao == StatusOrcamento.APROVADO) {
+            return "Aprovado via token de e-mail.";
+        }
+        return "Rejeitado via token de e-mail. Motivo: " + motivo;
     }
 
     private void validar(Orcamento orcamento, Instant agora) {

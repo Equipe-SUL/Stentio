@@ -99,6 +99,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // US-019: paginação ou intervalo de datas inválido na consulta de auditoria.
+    @ExceptionHandler(AuditoriaFiltroInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleAuditoriaFiltroInvalido(AuditoriaFiltroInvalidoException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @ExceptionHandler(OrdemServicoNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleOrdemServicoNaoEncontrada(OrdemServicoNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
