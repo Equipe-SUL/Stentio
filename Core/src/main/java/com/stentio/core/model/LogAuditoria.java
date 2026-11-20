@@ -34,8 +34,8 @@ import java.util.UUID;
  * Pelo mesmo motivo a {@code referencia_legivel} é gravada pronta, e não montada na leitura.
  *
  * <p>Os status são texto, e não enum: a mesma coluna guarda status de orçamento, de OS e
- * de etapa. Também evita o CHECK que o Hibernate cria para colunas enum e que o
- * {@code ddl-auto=update} nunca atualiza quando surge um status novo.
+ * de etapa. Também evita o CHECK que o Hibernate cria para colunas enum; os valores
+ * aceitos são mantidos nas migrações Flyway.
  */
 @Entity
 @Immutable
@@ -55,9 +55,9 @@ public class LogAuditoria {
     private UUID id;
 
     // Texto puro, exposto como enum pelo getter. Para qualquer atributo de tipo enum — com
-    // @Enumerated ou com AttributeConverter — o Hibernate gera um CHECK com os valores atuais,
-    // e o ddl-auto nunca atualiza esse CHECK quando o enum ganha valor. Um valor novo faria o
-    // INSERT do log falhar e, por estar na mesma transação, desfaria a operação do usuário.
+    // @Enumerated ou com AttributeConverter — o Hibernate gera um CHECK com os valores atuais.
+    // As migrações Flyway atualizam os valores permitidos quando um enum ganha um novo valor.
+    // Um valor novo incompatível faria o INSERT desfazer a operação na mesma transação.
     @Getter(AccessLevel.NONE)
     @Column(nullable = false, updatable = false, length = 30)
     private String entidade;

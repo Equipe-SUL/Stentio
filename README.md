@@ -181,6 +181,15 @@ docker compose --profile dev up -d --build
 
 Acompanhe a subida com `docker compose ps` e os logs com `docker compose logs -f core`.
 
+Auth e Core aplicam suas baselines Flyway ao iniciar e usam o Hibernate apenas para
+validar o schema. Em um banco vazio, as tabelas e constraints — incluindo os estados
+da US-013 — são criados sem comandos SQL manuais. Cada serviço registra suas versões
+em uma tabela de histórico própria, pois ambos compartilham o schema `public`:
+[Core](./Core/src/main/resources/db/migration/core/V1__core_schema.sql) e
+[Auth](./Auth/src/main/resources/db/migration/auth/V1__auth_schema.sql). Depois do
+primeiro deploy, novas alterações devem ser adicionadas em novas versões, sem editar
+as baselines já aplicadas.
+
 | Serviço | URL |
 | :------ | :-- |
 | Frontend | http://localhost |
