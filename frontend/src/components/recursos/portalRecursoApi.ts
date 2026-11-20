@@ -10,9 +10,17 @@ export interface DemandaRecurso {
   tipo_servico: string;
   idioma_origem: string;
   idioma_destino: string;
-  situacao: "PENDENTE" | "AGUARDANDO_ETAPA_ANTERIOR" | "ALOCADO" | string;
+  situacao: "PENDENTE" | "AGUARDANDO_ETAPA_ANTERIOR" | "ALOCADO" | "DISPARADA" | "ACEITA" | "ENTREGUE" | string;
   prazo_estimado_horas: number;
   data_limite_entrega: string | null;
+  aceito_em?: string | null;
+  arquivo_entrega_url?: string | null;
+  arquivo_entrega_nome?: string | null;
+}
+
+export interface EtapasPortalRecurso {
+  disponiveis: DemandaRecurso[];
+  minhas: DemandaRecurso[];
 }
 
 export interface PerfilRecurso extends PerfilRecursoCriado {
@@ -25,9 +33,26 @@ export interface PerfilRecurso extends PerfilRecursoCriado {
   }[];
 }
 
-export async function listarMinhasDemandas(): Promise<DemandaRecurso[]> {
-  const { data } = await coreApi.get<DemandaRecurso[]>("/api/v1/recurso/etapas");
-  return data;
+export async function listarEtapasPortal(): Promise<EtapasPortalRecurso> {
+  const { data } = await coreApi.get<DemandaRecurso[] | Partial<EtapasPortalRecurso>>("/api/v1/recurso/etapas");
+  if (Array.isArray(data)) {
+    return {
+      disponiveis: data.filter((etapa) => etapa.situacao === "DISPARADA"),
+      minhas: data.filter((etapa) => etapa.situacao !== "DISPARADA"),
+    };
+  }
+  return {
+    disponiveis: data.disponiveis ?? [],
+    minhas: data.minhas ?? [],
+  };
+}
+
+export async function aceitarEtapa(etapaId: string): Promise<void> {
+  await coreApi.post(`/api/v1/recurso/etapas/${etapaId}/aceitar`);
+}
+
+export async function recusarEtapa(etapaId: string): Promise<void> {
+  await coreApi.post(`/api/v1/recurso/etapas/${etapaId}/recusar`);
 }
 
 export async function buscarMeuPerfilRecurso(): Promise<PerfilRecurso> {
