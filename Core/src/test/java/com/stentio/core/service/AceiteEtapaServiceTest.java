@@ -167,8 +167,10 @@ class AceiteEtapaServiceTest {
     @DisplayName("CA.4: perfil que não atende o par de idiomas não aceita")
     void recusaParDeIdiomasIncompativel() {
         etapa.disparar(AGORA);
-        when(recursoAutenticado.resolver(ator))
-                .thenReturn(recurso("Bruno", traducao, portugues, alemao));
+        // Construído fora do when: montar o recurso toca nos mocks de Idioma, e fazer isso
+        // dentro do thenReturn deixa a stubbing inacabada (UnfinishedStubbingException).
+        Recurso bruno = recurso("Bruno", traducao, portugues, alemao);
+        when(recursoAutenticado.resolver(ator)).thenReturn(bruno);
 
         assertThrows(AlocacaoInvalidaException.class, () -> service.aceitar(etapaId, ator));
         verify(etapas, never()).aceitarSeDisponivel(any(), any(), any(), any(), any());
@@ -178,8 +180,8 @@ class AceiteEtapaServiceTest {
     @DisplayName("CA.4: perfil que não executa o tipo de serviço não aceita")
     void recusaTipoDeServicoIncompativel() {
         etapa.disparar(AGORA);
-        when(recursoAutenticado.resolver(ator))
-                .thenReturn(recurso("Carla", revisao, portugues, ingles));
+        Recurso carla = recurso("Carla", revisao, portugues, ingles);
+        when(recursoAutenticado.resolver(ator)).thenReturn(carla);
 
         assertThrows(AlocacaoInvalidaException.class, () -> service.aceitar(etapaId, ator));
     }
