@@ -59,11 +59,10 @@ public class RecusaEtapaService {
         HistoricoEtapa registro =
                 new HistoricoEtapa(etapa, EventoEtapa.RECUSA, recurso, ator.email(), agora);
 
-        // RN.5: volta sem recurso e sem prazo — livre para outra alocação ou para o disparo
-        // aberto. A entidade recusa qualquer estado que não seja ALOCADO, então uma etapa
-        // já aceita não passa daqui. US-014 RN.1: volta para PENDENTE se estiver liberada,
-        // ou para AGUARDANDO_ETAPA_ANTERIOR se a anterior ainda não foi entregue.
-        etapa.recusar(etapas.anteriorDe(etapa));
+        // RN.5: volta a PENDENTE, sem recurso e sem prazo — livre para outra alocação ou
+        // para o disparo aberto. A entidade recusa qualquer estado que não seja ALOCADO,
+        // então uma etapa já aceita não passa daqui.
+        etapa.recusar();
         etapas.save(etapa);
         historico.save(registro);
 
