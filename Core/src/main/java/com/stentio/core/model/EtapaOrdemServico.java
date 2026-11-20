@@ -112,6 +112,14 @@ public class EtapaOrdemServico {
                 || statusAnterior == StatusEtapaOrdemServico.ENTREGUE;
     }
 
+    public void liberar() {
+        if (status != StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " não está aguardando liberação");
+        }
+        status = StatusEtapaOrdemServico.PENDENTE;
+    }
+
     /**
      * US-012 CA.4. Realocar sobrescreve: trocar o profissional é uma alocação nova, e quem
      * decide se podia trocar é a RN.3, não este método.

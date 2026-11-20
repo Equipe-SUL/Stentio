@@ -31,12 +31,14 @@ class EntregaEtapaLiberacaoTest {
     private final RecursoAutenticadoService recursoAutenticado = mock(RecursoAutenticadoService.class);
     private final ArquivoStorageService storage = mock(ArquivoStorageService.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
+    private final AvancoEtapaService avanco = mock(AvancoEtapaService.class);
     private final EntregaEtapaService service = new EntregaEtapaService(
             etapas,
             liberacao,
             recursoAutenticado,
             storage,
             historico,
+            avanco,
             Clock.fixed(Instant.parse("2026-11-20T12:00:00Z"), ZoneOffset.UTC));
 
     @Test

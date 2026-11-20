@@ -67,6 +67,7 @@ class AlocacaoEtapaPostgresTest {
     @Autowired EtapaOrdemServicoService etapasService;
     @Autowired EtapaOrdemServicoRepository etapas;
     @Autowired EtapaLiberacaoService liberacao;
+    @Autowired AvancoEtapaService avanco;
     @Autowired ClienteRepository clientes;
     @Autowired CategoriaProjetoRepository categorias;
     @Autowired IdiomaRepository idiomas;
@@ -225,6 +226,46 @@ class AlocacaoEtapaPostgresTest {
         EtapaOrdemServico segundaAtualizada = etapas.findById(ids.get(1)).orElseThrow();
         assertEquals(StatusEtapaOrdemServico.ALOCADO, segundaAtualizada.getStatus());
         assertTrue(liberacao.estaLiberada(segundaAtualizada));
+    }
+
+    @Test
+    @DisplayName("a primeira entrega libera a próxima etapa e inicia a OS")
+    void primeiraEntregaAvancaEIniciaExecucao() {
+        List<UUID> ids = montarEtapas();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            EtapaOrdemServico primeira = etapas.buscarParaAlocacao(osId, ids.getFirst()).orElseThrow();
+            entregarComoRecurso(primeira);
+            EtapaOrdemServico proxima = avanco.avancar(primeira).orElseThrow();
+            assertEquals(ids.get(1), proxima.getId());
+        });
+
+        assertEquals(StatusEtapaOrdemServico.PENDENTE,
+                etapas.findById(ids.get(1)).orElseThrow().getStatus());
+        assertEquals(StatusOrdemServico.EM_EXECUCAO,
+                ordensServico.findById(osId).orElseThrow().getStatus());
+    }
+
+    @Test
+    @DisplayName("a última entrega coloca a OS em verificação")
+    void ultimaEntregaAguardaVerificacao() {
+        List<UUID> ids = montarEtapas();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            EtapaOrdemServico ultima = etapas.buscarParaAlocacao(osId, ids.getLast()).orElseThrow();
+            entregarComoRecurso(ultima);
+            assertTrue(avanco.avancar(ultima).isEmpty());
+        });
+
+        assertEquals(StatusOrdemServico.AGUARDANDO_VERIFICACAO,
+                ordensServico.findById(osId).orElseThrow().getStatus());
+    }
+
+    private void entregarComoRecurso(EtapaOrdemServico etapa) {
+        Instant agora = Instant.now();
+        Recurso recurso = recursos.findById(anaId).orElseThrow();
+        etapa.alocar(recurso, DAQUI_A_UM_MES, agora);
+        etapa.aceitarPor(recurso, agora, true);
+        etapa.entregar("entrega.docx", "2026/11/entrega.docx", agora, true);
+        etapas.saveAndFlush(etapa);
     }
 
     @Test

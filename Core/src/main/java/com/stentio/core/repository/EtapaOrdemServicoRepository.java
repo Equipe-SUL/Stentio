@@ -2,6 +2,7 @@ package com.stentio.core.repository;
 
 import com.stentio.core.dto.DashboardEtapaPendenciaProjection;
 import com.stentio.core.model.EtapaOrdemServico;
+import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.Recurso;
 import com.stentio.core.model.StatusEtapaOrdemServico;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -100,6 +101,8 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
             """)
     Optional<StatusEtapaOrdemServico> buscarStatusPorOrdem(@Param("ordemServicoId") UUID ordemServicoId,
                                                            @Param("ordem") int ordem);
+
+    Optional<EtapaOrdemServico> findByOrdemServicoAndOrdem(OrdemServico ordemServico, int ordem);
 
     /**
      * US-013 CA.4: as etapas abertas que este profissional pode assumir.

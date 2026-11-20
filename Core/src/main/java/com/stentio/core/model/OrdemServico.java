@@ -48,4 +48,14 @@ public class OrdemServico {
     public void planejar() {
         this.status = StatusOrdemServico.EM_PLANEJAMENTO;
     }
+
+    public void iniciarExecucao() {
+        if (status == StatusOrdemServico.EM_PLANEJAMENTO) {
+            this.status = StatusOrdemServico.EM_EXECUCAO;
+        }
+    }
+
+    public void aguardarVerificacao() {
+        this.status = StatusOrdemServico.AGUARDANDO_VERIFICACAO;
+    }
 }
