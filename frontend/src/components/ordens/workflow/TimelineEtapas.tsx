@@ -45,7 +45,7 @@ export function TimelineEtapas({
     (acc, e) => acc + (Number(e.prazo_estimado_horas) || 0),
     0,
   );
-  const totalAlocadas = etapas.filter((e) => e.status === "ALOCADO").length;
+  const totalAlocadas = etapas.filter((e) => ["ALOCADO", "ACEITA", "ENTREGUE"].includes(e.status)).length;
   const porcentagem =
     etapas.length > 0 ? Math.round((totalAlocadas / etapas.length) * 100) : 0;
 

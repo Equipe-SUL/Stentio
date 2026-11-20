@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import axios from "axios";
+import { isAxiosError } from "axios";
 import * as DocumentPicker from "expo-document-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { getApiErrorMessage } from "../../../lib/api";
@@ -65,9 +65,9 @@ export default function MinhasDemandasScreen() {
       setMensagem(aceitar ? "Etapa aceita com sucesso." : "Alocação recusada. O gestor será notificado.");
       await carregar();
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 409) {
+      if (isAxiosError(error) && error.response?.status === 409) {
         await carregar();
-        setErro("Outro recurso já assumiu esta etapa. A lista disponível foi atualizada.");
+        setMensagem("Outro recurso já assumiu esta etapa. A lista disponível foi atualizada.");
       } else {
         setErro(getApiErrorMessage(error));
       }
@@ -77,21 +77,25 @@ export default function MinhasDemandasScreen() {
   };
 
   const selecionarEntrega = async (etapaId: string) => {
-    const escolha = await DocumentPicker.getDocumentAsync({ type: "*/*", multiple: false, copyToCacheDirectory: true });
-    if (escolha.canceled) return;
-    const item = escolha.assets[0];
-    const extensao = item.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!EXTENSOES_ENTREGA.has(extensao)) {
-      setErro("Tipo de arquivo não permitido. Envie PDF, Office, texto ou imagem compatível.");
-      return;
+    try {
+      const escolha = await DocumentPicker.getDocumentAsync({ type: "*/*", multiple: false, copyToCacheDirectory: true });
+      if (escolha.canceled) return;
+      const item = escolha.assets[0];
+      const extensao = item.name.split(".").pop()?.toLowerCase() ?? "";
+      if (!EXTENSOES_ENTREGA.has(extensao)) {
+        setErro("Tipo de arquivo não permitido. Envie PDF, Office, texto ou imagem compatível.");
+        return;
+      }
+      if (item.size !== undefined && item.size > LIMITE_ENTREGA_BYTES) {
+        setErro("O arquivo ultrapassa o limite de 10 MB.");
+        return;
+      }
+      setErro("");
+      setArquivo(item);
+      setEtapaDoArquivo(etapaId);
+    } catch {
+      setErro("Não foi possível abrir o seletor de arquivos. Tente novamente.");
     }
-    if (item.size !== undefined && item.size > LIMITE_ENTREGA_BYTES) {
-      setErro("O arquivo ultrapassa o limite de 10 MB.");
-      return;
-    }
-    setErro("");
-    setArquivo(item);
-    setEtapaDoArquivo(etapaId);
   };
 
   const enviarArquivo = async (etapaId: string) => {

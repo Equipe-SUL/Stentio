@@ -77,7 +77,7 @@ export async function enviarEntrega(
   const { data } = await coreApi.post<EntregaEtapaResponse>(
     `/api/v1/recurso/etapas/${etapaId}/entrega`,
     form,
-    { onUploadProgress: (event) => {
+    { timeout: 0, onUploadProgress: (event) => {
       if (event.total) aoProgredir?.(Math.round((event.loaded / event.total) * 100));
     } },
   );

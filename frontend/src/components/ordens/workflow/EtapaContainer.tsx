@@ -55,6 +55,7 @@ export function EtapaContainer({
   const isAlocada = ["ALOCADO", "ACEITA", "ENTREGUE"].includes(etapa.status);
   const isAguardando = etapa.status === "AGUARDANDO_ETAPA_ANTERIOR";
   const etapaEmExecucao = etapa.status === "ACEITA" || etapa.status === "ENTREGUE";
+  const possuiRecurso = Boolean(etapa.recurso_id) || etapaEmExecucao;
 
   // Obter nome legível do tipo de serviço
   const tipoEncontrado = tiposServico.find((t) => t.id === etapa.tipo_servico_id);
@@ -67,9 +68,10 @@ export function EtapaContainer({
   let statusBadgeBg = "bg-amber-50 border-amber-200 text-amber-800";
 
   if (isAlocada) {
-    badgeNoBg = "bg-emerald-500 border-emerald-600 text-white";
-    statusBadgeBg = "bg-emerald-50 border-emerald-200 text-emerald-800";
-    statusRotulo = etapa.status === "ENTREGUE" ? "Entregue" : etapa.status === "ACEITA" ? "Aceita" : "Alocada";
+    const entregue = etapa.status === "ENTREGUE";
+    badgeNoBg = entregue ? "bg-violet-500 border-violet-600 text-white" : "bg-emerald-500 border-emerald-600 text-white";
+    statusBadgeBg = entregue ? "bg-violet-50 border-violet-200 text-violet-800" : "bg-emerald-50 border-emerald-200 text-emerald-800";
+    statusRotulo = entregue ? "Entregue" : etapa.status === "ACEITA" ? "Aceita" : "Alocada";
   } else if (etapa.status === "DISPARADA") {
     badgeNoBg = "bg-blue-100 border-blue-300 text-blue-800";
     statusRotulo = "Disparada";
@@ -264,7 +266,7 @@ export function EtapaContainer({
           {/* Bloco de Alocação de Recurso */}
           <View className="gap-1.5">
             <Text className="text-xs font-semibold text-neutral-600">Recurso Alocado</Text>
-            {etapa.recurso_id ? (
+            {possuiRecurso ? (
               <View className="flex-row items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/40 p-2 px-3">
                 <View className="flex-row items-center gap-2 flex-1 mr-2">
                   <View className="h-7 w-7 rounded-full bg-emerald-100 items-center justify-center">
@@ -275,7 +277,7 @@ export function EtapaContainer({
                       className="text-xs font-bold text-emerald-950 truncate"
                       numberOfLines={1}
                     >
-                      {etapa.recurso_nome || "Profissional Alocado"}
+                      {etapa.recurso_nome || etapa.recurso_aceite_nome || etapa.aceito_por_nome || "Profissional Alocado"}
                     </Text>
                     {dataLimite ? (
                       <Text className="text-[11px] text-emerald-800">
@@ -344,7 +346,7 @@ export function EtapaContainer({
                 )}
               </>
             ) : null}
-            {etapa.status === "ACEITA" && (etapa.recurso_aceite_nome || etapa.aceito_por_nome || etapa.recurso_nome) ? (
+            {["ACEITA", "ENTREGUE"].includes(etapa.status) && (etapa.recurso_aceite_nome || etapa.aceito_por_nome || etapa.recurso_nome) ? (
               <Text className="text-xs font-medium text-emerald-800">
                 Aceita por {etapa.recurso_aceite_nome || etapa.aceito_por_nome || etapa.recurso_nome}{etapa.aceito_em ? ` em ${new Date(etapa.aceito_em).toLocaleString("pt-BR")}` : ""}
               </Text>
@@ -369,7 +371,7 @@ export function EtapaContainer({
                 : "ellipse-outline"
             }
             size={16}
-            color={isAlocada ? "#10b981" : isAguardando ? "#a3a3a3" : "#d97706"}
+            color={etapa.status === "ENTREGUE" ? "#8b5cf6" : isAlocada ? "#10b981" : isAguardando ? "#a3a3a3" : "#d97706"}
           />
           <Text className="text-xs text-neutral-500 flex-1">
             {etapa.status === "ENTREGUE"
