@@ -117,8 +117,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, ROTAS_RECURSOS).hasAnyRole(PERFIS_STAFF)
                         .requestMatchers(ROTAS_RECURSOS).hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
                         .requestMatchers(ROTAS_CATEGORIAS_PROJETO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
-                        .requestMatchers(ROTAS_IDIOMAS).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
-                        .requestMatchers(ROTAS_TIPOS_SERVICO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
+                        // US-023 T9: o recurso precisa consultar os catálogos ativos no auto-cadastro;
+                        // qualquer escrita ou alteração nos catálogos continua restrita à equipe.
+                        .requestMatchers(HttpMethod.GET, ROTAS_IDIOMAS)
+                        .hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name(), Role.RECURSO.name())
+                        .requestMatchers(ROTAS_IDIOMAS)
+                        .hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
+                        .requestMatchers(HttpMethod.GET, ROTAS_TIPOS_SERVICO)
+                        .hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name(), Role.RECURSO.name())
+                        .requestMatchers(ROTAS_TIPOS_SERVICO)
+                        .hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
                         // CA.5 da US-05: só ADMIN e GESTOR_PROJETO gerenciam a tabela de preços.
                         .requestMatchers(ROTAS_TABELAS_PRECO).hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
                         // US-09: a solicitação é registrada pelo Atendente; gestor e admin acompanham.

@@ -339,28 +339,30 @@ Essa estrutura deve evitar armazenar senha SMTP e, quando necessário, mascarar 
 | `RABBITMQ_DEFAULT_USER` | Usuário RabbitMQ | `myuser` |
 | `RABBITMQ_DEFAULT_PASS` | Senha RabbitMQ | `changeme` |
 
-Para o ambiente local deste projeto, o `.env` usa portas externas alternativas para evitar conflitos:
+No Docker Compose do Stentio, o `email-service` é publicado em
+`${EMAIL_SERVICE_PORT:-8083}:8083`. O MailHog está no perfil `dev`; a porta
+SMTP interna é `1025` e a interface web usa `8025` por padrão. Esses valores
+podem ser sobrescritos no `.env`:
 
 | Serviço | Porta externa |
 |---|---:|
-| Backend | `18080` |
-| MongoDB | `27018` |
-| RabbitMQ AMQP | `25672` |
-| RabbitMQ Management | `25673` |
-| MailHog SMTP | `11025` |
-| MailHog Web | `18025` |
+| email-service | `8083` |
+| MongoDB | `27017` |
+| RabbitMQ AMQP | `5672` |
+| RabbitMQ Management | `15672` |
+| MailHog SMTP | `1025` |
+| MailHog Web | `8025` |
 
-Exemplo de execução local do serviço:
+Dentro da rede Docker, configure o SMTP com host `mailhog` e porta `1025`.
+Para executar o serviço fora do Compose, use `localhost` e a porta SMTP publicada
+no host. Para iniciar os containers relevantes:
 
 ```bash
-cd email-service
-SPRING_MONGODB_URI="mongodb://root:changeme@localhost:27018/admin?authSource=admin" \
-RABBITMQ_PORT=25672 \
-MAILHOG_PORT_SMTP=11025 \
-./gradlew bootRun
+docker compose --profile dev up -d email-service mailhog
 ```
 
-O `docker-compose.yml` atual sobe MongoDB, RabbitMQ e MailHog, mas não declara o container `email-service`; o serviço deve ser iniciado separadamente ou adicionado ao Compose em uma evolução futura.
+O serviço `email-service` já faz parte do `docker-compose.yml`; sua porta host
+padrão é `8083`, e sua porta interna é configurada como `8083`.
 
 ## 9. Testes
 
@@ -390,15 +392,15 @@ cd email-service
 1. Subir a infraestrutura:
 
    ```bash
-   docker compose up -d mongodb rabbitmq mailhog
+   docker compose --profile dev up -d mongodb rabbitmq email-service mailhog
    ```
 
 2. Iniciar o serviço com as variáveis de ambiente locais.
 3. Salvar uma configuração com `POST /api/v1/smtp`.
 4. Buscar a configuração com `GET /api/v1/smtp`.
 5. Executar `POST /api/v1/smtp/test`.
-6. Conferir a mensagem no MailHog em `http://localhost:18025`.
-7. Publicar uma mensagem em `email.queue` e verificar o ACK no RabbitMQ Management em `http://localhost:25673`.
+6. Conferir a mensagem no MailHog em `http://localhost:8025` (ou na porta definida por `MAILHOG_PORT`).
+7. Publicar uma mensagem em `email.queue` e verificar o ACK no RabbitMQ Management em `http://localhost:15672` (ou na porta definida por `RABBITMQ_MANAGEMENT_PORT`).
 
 ### Homologação
 

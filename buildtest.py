@@ -26,6 +26,7 @@ from urllib.request import Request, urlopen
 
 
 QUANTIDADE = 20
+QUANTIDADE_RECURSOS_PORTAL = 4
 SENHA_TESTE = "Teste123!"
 PAPEIS = ("ADMIN", "ATENDENTE", "GESTOR_PROJETO", "FINANCEIRO")
 UNIDADES = ("PALAVRA", "HORA", "PAGINA")
@@ -244,6 +245,16 @@ def host_local(url: str) -> bool:
         return False
 
 
+def smtp_local(host: str) -> bool:
+    host = host.strip().lower()
+    if host in {"localhost", "mailhog"}:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 def requisitar(
     base_url: str,
     metodo: str,
@@ -365,7 +376,7 @@ def criar_dados(
         "/api/v1/usuarios/login",
         dados={"email": admin_email, "senha": admin_senha},
     )
-    if not isinstance(login, dict) or not login.get("token"):
+    if not isinstance(login, dict) or not login.get("token") or login.get("role") != "ADMIN":
         raise ErroBuildtest("O login administrativo não retornou um token.")
     token = str(login["token"])
 
@@ -391,6 +402,22 @@ def criar_dados(
         )
         exigir_id(resposta, f"usuário {indice + 1}")
         usuarios.append(email)
+
+    tokens_por_papel = {"ADMIN": token}
+    for papel in ("ATENDENTE", "GESTOR_PROJETO"):
+        email = usuarios[PAPEIS.index(papel)]
+        sessao = requisitar(
+            auth_url,
+            "POST",
+            "/api/v1/usuarios/login",
+            dados={"email": email, "senha": SENHA_TESTE},
+        )
+        if not isinstance(sessao, dict) or not sessao.get("token") or sessao.get("role") != papel:
+            raise ErroBuildtest(f"Não foi possível autenticar a conta de teste {papel}.")
+        tokens_por_papel[papel] = str(sessao["token"])
+
+    token_atendente = tokens_por_papel["ATENDENTE"]
+    token_gestor = tokens_por_papel["GESTOR_PROJETO"]
 
     categorias: list[str] = []
     for nome in CATEGORIAS_PROJETO:
@@ -484,7 +511,73 @@ def criar_dados(
             },
         )
         recurso = resposta.get("recurso") if isinstance(resposta, dict) else None
-        recursos.append(exigir_id(recurso, f"recurso {indice + 1}"))
+        recurso_id = exigir_id(recurso, f"recurso {indice + 1}")
+        requisitar(
+            core_url,
+            "PATCH",
+            f"/api/v1/recursos/{recurso_id}/verificacao",
+            token=token,
+            dados={"verificado": True},
+        )
+        recursos.append(recurso_id)
+
+    recursos_portal: list[dict[str, str]] = []
+    for indice in range(QUANTIDADE_RECURSOS_PORTAL):
+        email = f"buildtest.recurso.{run_id}.{indice + 1:02d}@stentio.test"
+        conta = requisitar(
+            auth_url,
+            "POST",
+            "/api/v1/public/usuarios",
+            dados={
+                "nome": f"Recurso Portal Buildtest {run_id} {indice + 1:02d}",
+                "email": email,
+                "senha": SENHA_TESTE,
+            },
+        )
+        if not isinstance(conta, dict) or conta.get("role") != "RECURSO":
+            raise ErroBuildtest(f"A conta de teste de recurso {indice + 1} não recebeu o papel RECURSO.")
+
+        sessao = requisitar(
+            auth_url,
+            "POST",
+            "/api/v1/usuarios/login",
+            dados={"email": email, "senha": SENHA_TESTE},
+        )
+        if not isinstance(sessao, dict) or not sessao.get("token") or sessao.get("role") != "RECURSO":
+            raise ErroBuildtest(f"Não foi possível autenticar a conta de portal {indice + 1}.")
+        token_recurso = str(sessao["token"])
+
+        perfil = requisitar(
+            core_url,
+            "POST",
+            "/api/v1/recursos/auto-cadastro",
+            token=token_recurso,
+            dados={
+                "nome": f"Recurso Portal Buildtest {run_id} {indice + 1:02d}",
+                "email": email,
+                "telefone": f"+55117777{indice:06d}",
+                "tiposServicoIds": [tipos[indice][0]],
+                "precos": [
+                    {
+                        "idiomaOrigemId": idiomas[indice],
+                        "idiomaDestinoId": idiomas[(indice + 1) % QUANTIDADE_IDIOMAS],
+                        "unidade": UNIDADES[indice % len(UNIDADES)],
+                        "valor": f"{0.20 + indice:.4f}",
+                    }
+                ],
+            },
+        )
+        recursos_portal.append(
+            {"id": exigir_id(perfil, f"perfil do recurso {indice + 1}"), "email": email, "token": token_recurso}
+        )
+
+    requisitar(
+        core_url,
+        "PATCH",
+        f"/api/v1/recursos/{recursos_portal[0]['id']}/verificacao",
+        token=token,
+        dados={"verificado": True},
+    )
 
     modelos: list[str] = []
     for indice in range(QUANTIDADE):
@@ -522,7 +615,7 @@ def criar_dados(
             core_url,
             "POST",
             "/api/v1/solicitacoes",
-            token=token,
+            token=token_atendente,
             campos={
                 "clienteId": clientes[par],
                 "categoriaProjetoId": categorias[par % len(categorias)],
@@ -542,7 +635,7 @@ def criar_dados(
             core_url,
             "POST",
             "/api/v1/orcamentos",
-            token=token,
+            token=token_atendente,
             dados={
                 "solicitacao_id": solicitacao_id,
                 "cliente_id": clientes[cliente_indice],
@@ -555,7 +648,7 @@ def criar_dados(
             core_url,
             "POST",
             f"/api/v1/orcamentos/{orcamento_id}/itens",
-            token=token,
+            token=token_atendente,
             dados={
                 "itens": [
                     {
@@ -581,7 +674,7 @@ def criar_dados(
                 core_url,
                 "POST",
                 f"/api/v1/orcamentos/{orcamento_id}/enviar-aprovacao",
-                token=token,
+                token=token_atendente,
             )
             if not isinstance(envio, dict) or not envio.get("token_aprovacao"):
                 raise ErroBuildtest(f"O envio do orçamento {indice + 1} não retornou token.")
@@ -608,7 +701,7 @@ def criar_dados(
     ordens_novas: dict[str, dict] = {}
     limite = time.monotonic() + 60
     while time.monotonic() < limite and len(ordens_novas) < QUANTIDADE:
-        for ordem in obter_ordens(core_url, token):
+        for ordem in obter_ordens(core_url, token_gestor):
             ordem_id = str(ordem.get("id", ""))
             cliente_id = str(ordem.get("cliente_id", ""))
             if ordem_id not in ordens_anteriores and cliente_id in clientes_aprovados:
@@ -634,7 +727,7 @@ def criar_dados(
             core_url,
             "POST",
             f"/api/v1/ordens-servico/{ordem_id}/etapas/aplicar-modelo/{modelos[indice_aprovado % QUANTIDADE]}",
-            token=token,
+            token=token_gestor,
         )
         if not isinstance(etapas, dict) or not etapas.get("etapas"):
             raise ErroBuildtest(f"A OS {ordem_id} não retornou etapas após aplicar o modelo.")
@@ -645,9 +738,13 @@ def criar_dados(
             core_url,
             "POST",
             f"/api/v1/ordens-servico/{ordem_id}/etapas/{primeira_etapa['id']}/alocacao",
-            token=token,
+            token=token_gestor,
             dados={
-                "recurso_id": recursos[indice_aprovado % QUANTIDADE],
+                "recurso_id": (
+                    recursos_portal[0]["id"]
+                    if alocacoes == 0
+                    else recursos[indice_aprovado % QUANTIDADE]
+                ),
                 "data_limite_entrega": prazo,
             },
         )
@@ -670,8 +767,28 @@ def criar_dados(
         ):
             requisitar(core_url, "PATCH", caminho, token=token, dados=identificador)
 
+    perfil_portal = requisitar(
+        core_url,
+        "GET",
+        "/api/v1/recurso/perfil",
+        token=recursos_portal[0]["token"],
+    )
+    demandas_portal = requisitar(
+        core_url,
+        "GET",
+        "/api/v1/recurso/etapas",
+        token=recursos_portal[0]["token"],
+    )
+    if not isinstance(perfil_portal, dict) or perfil_portal.get("id") != recursos_portal[0]["id"]:
+        raise ErroBuildtest("A conta RECURSO não conseguiu recuperar o próprio perfil.")
+    if perfil_portal.get("verificado") is not True:
+        raise ErroBuildtest("O perfil RECURSO alocado não está verificado.")
+    if not isinstance(demandas_portal, list) or not demandas_portal:
+        raise ErroBuildtest("O portal RECURSO não retornou a etapa alocada.")
+
     print("\nSeed concluído:")
-    print(f"  usuários: {len(usuarios)} (roles variadas)")
+    print(f"  usuários de equipe: {len(usuarios)} (roles variadas)")
+    print(f"  contas/perfis RECURSO: {len(recursos_portal)} (3 pendentes de verificação)")
     print(f"  clientes: {len(clientes)}")
     print(f"  categorias: {len(categorias)} padronizadas")
     print(f"  idiomas: {len(idiomas)} oficiais (4 inativos)")
@@ -684,10 +801,13 @@ def criar_dados(
     print(f"  orçamentos: {len(orcamentos)} (20 em elaboração, 20 aguardando, 20 rejeitados, 20 aprovados)")
     print(f"  ordens de serviço: {len(ordens_novas)} (10 pendentes de alocação, 10 planejadas)")
     print(f"  etapas planejadas/alocadas: {etapas_planejadas}/{alocacoes}")
+    print("  trilha de auditoria: ações de ATENDENTE, GESTOR_PROJETO, TOKEN_PUBLICO e SISTEMA")
     print(f"\nSenha compartilhada das contas de teste: {SENHA_TESTE}")
     print("Contas:")
     for indice, email in enumerate(usuarios):
         print(f"  {email} ({PAPEIS[indice % len(PAPEIS)]})")
+    for recurso in recursos_portal:
+        print(f"  {recurso['email']} (RECURSO)")
 
 
 def main() -> int:
@@ -699,6 +819,7 @@ def main() -> int:
     )
     parser.add_argument("--auth-url", help="URL base do Auth (padrão: localhost:SERVER_PORT)")
     parser.add_argument("--core-url", help="URL base do Core (padrão: localhost:CORE_SERVER_PORT)")
+    parser.add_argument("--email-url", help="URL base do email-service (padrão: localhost:EMAIL_SERVICE_PORT)")
     parser.add_argument("--admin-email", help="e-mail de administrador; também aceita BUILDTEST_ADMIN_EMAIL")
     args = parser.parse_args()
 
@@ -713,13 +834,16 @@ def main() -> int:
         env_raiz,
         f"http://127.0.0.1:{valor_config('CORE_SERVER_PORT', env_raiz, '8082')}",
     )
+    email_url = args.email_url or valor_config(
+        "BUILDTEST_EMAIL_URL",
+        env_raiz,
+        f"http://127.0.0.1:{valor_config('EMAIL_SERVICE_PORT', env_raiz, '8083')}",
+    )
     run_id = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S") + secrets.token_hex(2)
 
     print("Plano de massa de teste:")
-    print(
-        f"  20 usuários, clientes, tipos de serviço e recursos; "
-        f"{len(CATEGORIAS_PROJETO)} categorias padronizadas."
-    )
+    print(f"  {QUANTIDADE} usuários de equipe e {QUANTIDADE_RECURSOS_PORTAL} contas/perfis RECURSO.")
+    print(f"  {QUANTIDADE} clientes, tipos de serviço e recursos de equipe; {len(CATEGORIAS_PROJETO)} categorias.")
     print(f"  {QUANTIDADE_IDIOMAS} idiomas oficiais com códigos ISO/BCP 47,")
     print("  pares de idiomas, tabelas de preço e workflows.")
     print("  100 solicitações: 20 pendentes de orçamento e 80 com orçamento.")
@@ -729,14 +853,17 @@ def main() -> int:
         "  --apply limpa e recria as tabelas públicas do banco *_test; preserva usuarios, "
         "exceto contas buildtest anteriores."
     )
-    print("  --apply aceita somente APIs locais e bancos terminados em _test.")
+    print("  Recursos usados em OS são verificados; 3 perfis RECURSO ficam pendentes e 1 recebe uma etapa.")
+    print("  A trilha de auditoria inclui ATENDENTE, GESTOR_PROJETO, TOKEN_PUBLICO e SISTEMA.")
+    print("  --apply aceita somente APIs locais, bancos terminados em _test e SMTP local.")
+    print("  --apply exige SMTP local (MailHog recomendado); não envia e-mails para servidores externos.")
     print("  Envios acionam o outbox de e-mail, sempre com destinatários no domínio reservado .test.")
 
     if not args.apply:
         print("\nSimulação: nenhuma conexão ou gravação realizada. Use --apply para executar.")
         return 0
 
-    if not host_local(auth_url) or not host_local(core_url):
+    if not host_local(auth_url) or not host_local(core_url) or not host_local(email_url):
         raise ErroBuildtest(
             "Por segurança, --apply idempotente aceita somente URLs localhost/loopback."
         )
@@ -747,7 +874,11 @@ def main() -> int:
         or env_raiz.get("ADMIN_INITIAL_EMAIL")
         or input("E-mail de administrador: ").strip()
     )
-    admin_senha = os.environ.get("BUILDTEST_ADMIN_PASSWORD")
+    admin_senha = (
+        os.environ.get("BUILDTEST_ADMIN_PASSWORD")
+        or env_raiz.get("BUILDTEST_ADMIN_PASSWORD")
+        or env_raiz.get("ADMIN_INITIAL_PASSWORD")
+    )
     if not admin_senha:
         admin_senha = getpass.getpass("Senha atual do administrador (não será exibida): ")
     if not admin_email or not admin_senha:
@@ -764,6 +895,19 @@ def main() -> int:
     )
     if not isinstance(login, dict) or not login.get("token") or login.get("role") != "ADMIN":
         raise ErroBuildtest("O login informado não autenticou uma conta ADMIN.")
+    token = str(login["token"])
+
+    requisitar(email_url, "GET", "/actuator/health")
+    smtp = requisitar(email_url, "GET", "/api/v1/smtp", token=token)
+    if not isinstance(smtp, dict) or not smtp_local(str(smtp.get("host", ""))):
+        raise ErroBuildtest(
+            "Configure um SMTP local antes do seed (MailHog recomendado em mailhog:1025). "
+            "Nenhum dado foi limpo."
+        )
+    if str(smtp.get("host", "")).lower() == "mailhog" and smtp.get("port") != 1025:
+        raise ErroBuildtest(
+            "MailHog no Docker Compose deve usar a porta 1025. Nenhum dado foi limpo."
+        )
 
     database_auth = valor_config("POSTGRES_DB", env_raiz, "stentio")
     database_core = valor_config("CORE_POSTGRES_DB", env_raiz, "") or database_auth
