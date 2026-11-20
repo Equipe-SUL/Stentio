@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { isAxiosError } from 'axios';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import Svg, { Defs, Pattern, Rect, Circle, G } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay } from 'react-native-reanimated';
@@ -8,6 +7,7 @@ import { router, type Href } from 'expo-router';
 import { coreApi, getApiErrorMessage } from '../lib/api';
 import { useSession } from '../lib/session';
 import { homeRouteForRole } from '../lib/routePermissions';
+import { perfilRecursoAusente } from '../components/recursos/cadastroRecursoApi';
 
 const languagesListA = [
   "Hallo, Willkommen", "مرحبا بك", "你好，歡迎", "안녕하세요, 환영합니다",
@@ -44,10 +44,6 @@ const INTERVAL = 1800;
 const VISIBLE_LIFESPAN = 9000; 
 const TOTAL_CYCLE = spiralWordsA.length * INTERVAL; 
 const VISIBLE_FRACTION = VISIBLE_LIFESPAN / TOTAL_CYCLE; 
-
-function perfilRecursoNaoEncontrado(error: unknown): boolean {
-  return isAxiosError(error) && error.response?.status === 404;
-}
 
 const AnimatedSpiralWord = ({ word, index, angleOffset, cycleLength }: { word: string, index: number, angleOffset: number, cycleLength: number }) => {
   const progress = useSharedValue(0);
@@ -254,7 +250,7 @@ export default function LoginScreen() {
       })
       .catch((error) => {
         if (!ativo) return;
-        if (isAxiosError(error) && error.response?.status === 404) {
+        if (perfilRecursoAusente(error)) {
           router.replace("/cadastro-recurso?completarPerfil=1" as Href);
         } else {
           setErrorMessage("Não foi possível validar seu perfil. Tente novamente.");
@@ -278,7 +274,7 @@ export default function LoginScreen() {
       }
       router.replace(homeRouteForRole(perfil.role) as Href);
     } catch (error) {
-      if (perfilRecursoNaoEncontrado(error)) {
+      if (perfilRecursoAusente(error)) {
         router.replace("/cadastro-recurso?completarPerfil=1" as Href);
         return;
       }
