@@ -1,16 +1,21 @@
 package com.stentio.core.controller;
 
+import com.stentio.core.dto.AceiteEtapaResponse;
 import com.stentio.core.dto.DemandaRecursoResponse;
 import com.stentio.core.dto.RecursoResponse;
+import com.stentio.core.service.AceiteEtapaService;
 import com.stentio.core.service.PortalRecursoService;
 import com.stentio.core.support.UsuarioAutenticado;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * US-023 CA.5: o portal do profissional.
@@ -29,9 +34,22 @@ public class PortalRecursoController {
     static final String BASE_PATH = "/api/v1/recurso";
 
     private final PortalRecursoService portalRecursoService;
+    private final AceiteEtapaService aceiteEtapaService;
 
-    public PortalRecursoController(PortalRecursoService portalRecursoService) {
+    public PortalRecursoController(PortalRecursoService portalRecursoService,
+                                   AceiteEtapaService aceiteEtapaService) {
         this.portalRecursoService = portalRecursoService;
+        this.aceiteEtapaService = aceiteEtapaService;
+    }
+
+    /**
+     * US-013 CA.3: aceitar a etapa. Sem corpo: tudo o que a operação precisa é o id na
+     * rota e quem está falando, que vem do token.
+     */
+    @PostMapping("/etapas/{etapaId}/aceitar")
+    @Operation(summary = "Aceita uma etapa disparada; quem aceitar primeiro fica com ela")
+    public AceiteEtapaResponse aceitar(@PathVariable UUID etapaId, Authentication autenticacao) {
+        return aceiteEtapaService.aceitar(etapaId, UsuarioAutenticado.de(autenticacao));
     }
 
     @GetMapping("/etapas")

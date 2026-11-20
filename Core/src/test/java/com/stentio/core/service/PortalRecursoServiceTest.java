@@ -33,7 +33,8 @@ class PortalRecursoServiceTest {
     private final EtapaOrdemServicoRepository etapas = mock(EtapaOrdemServicoRepository.class);
 
     private final PortalRecursoService service =
-            new PortalRecursoService(recursos, etapas, new RecursoMapper());
+            new PortalRecursoService(
+                    new RecursoAutenticadoService(recursos), etapas, new RecursoMapper());
 
     private final UUID usuarioId = UUID.randomUUID();
     private final UsuarioAutenticado maria = new UsuarioAutenticado("maria@exemplo.com", usuarioId, false);
