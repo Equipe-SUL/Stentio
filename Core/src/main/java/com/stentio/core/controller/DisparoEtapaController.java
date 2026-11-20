@@ -2,8 +2,10 @@ package com.stentio.core.controller;
 
 import com.stentio.core.dto.DisparoEtapaResponse;
 import com.stentio.core.service.DisparoEtapaService;
+import com.stentio.core.support.UsuarioAutenticado;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,7 +35,9 @@ public class DisparoEtapaController {
     @Operation(summary = "Dispara a etapa para todos os recursos elegíveis")
     public ResponseEntity<DisparoEtapaResponse> disparar(
             @PathVariable("osId") UUID osId,
-            @PathVariable("etapaId") UUID etapaId) {
-        return ResponseEntity.ok(disparoEtapaService.disparar(osId, etapaId));
+            @PathVariable("etapaId") UUID etapaId,
+            Authentication autenticacao) {
+        return ResponseEntity.ok(
+                disparoEtapaService.disparar(osId, etapaId, UsuarioAutenticado.de(autenticacao)));
     }
 }

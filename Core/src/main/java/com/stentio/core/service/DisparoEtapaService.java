@@ -4,10 +4,14 @@ import com.stentio.core.dto.DisparoEtapaResponse;
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.model.EtapaOrdemServico;
+import com.stentio.core.model.EventoEtapa;
+import com.stentio.core.model.HistoricoEtapa;
 import com.stentio.core.model.Recurso;
 import com.stentio.core.model.Solicitacao;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
+import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.repository.RecursoRepository;
+import com.stentio.core.support.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,20 +33,23 @@ public class DisparoEtapaService {
     private final EtapaOrdemServicoRepository etapas;
     private final RecursoRepository recursos;
     private final ConviteEtapaEmailService convites;
+    private final HistoricoEtapaRepository historico;
     private final Clock clock;
 
     public DisparoEtapaService(EtapaOrdemServicoRepository etapas,
                                RecursoRepository recursos,
                                ConviteEtapaEmailService convites,
+                               HistoricoEtapaRepository historico,
                                Clock clock) {
         this.etapas = etapas;
         this.recursos = recursos;
         this.convites = convites;
+        this.historico = historico;
         this.clock = clock;
     }
 
     @Transactional
-    public DisparoEtapaResponse disparar(UUID ordemServicoId, UUID etapaId) {
+    public DisparoEtapaResponse disparar(UUID ordemServicoId, UUID etapaId, UsuarioAutenticado ator) {
         EtapaOrdemServico etapa = etapas.buscarParaAlocacao(ordemServicoId, etapaId)
                 .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
 
@@ -65,6 +72,9 @@ public class DisparoEtapaService {
         // daria para ter etapa disparada sem convite nenhum, ou convite de um disparo que
         // acabou falhando.
         convites.convidar(etapa, elegiveis, agora);
+
+        // CA.8: sem recurso, porque o disparo não é dirigido a ninguém em particular.
+        historico.save(new HistoricoEtapa(etapa, EventoEtapa.DISPARO, null, ator.email(), agora));
 
         return new DisparoEtapaResponse(etapa.getId(), etapa.getStatus(), elegiveis.size());
     }

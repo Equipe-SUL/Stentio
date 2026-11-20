@@ -60,3 +60,25 @@ CREATE TABLE IF NOT EXISTS notificacao_etapa_outbox (
 -- junto com o histórico de notificações já enviadas.
 CREATE INDEX IF NOT EXISTS ix_notificacao_etapa_outbox_pendentes
     ON notificacao_etapa_outbox (enviado_em, proxima_tentativa_em);
+
+-- ---------------------------------------------------------------- histórico da etapa
+
+-- O histórico nasceu na US-012 descrevendo só alocação, com recurso e prazo obrigatórios.
+-- O disparo não é dirigido a ninguém e a etapa pode não ter prazo ainda, então as duas
+-- colunas passam a aceitar nulo. O ddl-auto não remove NOT NULL, então isto é obrigatório.
+
+ALTER TABLE etapas_os_historico ALTER COLUMN recurso_novo_id      DROP NOT NULL;
+ALTER TABLE etapas_os_historico ALTER COLUMN data_limite_entrega  DROP NOT NULL;
+
+-- E o CHECK do evento, pelo mesmo motivo do CHECK do status: ddl-auto nunca altera um
+-- CHECK que já existe, e sem isto o primeiro disparo falha na gravação do histórico.
+ALTER TABLE etapas_os_historico DROP CONSTRAINT IF EXISTS etapas_os_historico_evento_check;
+ALTER TABLE etapas_os_historico DROP CONSTRAINT IF EXISTS ck_etapas_os_historico_evento;
+ALTER TABLE etapas_os_historico ADD CONSTRAINT ck_etapas_os_historico_evento CHECK (evento IN (
+    'ALOCACAO',
+    'REALOCACAO',
+    'DISPARO',
+    'ACEITE',
+    'RECUSA',
+    'ENTREGA'
+));

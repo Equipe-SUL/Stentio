@@ -7,9 +7,12 @@ import com.stentio.core.exception.SolicitacaoInvalidaException;
 import com.stentio.core.exception.TransicaoEtapaInvalidaException;
 import com.stentio.core.model.ArquivoArmazenado;
 import com.stentio.core.model.EtapaOrdemServico;
+import com.stentio.core.model.EventoEtapa;
+import com.stentio.core.model.HistoricoEtapa;
 import com.stentio.core.model.Recurso;
 import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
+import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.support.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,15 +35,18 @@ public class EntregaEtapaService {
     private final EtapaOrdemServicoRepository etapas;
     private final RecursoAutenticadoService recursoAutenticado;
     private final ArquivoStorageService storage;
+    private final HistoricoEtapaRepository historico;
     private final Clock clock;
 
     public EntregaEtapaService(EtapaOrdemServicoRepository etapas,
                                RecursoAutenticadoService recursoAutenticado,
                                ArquivoStorageService storage,
+                               HistoricoEtapaRepository historico,
                                Clock clock) {
         this.etapas = etapas;
         this.recursoAutenticado = recursoAutenticado;
         this.storage = storage;
+        this.historico = historico;
         this.clock = clock;
     }
 
@@ -75,6 +81,10 @@ public class EntregaEtapaService {
             storage.remover(List.of(salvo.caminho()));
             throw ex;
         }
+
+        // CA.8
+        historico.save(new HistoricoEtapa(
+                etapa, EventoEtapa.ENTREGA, recurso, ator.email(), etapa.getEntregueEm()));
 
         return new EntregaEtapaResponse(
                 etapa.getId(),

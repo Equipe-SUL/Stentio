@@ -5,10 +5,13 @@ import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.exception.TransicaoEtapaInvalidaException;
 import com.stentio.core.model.EtapaOrdemServico;
+import com.stentio.core.model.EventoEtapa;
+import com.stentio.core.model.HistoricoEtapa;
 import com.stentio.core.model.Recurso;
 import com.stentio.core.model.Solicitacao;
 import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
+import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.support.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,13 +32,16 @@ public class AceiteEtapaService {
 
     private final EtapaOrdemServicoRepository etapas;
     private final RecursoAutenticadoService recursoAutenticado;
+    private final HistoricoEtapaRepository historico;
     private final Clock clock;
 
     public AceiteEtapaService(EtapaOrdemServicoRepository etapas,
                               RecursoAutenticadoService recursoAutenticado,
+                              HistoricoEtapaRepository historico,
                               Clock clock) {
         this.etapas = etapas;
         this.recursoAutenticado = recursoAutenticado;
+        this.historico = historico;
         this.clock = clock;
     }
 
@@ -66,6 +72,10 @@ public class AceiteEtapaService {
         // está velha: a resposta vem de uma leitura nova.
         EtapaOrdemServico aceita = etapas.buscarParaAceite(etapaId)
                 .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
+
+        // CA.8: o rastro sai depois do UPDATE vencedor, nunca da tentativa.
+        historico.save(new HistoricoEtapa(
+                aceita, EventoEtapa.ACEITE, recurso, ator.email(), aceita.getAceitoEm()));
 
         return new AceiteEtapaResponse(
                 aceita.getId(),
