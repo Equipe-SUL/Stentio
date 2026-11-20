@@ -66,14 +66,14 @@ class OrdemServicoControllerTest {
         return new OrdemServicoPaginaResponse(1, 10, 1, List.of(resumo));
     }
 
-    private OrdemServicoDetalheResponse detalhe() {
+    private OrdemServicoDetalheResponse detalhe(StatusOrdemServico status) {
         UUID solicitacaoId = UUID.randomUUID();
         UUID arquivoId = UUID.randomUUID();
 
         return new OrdemServicoDetalheResponse(
                 ordemId,
                 "OS-2026-0001",
-                StatusOrdemServico.PENDENTE_ALOCACAO,
+                status,
                 UUID.randomUUID(),
                 Instant.parse("2026-10-09T08:00:00Z"),
                 new OrdemServicoDetalheResponse.Cliente(clienteId, "Empresa XPTO"),
@@ -172,7 +172,8 @@ class OrdemServicoControllerTest {
     @WithMockUser(username = "gestor@stentio.com", roles = {"GESTOR_PROJETO"})
     @DisplayName("Cenário 2: deve retornar os detalhes e os vínculos da OS")
     void deveRetornarDetalhesDaOrdem() throws Exception {
-        when(ordemServicoConsultaService.buscarPorId(eq(ordemId))).thenReturn(detalhe());
+        when(ordemServicoConsultaService.buscarPorId(eq(ordemId)))
+                .thenReturn(detalhe(StatusOrdemServico.PENDENTE_ALOCACAO));
 
         mockMvc.perform(get(BASE_PATH + "/" + ordemId))
                 .andExpect(status().isOk())
@@ -190,6 +191,21 @@ class OrdemServicoControllerTest {
                 // O link do anexo é o download autenticado da US-09, não um caminho em disco.
                 .andExpect(jsonPath("$.solicitacao.arquivos[0].url")
                         .value(Matchers.startsWith("/api/v1/solicitacoes/")));
+    }
+
+    @Test
+    @WithMockUser(username = "gestor@stentio.com", roles = {"GESTOR_PROJETO"})
+    @DisplayName("T6: devolve os novos status da OS na consulta de detalhes")
+    void deveDevolverStatusAtualizadosDaOrdem() throws Exception {
+        for (StatusOrdemServico statusOrdem : List.of(
+                StatusOrdemServico.EM_EXECUCAO,
+                StatusOrdemServico.AGUARDANDO_VERIFICACAO)) {
+            when(ordemServicoConsultaService.buscarPorId(eq(ordemId))).thenReturn(detalhe(statusOrdem));
+
+            mockMvc.perform(get(BASE_PATH + "/" + ordemId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value(statusOrdem.name()));
+        }
     }
 
     @Test
