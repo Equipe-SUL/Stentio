@@ -310,4 +310,16 @@ class AlocacaoEtapaServiceTest {
 
         assertEquals("Bruno Lima", resposta.recurso().nome());
     }
+
+    @Test
+    @DisplayName("US-024 Cenário 4: sem certificação aprovada do par, o gestor não consegue alocar")
+    void naoAlocaSemCertificacaoDoPar() {
+        UUID anaId = idRegistradoDe(recurso("Ana Silva", traducao, portugues, ingles));
+        when(certificacoes.certificadoParaAEtapa(any(), any())).thenReturn(false);
+
+        var erro = assertThrows(AlocacaoInvalidaException.class, () -> alocar(anaId, gestor));
+
+        assertTrue(erro.getMessage().contains("certificação"));
+        verify(etapas, never()).save(any());
+    }
 }
