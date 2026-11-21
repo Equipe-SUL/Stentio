@@ -13,6 +13,9 @@ import java.util.UUID;
 public interface OrdemServicoRepository extends JpaRepository<OrdemServico, UUID>, JpaSpecificationExecutor<OrdemServico> {
     long countByStatus(StatusOrdemServico status);
 
+    /** US-015: um status por consulta não serve mais — "em andamento" virou três. */
+    long countByStatusIn(java.util.Collection<StatusOrdemServico> status);
+
     Optional<OrdemServico> findByOrcamentoId(UUID orcamentoId);
 
     /**
