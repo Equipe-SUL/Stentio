@@ -3,7 +3,10 @@ package com.stentio.core.controller;
 import com.stentio.core.dto.AprovacaoEntregaFinalResponse;
 import com.stentio.core.dto.AprovarEntregaFinalRequest;
 import com.stentio.core.dto.EntregaFinalResponse;
+import com.stentio.core.dto.ReprovacaoEntregaFinalResponse;
+import com.stentio.core.dto.ReprovarEntregaFinalRequest;
 import com.stentio.core.service.AprovacaoEntregaFinalService;
+import com.stentio.core.service.ReprovacaoEntregaFinalService;
 import com.stentio.core.service.EntregaFinalService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -34,11 +37,14 @@ public class EntregaFinalController {
 
     private final EntregaFinalService entregaFinalService;
     private final AprovacaoEntregaFinalService aprovacaoEntregaFinalService;
+    private final ReprovacaoEntregaFinalService reprovacaoEntregaFinalService;
 
     public EntregaFinalController(EntregaFinalService entregaFinalService,
-                                  AprovacaoEntregaFinalService aprovacaoEntregaFinalService) {
+                                  AprovacaoEntregaFinalService aprovacaoEntregaFinalService,
+                                  ReprovacaoEntregaFinalService reprovacaoEntregaFinalService) {
         this.entregaFinalService = entregaFinalService;
         this.aprovacaoEntregaFinalService = aprovacaoEntregaFinalService;
+        this.reprovacaoEntregaFinalService = reprovacaoEntregaFinalService;
     }
 
     @GetMapping
@@ -63,5 +69,15 @@ public class EntregaFinalController {
                 osId,
                 corpo == null ? null : corpo.mensagem(),
                 UsuarioAutenticado.de(autenticacao));
+    }
+
+    /** US-015 CA.10: devolve a última etapa para correção. Nada vai ao cliente (RN.8). */
+    @PostMapping("/reprovar")
+    @Operation(summary = "Reprova a entrega final e reabre a última etapa para correção")
+    public ReprovacaoEntregaFinalResponse reprovar(@PathVariable("osId") UUID osId,
+                                                   @Valid @RequestBody ReprovarEntregaFinalRequest corpo,
+                                                   Authentication autenticacao) {
+        return reprovacaoEntregaFinalService.reprovar(
+                osId, corpo.motivo(), UsuarioAutenticado.de(autenticacao));
     }
 }
