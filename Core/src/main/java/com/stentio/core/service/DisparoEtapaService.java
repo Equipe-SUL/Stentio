@@ -1,6 +1,7 @@
 package com.stentio.core.service;
 
 import com.stentio.core.dto.DisparoEtapaResponse;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.exception.TransicaoEtapaInvalidaException;
@@ -13,7 +14,9 @@ import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
 import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.repository.RecursoRepository;
+import com.stentio.core.support.AtorAuditoria;
 import com.stentio.core.support.UsuarioAutenticado;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +41,7 @@ public class DisparoEtapaService {
     private final RecursoRepository recursos;
     private final ConviteEtapaEmailService convites;
     private final HistoricoEtapaRepository historico;
+    private final ApplicationEventPublisher eventos;
     private final Clock clock;
 
     public DisparoEtapaService(EtapaOrdemServicoRepository etapas,
@@ -45,12 +49,14 @@ public class DisparoEtapaService {
                                RecursoRepository recursos,
                                ConviteEtapaEmailService convites,
                                HistoricoEtapaRepository historico,
+                               ApplicationEventPublisher eventos,
                                Clock clock) {
         this.etapas = etapas;
         this.liberacao = liberacao;
         this.recursos = recursos;
         this.convites = convites;
         this.historico = historico;
+        this.eventos = eventos;
         this.clock = clock;
     }
 
@@ -74,7 +80,7 @@ public class DisparoEtapaService {
                     "Nenhum recurso com certificação aprovada atende o par de idiomas e o tipo de serviço desta etapa");
         }
 
-        return efetivarDisparo(etapa, elegiveis, estaLiberada, ator.email());
+        return efetivarDisparo(etapa, elegiveis, estaLiberada, ator.email(), null);
     }
 
     @Transactional
@@ -94,18 +100,26 @@ public class DisparoEtapaService {
             return Optional.empty();
         }
 
-        return Optional.of(efetivarDisparo(etapa, elegiveis, estaLiberada, "sistema"));
+        // Roda dentro da entrega do recurso, mas quem dispara é o sistema, não ele.
+        return Optional.of(efetivarDisparo(etapa, elegiveis, estaLiberada, "sistema", AtorAuditoria.sistema()));
     }
 
+    /** @param atorAuditoria nulo para usar o usuário autenticado (disparo manual do gestor) */
     private DisparoEtapaResponse efetivarDisparo(EtapaOrdemServico etapa,
                                                  List<Recurso> elegiveis,
                                                  boolean estaLiberada,
-                                                 String realizadoPor) {
+                                                 String realizadoPor,
+                                                 AtorAuditoria atorAuditoria) {
         Instant agora = clock.instant();
+        String statusAnterior = EventosAuditoria.statusEtapa(etapa);
         etapa.disparar(agora, estaLiberada);
         etapas.save(etapa);
         convites.convidar(etapa, elegiveis, agora);
         historico.save(new HistoricoEtapa(etapa, EventoEtapa.DISPARO, null, realizadoPor, agora));
+        eventos.publishEvent(EventosAuditoria.etapa(etapa, statusAnterior,
+                "Etapa disparada para " + elegiveis.size()
+                        + (elegiveis.size() == 1 ? " recurso elegível." : " recursos elegíveis."),
+                atorAuditoria));
 
         return new DisparoEtapaResponse(etapa.getId(), etapa.getStatus(), elegiveis.size());
     }

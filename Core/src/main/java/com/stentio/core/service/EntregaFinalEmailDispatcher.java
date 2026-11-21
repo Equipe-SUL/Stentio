@@ -1,10 +1,15 @@
 package com.stentio.core.service;
 
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.model.EntregaFinalEmailOutbox;
+import com.stentio.core.model.OrdemServico;
+import com.stentio.core.model.StatusOrdemServico;
 import com.stentio.core.repository.EntregaFinalEmailOutboxRepository;
+import com.stentio.core.support.AtorAuditoria;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,14 +34,16 @@ public class EntregaFinalEmailDispatcher {
 
     private final EntregaFinalEmailOutboxRepository repository;
     private final EntregaFinalEmailPublisher publisher;
+    private final ApplicationEventPublisher eventos;
     private final Clock clock;
     private final long retrySegundos;
 
     public EntregaFinalEmailDispatcher(EntregaFinalEmailOutboxRepository repository,
-            EntregaFinalEmailPublisher publisher, Clock clock,
+            EntregaFinalEmailPublisher publisher, ApplicationEventPublisher eventos, Clock clock,
             @Value("${app.orcamentos.outbox.retry-segundos:30}") long retrySegundos) {
         this.repository = repository;
         this.publisher = publisher;
+        this.eventos = eventos;
         this.clock = clock;
         this.retrySegundos = retrySegundos;
     }
@@ -74,7 +81,13 @@ public class EntregaFinalEmailDispatcher {
         // vezes. Entre uma OS que ficou sem fechar e um e-mail duplicado, a primeira é
         // visível no painel e corrigível, o segundo não volta atrás.
         try {
-            envio.getOrdemServico().encerrar(agora, envio.getAprovadoPor());
+            OrdemServico ordem = envio.getOrdemServico();
+            StatusOrdemServico anterior = ordem.getStatus();
+            ordem.encerrar(agora, envio.getAprovadoPor());
+            // US-019: quem encerra é o ACK, fora de requisição; o aprovador vai na observação.
+            eventos.publishEvent(EventosAuditoria.ordemServico(ordem, anterior,
+                    "Entrega final aprovada por " + envio.getAprovadoPor()
+                            + " e enviada ao cliente.", AtorAuditoria.sistema()));
         } catch (RuntimeException ex) {
             log.error("Entrega final da OS {} publicada, mas a OS não pôde ser encerrada: {}",
                     envio.getOrdemServico().getId(), ex.getMessage());

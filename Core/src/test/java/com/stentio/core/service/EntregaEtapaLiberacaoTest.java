@@ -1,5 +1,6 @@
 package com.stentio.core.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import com.stentio.core.exception.TransicaoEtapaInvalidaException;
 import com.stentio.core.model.EtapaOrdemServico;
 import com.stentio.core.model.Recurso;
@@ -32,6 +33,7 @@ class EntregaEtapaLiberacaoTest {
     private final ArquivoStorageService storage = mock(ArquivoStorageService.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
     private final RoteamentoEtapaService roteamento = mock(RoteamentoEtapaService.class);
+    private final ApplicationEventPublisher eventos = mock(ApplicationEventPublisher.class);
     private final EntregaEtapaService service = new EntregaEtapaService(
             etapas,
             liberacao,
@@ -39,6 +41,7 @@ class EntregaEtapaLiberacaoTest {
             storage,
             historico,
             roteamento,
+            eventos,
             Clock.fixed(Instant.parse("2026-11-20T12:00:00Z"), ZoneOffset.UTC));
 
     @Test

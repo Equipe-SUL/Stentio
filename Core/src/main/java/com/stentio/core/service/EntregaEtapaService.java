@@ -1,6 +1,7 @@
 package com.stentio.core.service;
 
 import com.stentio.core.dto.EntregaEtapaResponse;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.exception.SolicitacaoInvalidaException;
@@ -14,6 +15,7 @@ import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
 import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.support.UsuarioAutenticado;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +40,7 @@ public class EntregaEtapaService {
     private final ArquivoStorageService storage;
     private final HistoricoEtapaRepository historico;
     private final RoteamentoEtapaService roteamento;
+    private final ApplicationEventPublisher eventos;
     private final Clock clock;
 
     public EntregaEtapaService(EtapaOrdemServicoRepository etapas,
@@ -46,6 +49,7 @@ public class EntregaEtapaService {
                                ArquivoStorageService storage,
                                HistoricoEtapaRepository historico,
                                RoteamentoEtapaService roteamento,
+                               ApplicationEventPublisher eventos,
                                Clock clock) {
         this.etapas = etapas;
         this.liberacao = liberacao;
@@ -53,6 +57,7 @@ public class EntregaEtapaService {
         this.storage = storage;
         this.historico = historico;
         this.roteamento = roteamento;
+        this.eventos = eventos;
         this.clock = clock;
     }
 
@@ -88,11 +93,16 @@ public class EntregaEtapaService {
         // linha do banco referencia.
         String caminhoSubstituido = etapa.getArquivoEntregueCaminho();
 
+        String statusAnterior = EventosAuditoria.statusEtapa(etapa);
         ArquivoArmazenado salvo = storage.salvarTodos(List.of(arquivo)).getFirst();
         RoteamentoEtapaService.Resultado resultadoRoteamento;
         try {
             etapa.entregar(salvo.nomeOriginal(), salvo.caminho(), clock.instant(), estaLiberada);
             etapas.save(etapa);
+            // Antes do roteamento: o log fica na ordem em que as coisas aconteceram,
+            // a entrega e depois o avanço que ela provoca.
+            eventos.publishEvent(EventosAuditoria.etapa(etapa, statusAnterior,
+                    "Arquivo " + salvo.nomeOriginal() + " entregue por " + recurso.getNome() + ".", null));
             resultadoRoteamento = roteamento.rotear(etapa);
             historico.save(new HistoricoEtapa(
                     etapa, EventoEtapa.ENTREGA, recurso, recurso.getEmail(), etapa.getEntregueEm()));

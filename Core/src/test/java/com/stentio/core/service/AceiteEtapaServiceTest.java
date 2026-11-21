@@ -1,5 +1,6 @@
 package com.stentio.core.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import com.stentio.core.dto.AceiteEtapaResponse;
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
@@ -53,8 +54,10 @@ class AceiteEtapaServiceTest {
 
     private final CertificacaoConsultaService certificacoes = mock(CertificacaoConsultaService.class);
 
+    private final ApplicationEventPublisher eventos = mock(ApplicationEventPublisher.class);
     private final AceiteEtapaService service = new AceiteEtapaService(
             etapas, liberacao, recursoAutenticado, historico, certificacoes,
+            eventos,
             Clock.fixed(AGORA, ZoneOffset.UTC));
 
     private final UUID etapaId = UUID.randomUUID();
@@ -109,8 +112,12 @@ class AceiteEtapaServiceTest {
 
         OrdemServico ordem = mock(OrdemServico.class);
         when(ordem.getSolicitacao()).thenReturn(solicitacao);
+        when(ordem.getId()).thenReturn(UUID.randomUUID());
 
-        return new EtapaOrdemServico(ordem, 1, "Tradução Principal", tipoDaEtapa, 24);
+        EtapaOrdemServico etapa = new EtapaOrdemServico(ordem, 1, "Tradução Principal", tipoDaEtapa, 24);
+        // US-019: o evento de auditoria identifica a etapa pelo id, que normalmente vem do banco.
+        ReflectionTestUtils.setField(etapa, "id", UUID.randomUUID());
+        return etapa;
     }
 
     private static Recurso recurso(String nome, TipoServico habilitado, Idioma origem, Idioma destino) {
