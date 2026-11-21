@@ -13,6 +13,9 @@ public class RabbitMQConfig {
     // US-13: fila do e-mail de orçamento, que trafega dados estruturados em vez de corpo pronto.
     public static final String EMAIL_ORCAMENTO_QUEUE = "email.orcamento.queue";
 
+    /** US-015: entrega final, com o documento do cliente em anexo. */
+    public static final String EMAIL_ENTREGA_FINAL_QUEUE = "email.entrega-final.queue";
+
     @Bean
     public Queue emailQueue() {
         return new Queue(EMAIL_QUEUE, true);
@@ -21,6 +24,11 @@ public class RabbitMQConfig {
     @Bean
     public Queue emailOrcamentoQueue() {
         return new Queue(EMAIL_ORCAMENTO_QUEUE, true);
+    }
+
+    @Bean
+    public Queue emailEntregaFinalQueue() {
+        return new Queue(EMAIL_ENTREGA_FINAL_QUEUE, true);
     }
 
     @Bean

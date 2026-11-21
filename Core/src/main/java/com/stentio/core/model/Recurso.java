@@ -18,10 +18,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -85,8 +85,15 @@ public class Recurso {
     )
     private Set<TipoServico> tiposServico = new HashSet<>();
 
+    /**
+     * Set, e não List, de propósito. As consultas que trazem o perfil completo fazem
+     * {@code join fetch} em tiposServico e em precos ao mesmo tempo, e o SQL devolve uma
+     * linha por combinação serviço × preço. O {@code distinct} tira a repetição do recurso,
+     * mas uma List recebe o mesmo preço uma vez por serviço — com dois serviços o perfil
+     * mostrava cada par duas vezes. As cópias são a mesma instância, e o Set as descarta.
+     */
     @OneToMany(mappedBy = "recurso", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<RecursoPreco> precos = new ArrayList<>();
+    private Set<RecursoPreco> precos = new LinkedHashSet<>();
 
     public Recurso(String nome, String email, String telefone) {
         atualizarDados(nome, email, telefone);
@@ -178,7 +185,7 @@ public class Recurso {
     }
 
     public List<RecursoPreco> getPrecos() {
-        return Collections.unmodifiableList(precos);
+        return List.copyOf(precos);
     }
 
     private static Map<ChavePreco, NovoPreco> indexarSemRepeticao(List<NovoPreco> novosPrecos) {

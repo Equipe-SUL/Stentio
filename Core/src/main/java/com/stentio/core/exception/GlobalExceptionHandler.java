@@ -164,6 +164,24 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    /** US-015 CA.6: o banco aponta para um arquivo que o armazenamento não devolve. */
+    @ExceptionHandler(ArquivoEntregueIndisponivelException.class)
+    public ResponseEntity<ErroResponse> handleArquivoIndisponivel(ArquivoEntregueIndisponivelException ex) {
+        return responder(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /** US-015 CA.6 e RN.5: anexo acima do limite combinado com o email-service. */
+    @ExceptionHandler(AnexoAcimaDoLimiteException.class)
+    public ResponseEntity<ErroResponse> handleAnexoGrande(AnexoAcimaDoLimiteException ex) {
+        return responder(HttpStatus.CONTENT_TOO_LARGE, ex.getMessage());
+    }
+
+    /** US-015 CA.2, CA.12: estado da OS incompatível com a operação pedida. */
+    @ExceptionHandler(TransicaoOrdemServicoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleTransicaoOrdemServico(TransicaoOrdemServicoInvalidaException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(EtapaNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleEtapaNaoEncontrada(EtapaNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());

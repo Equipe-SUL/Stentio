@@ -18,6 +18,12 @@ public class OrcamentoRabbitConfig {
      * consumidor receba o payload do outro.
      */
     public static final String EMAIL_ORCAMENTO_QUEUE = "email.orcamento.queue";
+    /**
+     * US-015: fila própria para a entrega final. Não dá para usar a email.queue genérica,
+     * que leva só assunto e corpo — aqui o consumidor precisa anexar um arquivo.
+     */
+    public static final String EMAIL_ENTREGA_FINAL_QUEUE = "email.entrega-final.queue";
+
     public static final String ORDEM_SERVICO_QUEUE = "stentio.ordens-servico.criacao";
     public static final String ORDEM_SERVICO_DLQ = "stentio.ordens-servico.criacao.dlq";
 
@@ -32,10 +38,12 @@ public class OrcamentoRabbitConfig {
         Queue queue = new Queue(QUEUE, true);
         Queue emailQueue = new Queue(EMAIL_QUEUE, true);
         Queue emailOrcamentoQueue = new Queue(EMAIL_ORCAMENTO_QUEUE, true);
+        Queue emailEntregaFinalQueue = new Queue(EMAIL_ENTREGA_FINAL_QUEUE, true);
         Queue ordemServicoQueue = QueueBuilder.durable(ORDEM_SERVICO_QUEUE)
                 .deadLetterExchange("").deadLetterRoutingKey(ORDEM_SERVICO_DLQ).build();
         Queue ordemServicoDlq = new Queue(ORDEM_SERVICO_DLQ, true);
         return new Declarables(exchange, queue, emailQueue, emailOrcamentoQueue,
+                emailEntregaFinalQueue,
                 ordemServicoQueue, ordemServicoDlq,
                 BindingBuilder.bind(ordemServicoQueue).to(exchange).with("orcamento.aprovado"),
                 BindingBuilder.bind(queue).to(exchange).with("orcamento.aprovado"),

@@ -1,6 +1,7 @@
 package com.stentio.core.config;
 
 import com.stentio.core.service.CertificacaoEmailOutboxDispatcher;
+import com.stentio.core.service.EntregaFinalEmailDispatcher;
 import com.stentio.core.service.NotificacaoEtapaOutboxDispatcher;
 import com.stentio.core.service.OrcamentoEmailOutboxDispatcher;
 import com.stentio.core.service.OrcamentoOutboxDispatcher;
@@ -17,15 +18,18 @@ public class OrcamentoOutboxScheduler {
     private final OrcamentoEmailOutboxDispatcher emailDispatcher;
     private final NotificacaoEtapaOutboxDispatcher notificacaoDispatcher;
     private final CertificacaoEmailOutboxDispatcher certificacaoDispatcher;
+    private final EntregaFinalEmailDispatcher entregaFinalDispatcher;
 
     public OrcamentoOutboxScheduler(OrcamentoOutboxDispatcher dispatcher,
                                     OrcamentoEmailOutboxDispatcher emailDispatcher,
                                     NotificacaoEtapaOutboxDispatcher notificacaoDispatcher,
-                                    CertificacaoEmailOutboxDispatcher certificacaoDispatcher) {
+                                    CertificacaoEmailOutboxDispatcher certificacaoDispatcher,
+                                    EntregaFinalEmailDispatcher entregaFinalDispatcher) {
         this.dispatcher = dispatcher;
         this.emailDispatcher = emailDispatcher;
         this.notificacaoDispatcher = notificacaoDispatcher;
         this.certificacaoDispatcher = certificacaoDispatcher;
+        this.entregaFinalDispatcher = entregaFinalDispatcher;
     }
 
     @Scheduled(fixedDelayString = "${app.orcamentos.outbox.intervalo-ms:5000}")
@@ -45,6 +49,11 @@ public class OrcamentoOutboxScheduler {
         // US-024: uma rejeição por vez, e rejeição é exceção, não rotina.
         for (int i = 0; i < 20 && !Thread.currentThread().isInterrupted(); i++) {
             if (!certificacaoDispatcher.processarProximo()) break;
+        }
+        // US-015: uma entrega final por OS encerrada. Volume baixo, mas o limite fica
+        // aqui pelo mesmo motivo dos outros: nenhuma rodada pode virar varredura.
+        for (int i = 0; i < 20 && !Thread.currentThread().isInterrupted(); i++) {
+            if (!entregaFinalDispatcher.processarProximo()) break;
         }
     }
 }

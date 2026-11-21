@@ -2,6 +2,7 @@ import { coreApi } from "../../../lib/api";
 import type {
   AlocarRecursoPayload,
   CriarModeloWorkflowPayload,
+  DisparoEtapaResponse,
   EtapaWorkflow,
   ModeloWorkflow,
   OrdemServicoWorkflowResponse,
@@ -16,9 +17,12 @@ const ENDPOINTS = {
     `/api/v1/ordens-servico/${osId}/etapas/aplicar-modelo/${modeloId}`,
   alocacao: (osId: string, etapaId: string) =>
     `/api/v1/ordens-servico/${osId}/etapas/${etapaId}/alocacao`,
+  disparo: (osId: string, etapaId: string) =>
+    `/api/v1/ordens-servico/${osId}/etapas/${etapaId}/disparo`,
+  recursosElegiveis: (osId: string, etapaId: string) =>
+    `/api/v1/ordens-servico/${osId}/etapas/${etapaId}/recursos-elegiveis`,
   modelosWorkflow: "/api/v1/modelos-workflow",
   tiposServico: "/api/v1/tipos-servico",
-  recursos: "/api/v1/recursos",
 };
 
 function extrairLista<T>(data: unknown): T[] {
@@ -150,6 +154,27 @@ export async function alocarRecursoEtapa(
   await coreApi.post(ENDPOINTS.alocacao(osId, etapaId), payload);
 }
 
+export async function dispararEtapaParaElegiveis(
+  osId: string,
+  etapaId: string,
+): Promise<DisparoEtapaResponse> {
+  const { data } = await coreApi.post<DisparoEtapaResponse>(ENDPOINTS.disparo(osId, etapaId));
+  return data;
+}
+
+export async function baixarArquivoEntrega(url: string, nomeArquivo: string): Promise<void> {
+  if (typeof window === "undefined") return;
+  const { data } = await coreApi.get(url, { responseType: "blob" });
+  const blobUrl = window.URL.createObjectURL(new Blob([data]));
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}
+
 /**
  * Lista modelos de workflow pré-definidos (GET /api/v1/modelos-workflow)
  */
@@ -198,18 +223,18 @@ export async function listarTiposServicoWorkflow(): Promise<TipoServicoOption[]>
 }
 
 /**
- * Lista catálogo de recursos cadastrados disponíveis para alocação
+ * Recursos que podem ser alocados à etapa: ativos, verificados, com o par de idiomas da
+ * solicitação e o tipo de serviço da etapa. O filtro é feito pelo Core com a mesma regra
+ * que a alocação valida, então todo recurso listado pode ser alocado.
+ * (GET /api/v1/ordens-servico/{os_id}/etapas/{etapa_id}/recursos-elegiveis)
  */
-export async function listarRecursosWorkflow(): Promise<RecursoOption[]> {
-  const { data } = await coreApi.get<{ content: RecursoOption[] }>(ENDPOINTS.recursos, {
-    params: { ativo: true, size: 100 },
-  });
-  return extrairLista<RecursoOption>(data).map((r) => ({
-    id: r.id,
-    nome: r.nome,
-    email: r.email,
-    telefone: r.telefone,
-    ativo: r.ativo,
-    tiposServico: r.tiposServico,
-  }));
+export async function listarRecursosElegiveisEtapa(
+  osId: string,
+  etapaId: string,
+): Promise<RecursoOption[]> {
+  const { data } = await coreApi.get<{ id: string; nome: string; email?: string }[]>(
+    ENDPOINTS.recursosElegiveis(osId, etapaId),
+  );
+  return (data || []).map((r) => ({ id: r.id, nome: r.nome, email: r.email }));
 }
+

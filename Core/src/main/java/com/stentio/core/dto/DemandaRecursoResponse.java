@@ -25,6 +25,7 @@ public record DemandaRecursoResponse(
         @JsonProperty("idioma_origem") String idiomaOrigem,
         @JsonProperty("idioma_destino") String idiomaDestino,
         StatusEtapaOrdemServico status,
+        boolean liberada,
         @JsonProperty("prazo_estimado_horas") Integer prazoEstimadoHoras,
         @JsonProperty("data_limite_entrega") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant dataLimiteEntrega
 ) {

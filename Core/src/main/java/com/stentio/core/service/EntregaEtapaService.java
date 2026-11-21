@@ -82,6 +82,12 @@ public class EntregaEtapaService {
                     "A etapa " + etapa.getNome() + " aguarda a entrega da etapa anterior");
         }
 
+        // US-015: numa reentrega depois de reprovação a etapa já tem arquivo, e a etapa
+        // guarda um só. O caminho antigo é anotado antes de ser sobrescrito para o
+        // arquivo sair do disco junto — senão cada correção deixa um órfão que nenhuma
+        // linha do banco referencia.
+        String caminhoSubstituido = etapa.getArquivoEntregueCaminho();
+
         ArquivoArmazenado salvo = storage.salvarTodos(List.of(arquivo)).getFirst();
         RoteamentoEtapaService.Resultado resultadoRoteamento;
         try {
@@ -97,6 +103,12 @@ public class EntregaEtapaService {
             // fica ocupando espaço sem ninguém que saiba que ele existe.
             storage.remover(List.of(salvo.caminho()));
             throw ex;
+        }
+
+        // Só depois que a gravação passou. Apagar antes deixaria a etapa sem arquivo
+        // nenhum se a transição falhasse no meio.
+        if (caminhoSubstituido != null && !caminhoSubstituido.equals(salvo.caminho())) {
+            storage.remover(List.of(caminhoSubstituido));
         }
 
         EntregaEtapaResponse.Avanco avanco = resultadoRoteamento.proximaEtapa()

@@ -26,6 +26,9 @@ public record EtapaOrdemServicoResponse(
         @JsonProperty("prazo_estimado_horas") Integer prazoEstimadoHoras,
         @JsonProperty("recurso_id") UUID recursoId,
         @JsonProperty("recurso_nome") String recursoNome,
-        @JsonProperty("data_limite_entrega") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant dataLimiteEntrega
+        @JsonProperty("data_limite_entrega") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant dataLimiteEntrega,
+        @JsonProperty("aceito_em") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant aceitoEm,
+        @JsonProperty("entregue_em") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant entregueEm,
+        @JsonProperty("arquivo_nome") String arquivoNome
 ) {
 }

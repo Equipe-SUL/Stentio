@@ -234,6 +234,24 @@ public class EtapaOrdemServico {
         this.status = StatusEtapaOrdemServico.ENTREGUE;
     }
 
+    /**
+     * US-015 CA.11: o gestor reprovou e a etapa volta para quem a executou.
+     *
+     * <p>Mantém recurso, alocação e prazo (RN.9): a correção é do mesmo profissional, e
+     * mexer no prazo aqui tiraria do gestor a decisão de esticá-lo pela US-012.
+     *
+     * <p>Mantém também o arquivo reprovado. Ele ainda é a última entrega real da etapa —
+     * o gestor precisa poder rever o que recusou enquanto a correção não chega, e quem
+     * apaga o arquivo antigo é a reentrega, ao gravar o novo no lugar.
+     */
+    public void reabrir() {
+        if (status != StatusEtapaOrdemServico.ENTREGUE) {
+            throw new TransicaoEtapaInvalidaException(
+                    "A etapa " + nome + " não está entregue para ser reaberta");
+        }
+        this.status = StatusEtapaOrdemServico.ACEITA;
+    }
+
     /** US-013 CA.7: a etapa é deste profissional? */
     public boolean pertenceA(Recurso candidato) {
         return recurso != null && candidato != null && recurso.getId().equals(candidato.getId());
