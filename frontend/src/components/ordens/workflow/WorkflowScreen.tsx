@@ -14,10 +14,11 @@ import { buscarOrdemServicoPorId } from "../ordensApi";
 import type { OrdemServicoDetalhe } from "../types";
 import {
   alocarRecursoEtapa,
+  dispararEtapaParaElegiveis,
+  baixarArquivoEntrega,
   aplicarModeloWorkflow,
   buscarWorkflowOrdem,
   listarModelosWorkflow,
-  listarRecursosWorkflow,
   listarTiposServicoWorkflow,
   salvarNovoModeloWorkflow,
   salvarWorkflowManual,
@@ -47,7 +48,6 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
   const [ordem, setOrdem] = useState<OrdemServicoDetalhe | null>(null);
   const [etapas, setEtapas] = useState<EtapaWorkflow[]>([]);
   const [tiposServico, setTiposServico] = useState<TipoServicoOption[]>([]);
-  const [recursos, setRecursos] = useState<RecursoOption[]>([]);
   const [modelos, setModelos] = useState<ModeloWorkflow[]>([]);
 
   // Estados de carregamento e feedback
@@ -62,6 +62,8 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
   const [modalAlocacaoEtapa, setModalAlocacaoEtapa] = useState<EtapaWorkflow | null>(null);
   const [modalCarregarModeloAberto, setModalCarregarModeloAberto] = useState(false);
   const [modalSalvarModeloAberto, setModalSalvarModeloAberto] = useState(false);
+  const [etapaConfirmandoDisparoId, setEtapaConfirmandoDisparoId] = useState<string | null>(null);
+  const [disparandoEtapaId, setDisparandoEtapaId] = useState<string | null>(null);
 
   // Mantém a etapa em memória e o status exibido da OS em sincronia com o backend
   const aplicarWorkflow = (dados: OrdemServicoWorkflowResponse) => {
@@ -80,18 +82,16 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
         setCarregandoGeral(true);
         setErro(null);
 
-        const [dadosOrdem, dadosWorkflow, listaTipos, listaRecursos] = await Promise.all([
+        const [dadosOrdem, dadosWorkflow, listaTipos] = await Promise.all([
           buscarOrdemServicoPorId(ordemId),
           buscarWorkflowOrdem(ordemId),
           listarTiposServicoWorkflow(),
-          listarRecursosWorkflow(),
         ]);
 
         if (!ativo) return;
         setOrdem(dadosOrdem);
         aplicarWorkflow(dadosWorkflow);
         setTiposServico(listaTipos);
-        setRecursos(listaRecursos);
         setTemAlteracoesPendentes(false);
       } catch (err: unknown) {
         if (!ativo) return;
@@ -124,7 +124,7 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
 
   // RN.3: Se alguma etapa já possui recurso alocado, a sequência não pode mais ser alterada estruturalmente
   const bloqueadoPorRN3 = useMemo(() => {
-    return etapas.some((e) => Boolean(e.recurso_id));
+    return etapas.some((e) => Boolean(e.recurso_id) || e.status === "ACEITA" || e.status === "ENTREGUE");
   }, [etapas]);
 
   // Limpa mensagens de sucesso automaticamente após alguns segundos
@@ -255,6 +255,24 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
       aplicarWorkflow(dadosAtualizados);
     } catch (err) {
       setErro(getApiErrorMessage(err));
+    }
+  };
+
+  const handleConfirmarDisparo = async (etapa: EtapaWorkflow) => {
+    if (!etapa.id || etapa.status !== "PENDENTE") return;
+    try {
+      setDisparandoEtapaId(etapa.id);
+      setEtapaConfirmandoDisparoId(null);
+      setErro(null);
+      const resultado = await dispararEtapaParaElegiveis(ordemId, etapa.id);
+      setMensagemSucesso(resultado.recursos_notificados > 0
+        ? `Etapa disparada. ${resultado.recursos_notificados} ${resultado.recursos_notificados === 1 ? "recurso notificado" : "recursos notificados"}.`
+        : "Nenhum recurso elegível foi encontrado para esta etapa.");
+      aplicarWorkflow(await buscarWorkflowOrdem(ordemId));
+    } catch (err) {
+      setErro(getApiErrorMessage(err));
+    } finally {
+      setDisparandoEtapaId(null);
     }
   };
 
@@ -517,6 +535,17 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
           onAbrirAlocacao={handleAbrirAlocacao}
           onAtualizarCampoEtapa={handleAtualizarCampoEtapa}
           onAbrirCarregarModelo={abrirModalCarregarModelo}
+          etapaConfirmandoDisparoId={etapaConfirmandoDisparoId}
+          etapaDisparandoId={disparandoEtapaId}
+          onDisparar={(etapa) => setEtapaConfirmandoDisparoId(etapa.id ?? null)}
+          onConfirmarDisparo={(etapa) => void handleConfirmarDisparo(etapa)}
+          onCancelarDisparo={() => setEtapaConfirmandoDisparoId(null)}
+          onBaixarEntrega={(etapa) => {
+            if (etapa.id) {
+              const url = `/api/v1/ordens-servico/${ordemId}/etapas/${etapa.id}/arquivo`;
+              void baixarArquivoEntrega(url, etapa.arquivo_entrega_nome || "entrega").catch((err) => setErro(getApiErrorMessage(err)));
+            }
+          }}
         />
       </View>
 
@@ -524,8 +553,8 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
       <ModalAlocarRecurso
         key={modalAlocacaoEtapa?.id ?? "sem-etapa"}
         visible={Boolean(modalAlocacaoEtapa)}
+        ordemServicoId={ordemId}
         etapa={modalAlocacaoEtapa}
-        recursos={recursos}
         tiposServico={tiposServico}
         onFechar={() => setModalAlocacaoEtapa(null)}
         onConfirmarAlocacao={handleConfirmarAlocacao}

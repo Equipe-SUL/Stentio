@@ -15,6 +15,12 @@ interface TimelineEtapasProps {
   onAbrirAlocacao: (etapa: EtapaWorkflow) => void;
   onAtualizarCampoEtapa: (index: number, campo: keyof EtapaWorkflow, valor: any) => void;
   onAbrirCarregarModelo: () => void;
+  etapaConfirmandoDisparoId: string | null;
+  etapaDisparandoId: string | null;
+  onDisparar: (etapa: EtapaWorkflow) => void;
+  onConfirmarDisparo: (etapa: EtapaWorkflow) => void;
+  onCancelarDisparo: () => void;
+  onBaixarEntrega: (etapa: EtapaWorkflow) => void;
 }
 
 export function TimelineEtapas({
@@ -28,12 +34,18 @@ export function TimelineEtapas({
   onAbrirAlocacao,
   onAtualizarCampoEtapa,
   onAbrirCarregarModelo,
+  etapaConfirmandoDisparoId,
+  etapaDisparandoId,
+  onDisparar,
+  onConfirmarDisparo,
+  onCancelarDisparo,
+  onBaixarEntrega,
 }: TimelineEtapasProps) {
   const totalHoras = etapas.reduce(
     (acc, e) => acc + (Number(e.prazo_estimado_horas) || 0),
     0,
   );
-  const totalAlocadas = etapas.filter((e) => e.status === "ALOCADO").length;
+  const totalAlocadas = etapas.filter((e) => ["ALOCADO", "ACEITA", "ENTREGUE"].includes(e.status)).length;
   const porcentagem =
     etapas.length > 0 ? Math.round((totalAlocadas / etapas.length) * 100) : 0;
 
@@ -180,6 +192,12 @@ export function TimelineEtapas({
             onDescer={() => onDescerEtapa(idx)}
             onRemover={() => onRemoverEtapa(idx)}
             onAlocarRecurso={() => onAbrirAlocacao(etapa)}
+            onDisparar={() => onDisparar(etapa)}
+            confirmandoDisparo={etapaConfirmandoDisparoId === etapa.id}
+            disparando={etapaDisparandoId === etapa.id}
+            onConfirmarDisparo={() => onConfirmarDisparo(etapa)}
+            onCancelarDisparo={onCancelarDisparo}
+            onBaixarEntrega={() => onBaixarEntrega(etapa)}
             onAtualizarCampo={(campo, valor) => onAtualizarCampoEtapa(idx, campo, valor)}
           />
         ))}

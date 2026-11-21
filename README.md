@@ -135,7 +135,7 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 | Sprint | Período | Documentação |
 | :--- | :-----------: | :--- |
 | 🔖 **SPRINT 1** | 07/09 - 27/09 | [Sprint 1 Docs](./docs/processo/sprint-1/) |
-| 🔖 **SPRINT 2** | 05/10 - 25/10 | a documentar |
+| 🔖 **SPRINT 2** | 05/10 - 25/10 | [Sprint 2 Docs](./docs/processo/sprint-2/) |
 | 🔖 **SPRINT 3** | 02/11 - 22/11 | a documentar |
 
 ---
@@ -181,14 +181,19 @@ docker compose --profile dev up -d --build
 
 Acompanhe a subida com `docker compose ps` e os logs com `docker compose logs -f core`.
 
-Auth e Core aplicam suas baselines Flyway ao iniciar e usam o Hibernate apenas para
+Auth e Core aplicam suas migrations Flyway ao iniciar e usam o Hibernate apenas para
 validar o schema. Em um banco vazio, as tabelas e constraints — incluindo os estados
 da US-013 — são criados sem comandos SQL manuais. Cada serviço registra suas versões
-em uma tabela de histórico própria, pois ambos compartilham o schema `public`:
+em uma tabela de histórico própria, pois ambos compartilham o schema `public`. Os
+baselines padrão são versão `0`, para que cada serviço execute suas migrations mesmo
+quando o outro já criou tabelas. Para um banco legado sem histórico Flyway, configure
+`AUTH_FLYWAY_BASELINE_VERSION` e `CORE_FLYWAY_BASELINE_VERSION` com a versão que
+corresponda exatamente ao schema existente; não use versões maiores que `0` em um
+banco vazio. As migrations estão em
 [Core](./Core/src/main/resources/db/migration/core/V1__core_schema.sql) e
 [Auth](./Auth/src/main/resources/db/migration/auth/V1__auth_schema.sql). Depois do
 primeiro deploy, novas alterações devem ser adicionadas em novas versões, sem editar
-as baselines já aplicadas.
+as migrations já aplicadas.
 
 | Serviço | URL |
 | :------ | :-- |
