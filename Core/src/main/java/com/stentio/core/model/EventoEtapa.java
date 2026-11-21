@@ -20,6 +20,8 @@ public enum EventoEtapa {
     ENTREGA,
     /** A entrega liberou a próxima etapa do workflow ou concluiu a sequência. */
     AVANCO,
+    /** US-015: o gestor aprovou a entrega final e o envio ao cliente foi registrado. */
+    APROVACAO_FINAL,
     /** US-015: o gestor reprovou a entrega final e devolveu a etapa para correção. */
     REABERTURA
 }
