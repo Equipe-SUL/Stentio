@@ -91,8 +91,14 @@ export async function entregarEtapaRecurso(
 ): Promise<EntregaEtapaResponse> {
   const formData = new FormData();
 
-  if (Platform.OS === "web" && arquivo.file) {
-    formData.append("arquivo", arquivo.file, arquivo.name);
+  if (Platform.OS === "web") {
+    if (arquivo.file instanceof File) {
+      formData.append("arquivo", arquivo.file, arquivo.name);
+    } else {
+      const response = await fetch(arquivo.uri);
+      const blob = await response.blob();
+      formData.append("arquivo", blob, arquivo.name);
+    }
   } else {
     formData.append("arquivo", {
       uri: arquivo.uri,
@@ -105,15 +111,12 @@ export async function entregarEtapaRecurso(
     `/api/v1/recurso/etapas/${etapaId}/entregar`,
     formData,
     {
+      // Sobrescreve qualquer default "application/json" do coreApi para o navegador
+      // gerar automaticamente "multipart/form-data; boundary=..."
       headers: {
-        "Content-Type": "multipart/form-data",
+        "Content-Type": undefined,
       },
     },
   );
-  return data;
-}
-
-export async function buscarMeuPerfilRecurso(): Promise<PerfilRecurso> {
-  const { data } = await coreApi.get<PerfilRecurso>("/api/v1/recurso/perfil");
   return data;
 }
