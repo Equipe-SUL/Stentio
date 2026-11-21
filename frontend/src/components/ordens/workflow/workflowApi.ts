@@ -2,6 +2,7 @@ import { coreApi } from "../../../lib/api";
 import type {
   AlocarRecursoPayload,
   CriarModeloWorkflowPayload,
+  DisparoEtapaResponse,
   EtapaWorkflow,
   ModeloWorkflow,
   OrdemServicoWorkflowResponse,
@@ -16,6 +17,8 @@ const ENDPOINTS = {
     `/api/v1/ordens-servico/${osId}/etapas/aplicar-modelo/${modeloId}`,
   alocacao: (osId: string, etapaId: string) =>
     `/api/v1/ordens-servico/${osId}/etapas/${etapaId}/alocacao`,
+  disparo: (osId: string, etapaId: string) =>
+    `/api/v1/ordens-servico/${osId}/etapas/${etapaId}/disparo`,
   modelosWorkflow: "/api/v1/modelos-workflow",
   tiposServico: "/api/v1/tipos-servico",
   recursos: "/api/v1/recursos",
@@ -148,6 +151,27 @@ export async function alocarRecursoEtapa(
   payload: AlocarRecursoPayload,
 ): Promise<void> {
   await coreApi.post(ENDPOINTS.alocacao(osId, etapaId), payload);
+}
+
+export async function dispararEtapaParaElegiveis(
+  osId: string,
+  etapaId: string,
+): Promise<DisparoEtapaResponse> {
+  const { data } = await coreApi.post<DisparoEtapaResponse>(ENDPOINTS.disparo(osId, etapaId));
+  return data;
+}
+
+export async function baixarArquivoEntrega(url: string, nomeArquivo: string): Promise<void> {
+  if (typeof window === "undefined") return;
+  const { data } = await coreApi.get(url, { responseType: "blob" });
+  const blobUrl = window.URL.createObjectURL(new Blob([data]));
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
 }
 
 /**
