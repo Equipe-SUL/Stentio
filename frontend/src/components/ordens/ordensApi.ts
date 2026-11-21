@@ -4,6 +4,7 @@ import type {
   ClienteOpcao,
   FiltrosOrdemServico,
   OrdemServicoDetalhe,
+  OrdemServicoEtapaResumo,
   OrdemServicoPagina,
 } from "./types";
 
@@ -35,6 +36,18 @@ export async function listarOrdensServico(
 export async function buscarOrdemServicoPorId(id: string): Promise<OrdemServicoDetalhe> {
   const { data } = await coreApi.get<OrdemServicoDetalhe>(`${ENDPOINTS.ordens}/${id}`);
   return data;
+}
+
+export async function listarEtapasOrdemServico(
+  ordemId: string,
+): Promise<OrdemServicoEtapaResumo[]> {
+  const { data } = await coreApi.get<{ etapas: OrdemServicoEtapaResumo[] }>(
+    `${ENDPOINTS.ordens}/${ordemId}/etapas`,
+  );
+  if (!Array.isArray(data?.etapas)) {
+    throw new Error("A resposta do servidor para as etapas da OS é inválida.");
+  }
+  return data.etapas;
 }
 
 export async function baixarArquivoOrdemServico(

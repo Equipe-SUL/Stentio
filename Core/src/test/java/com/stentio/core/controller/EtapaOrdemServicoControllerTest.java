@@ -66,16 +66,16 @@ class EtapaOrdemServicoControllerTest {
     private static EtapasOrdemServicoResponse resposta() {
         return new EtapasOrdemServicoResponse(OS_ID, StatusOrdemServico.EM_PLANEJAMENTO, List.of(
                 new EtapaOrdemServicoResponse(UUID.randomUUID(), 1, "Tradução Principal", TIPO_ID, "Tradução",
-                        StatusEtapaOrdemServico.PENDENTE, 24, null, null, null, null),
+                        StatusEtapaOrdemServico.PENDENTE, 24, null, null, null, null, null, null),
                 new EtapaOrdemServicoResponse(UUID.randomUUID(), 2, "Revisão Final", TIPO_ID, "Revisão",
-                        StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, 12, null, null, null, null)));
+                        StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, 12, null, null, null, null, null, null)));
     }
 
     private static EtapasOrdemServicoResponse respostaComEtapaAceita() {
         List<EtapaOrdemServicoResponse> etapas = new ArrayList<>(resposta().etapas());
         etapas.add(new EtapaOrdemServicoResponse(UUID.randomUUID(), 3, "Entrega aceite", TIPO_ID, "Tradução",
                 StatusEtapaOrdemServico.ACEITA, 12, UUID.randomUUID(), "Recurso Teste", null,
-                Instant.parse("2026-11-20T12:00:00Z")));
+                Instant.parse("2026-11-20T12:00:00Z"), null, null));
         return new EtapasOrdemServicoResponse(OS_ID, StatusOrdemServico.EM_PLANEJAMENTO, etapas);
     }
 

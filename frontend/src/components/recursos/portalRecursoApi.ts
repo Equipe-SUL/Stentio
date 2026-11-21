@@ -2,6 +2,15 @@ import { Platform } from "react-native";
 import { coreApi } from "../../lib/api";
 import type { PerfilRecursoCriado, UnidadePrecoRecurso } from "./cadastroRecursoApi";
 
+export type SituacaoDemandaRecurso =
+  | "PENDENTE"
+  | "AGUARDANDO_ETAPA_ANTERIOR"
+  | "ALOCADO"
+  | "DISPARADA"
+  | "ACEITA"
+  | "ENTREGUE"
+  | string;
+
 export interface DemandaRecurso {
   etapa_id: string;
   ordem_servico_id: string;
@@ -11,45 +20,42 @@ export interface DemandaRecurso {
   tipo_servico: string;
   idioma_origem: string;
   idioma_destino: string;
-  situacao: "PENDENTE" | "AGUARDANDO_ETAPA_ANTERIOR" | "ALOCADO" | "DISPARADA" | "ACEITA" | "ENTREGUE" | string;
+  status?: SituacaoDemandaRecurso;
+  situacao: SituacaoDemandaRecurso;
   prazo_estimado_horas: number;
   data_limite_entrega: string | null;
-  aceito_em?: string | null;
+  liberada?: boolean;
+  entregue_em?: string | null;
+  arquivo_nome?: string | null;
+  /** Só nas etapas ENTREGUE: rota do Core para o profissional baixar o próprio arquivo. */
   arquivo_entrega_url?: string | null;
-  arquivo_entrega_nome?: string | null;
 }
 
-interface DemandaRecursoApi {
-  etapa_id: string;
-  ordem_servico_id: string;
-  ordem_servico_codigo: string;
-  ordem: number;
-  nome: string;
-  tipo_servico: string;
-  idioma_origem: string;
-  idioma_destino: string;
-  status: DemandaRecurso["situacao"];
-  prazo_estimado_horas: number;
-  data_limite_entrega: string | null;
-}
-
-export interface EtapasPortalRecurso {
-  disponiveis: DemandaRecurso[];
-  minhas: DemandaRecurso[];
+export interface AvancoEtapaResponse {
+  proxima_etapa_id: string;
+  proxima_etapa_status: "DISPARADA" | "ALOCADO" | "ACEITA" | "PENDENTE" | string;
+  convite_automatico: boolean;
+  recursos_notificados: number;
 }
 
 export interface EntregaEtapaResponse {
   etapa_id: string;
-  status: "ENTREGUE";
+  status: "ENTREGUE" | string;
   entregue_em: string;
   arquivo_nome: string;
-  arquivo_url: string;
-  avanco: null | {
-    proxima_etapa_id: string;
-    proxima_etapa_status: string;
-    convite_automatico: boolean;
-    recursos_notificados: number;
+  arquivo_url?: string;
+  avanco: AvancoEtapaResponse | null;
+  ordem_servico: {
+    id: string;
+    status: "EM_EXECUCAO" | "AGUARDANDO_VERIFICACAO" | string;
   };
+}
+
+export interface ArquivoEntregaPayload {
+  uri: string;
+  name: string;
+  mimeType?: string;
+  file?: File; // Web
 }
 
 export interface PerfilRecurso extends PerfilRecursoCriado {
@@ -62,66 +68,90 @@ export interface PerfilRecurso extends PerfilRecursoCriado {
   }[];
 }
 
-export async function listarEtapasPortal(): Promise<EtapasPortalRecurso> {
-  const { data } = await coreApi.get<DemandaRecursoApi[]>("/api/v1/recurso/etapas");
-  const etapas: DemandaRecurso[] = data.map((etapa) => ({
-    ...etapa,
-    situacao: etapa.status,
-    arquivo_entrega_url: etapa.status === "ENTREGUE"
-      ? `/api/v1/recurso/etapas/${etapa.etapa_id}/entrega/arquivo`
-      : null,
-    arquivo_entrega_nome: etapa.status === "ENTREGUE" ? "Arquivo entregue" : null,
-  }));
-  return {
-    disponiveis: etapas.filter((etapa) => etapa.situacao === "DISPARADA"),
-    minhas: etapas.filter((etapa) => etapa.situacao !== "DISPARADA"),
-  };
+export async function buscarMeuPerfilRecurso(): Promise<PerfilRecurso> {
+  const { data } = await coreApi.get<PerfilRecurso>("/api/v1/recurso/perfil");
+  return data;
 }
 
-export async function aceitarEtapa(etapaId: string): Promise<void> {
+export async function listarMinhasDemandas(): Promise<DemandaRecurso[]> {
+  const { data } = await coreApi.get<DemandaRecurso[]>("/api/v1/recurso/etapas");
+
+  return (Array.isArray(data) ? data : []).map((item) => {
+    const situacaoNormalizada = (item.situacao || item.status || "PENDENTE").toUpperCase();
+    return {
+      ...item,
+      situacao: situacaoNormalizada,
+      liberada:
+        typeof item.liberada === "boolean"
+          ? item.liberada
+          : situacaoNormalizada !== "AGUARDANDO_ETAPA_ANTERIOR",
+      arquivo_entrega_url:
+        situacaoNormalizada === "ENTREGUE"
+          ? `/api/v1/recurso/etapas/${item.etapa_id}/entrega/arquivo`
+          : null,
+    };
+  });
+}
+
+export async function aceitarEtapaRecurso(etapaId: string): Promise<void> {
   await coreApi.post(`/api/v1/recurso/etapas/${etapaId}/aceitar`);
 }
 
-export async function recusarEtapa(etapaId: string): Promise<void> {
+export async function recusarEtapaRecurso(etapaId: string): Promise<void> {
   await coreApi.post(`/api/v1/recurso/etapas/${etapaId}/recusar`);
 }
 
-export async function enviarEntrega(
+export async function entregarEtapaRecurso(
   etapaId: string,
-  arquivo: { uri: string; nome: string; tipo: string; file?: File },
+  arquivo: ArquivoEntregaPayload,
   aoProgredir?: (percentual: number) => void,
 ): Promise<EntregaEtapaResponse> {
-  const form = new FormData();
-  if (Platform.OS === "web" && arquivo.file) {
-    form.append("arquivo", arquivo.file, arquivo.nome);
+  const formData = new FormData();
+
+  if (Platform.OS === "web") {
+    if (arquivo.file instanceof File) {
+      formData.append("arquivo", arquivo.file, arquivo.name);
+    } else {
+      const response = await fetch(arquivo.uri);
+      const blob = await response.blob();
+      formData.append("arquivo", blob, arquivo.name);
+    }
   } else {
-    form.append("arquivo", { uri: arquivo.uri, name: arquivo.nome, type: arquivo.tipo } as unknown as Blob);
+    formData.append("arquivo", {
+      uri: arquivo.uri,
+      name: arquivo.name,
+      type: arquivo.mimeType || "application/octet-stream",
+    } as unknown as Blob);
   }
+
   const { data } = await coreApi.post<EntregaEtapaResponse>(
-    `/api/v1/recurso/etapas/${etapaId}/entrega`,
-    form,
-    { timeout: 0, onUploadProgress: (event) => {
-      if (event.total) aoProgredir?.(Math.round((event.loaded / event.total) * 100));
-    } },
+    `/api/v1/recurso/etapas/${etapaId}/entregar`,
+    formData,
+    {
+      // Sobrescreve qualquer default "application/json" do coreApi para o navegador
+      // gerar automaticamente "multipart/form-data; boundary=..."
+      headers: {
+        "Content-Type": undefined,
+      },
+      // Upload de até 10 MB: o timeout padrão de 15 s do coreApi derrubaria conexões lentas.
+      timeout: 0,
+      onUploadProgress: (event) => {
+        if (event.total) aoProgredir?.(Math.round((event.loaded / event.total) * 100));
+      },
+    },
   );
   return data;
 }
 
 export async function baixarEntrega(url: string, nomeArquivo: string): Promise<void> {
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    const { data } = await coreApi.get(url, { responseType: "blob" });
-    const blobUrl = window.URL.createObjectURL(new Blob([data]));
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = nomeArquivo;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(blobUrl);
-  }
-}
-
-export async function buscarMeuPerfilRecurso(): Promise<PerfilRecurso> {
-  const { data } = await coreApi.get<PerfilRecurso>("/api/v1/recurso/perfil");
-  return data;
+  if (Platform.OS !== "web" || typeof window === "undefined") return;
+  const { data } = await coreApi.get(url, { responseType: "blob" });
+  const blobUrl = window.URL.createObjectURL(new Blob([data]));
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
 }
