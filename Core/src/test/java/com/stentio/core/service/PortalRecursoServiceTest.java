@@ -34,7 +34,10 @@ class PortalRecursoServiceTest {
 
     private final PortalRecursoService service =
             new PortalRecursoService(
-                    new RecursoAutenticadoService(recursos), etapas, new RecursoMapper());
+                    new RecursoAutenticadoService(recursos),
+                    etapas,
+                    new RecursoMapper(),
+                    new EtapaLiberacaoService(etapas));
 
     private final UUID usuarioId = UUID.randomUUID();
     private final UsuarioAutenticado maria = new UsuarioAutenticado("maria@exemplo.com", usuarioId, false);
@@ -48,6 +51,10 @@ class PortalRecursoServiceTest {
     }
 
     private static EtapaOrdemServico etapaDe(String nome) {
+        return etapaDe(nome, 1);
+    }
+
+    private static EtapaOrdemServico etapaDe(String nome, int numeroOrdem) {
         Idioma portugues = mock(Idioma.class);
         when(portugues.getNome()).thenReturn("Português");
         Idioma ingles = mock(Idioma.class);
@@ -67,7 +74,7 @@ class PortalRecursoServiceTest {
         traducao.setNome("Tradução");
         traducao.setAtivo(true);
 
-        return new EtapaOrdemServico(ordem, 1, nome, traducao, 24);
+        return new EtapaOrdemServico(ordem, numeroOrdem, nome, traducao, 24);
     }
 
     @Test
@@ -90,7 +97,37 @@ class PortalRecursoServiceTest {
         assertEquals("Inglês", demanda.idiomaDestino());
         assertEquals("Tradução", demanda.tipoServico());
         assertEquals(StatusEtapaOrdemServico.PENDENTE, demanda.status());
+        assertTrue(demanda.liberada());
         assertTrue(demanda.ordemServicoCodigo().startsWith("OS-2026-"));
+    }
+
+    @Test
+    @DisplayName("A etapa alocada informa se a etapa anterior já foi entregue")
+    void informaLiberacaoDaEtapaAlocada() {
+        EtapaOrdemServico etapa = etapaDe("Revisão", 2);
+        Recurso recursoAlocado = mock(Recurso.class);
+        when(recursoAlocado.elegivelParaAlocacao()).thenReturn(true);
+        etapa.alocar(
+                recursoAlocado,
+                Instant.parse("2026-11-22T12:00:00Z"),
+                Instant.parse("2026-11-21T12:00:00Z"));
+        UUID ordemId = etapa.getOrdemServico().getId();
+        perfilCadastrado();
+        when(etapas.listarPorRecurso(any())).thenReturn(List.of(etapa));
+        when(etapas.buscarStatusPorOrdem(ordemId, 1))
+                .thenReturn(Optional.of(StatusEtapaOrdemServico.PENDENTE));
+
+        DemandaRecursoResponse demandaBloqueada = service.minhasDemandas(maria).getFirst();
+
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, demandaBloqueada.status());
+        assertFalse(demandaBloqueada.liberada());
+
+        when(etapas.buscarStatusPorOrdem(ordemId, 1))
+                .thenReturn(Optional.of(StatusEtapaOrdemServico.ENTREGUE));
+
+        DemandaRecursoResponse demandaLiberada = service.minhasDemandas(maria).getFirst();
+
+        assertTrue(demandaLiberada.liberada());
     }
 
     @Test

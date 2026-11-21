@@ -3,7 +3,6 @@ export type StatusOrdemServico =
   | "EM_PLANEJAMENTO"
   | "EM_EXECUCAO"
   | "AGUARDANDO_VERIFICACAO"
-  | "ENCERRADA"
   | "CONCLUIDA"
   | "FINALIZADA"
   | "CANCELADA"
@@ -86,63 +85,4 @@ export interface FiltrosOrdemServico {
 export interface ClienteOpcao {
   id: string;
   nomeEmpresa: string;
-}
-
-// --- US-015: Revisão Final & Entrega ao Cliente ---
-
-export interface EntregaFinalCliente {
-  id: string;
-  nome: string;
-  email: string | null;
-}
-
-export interface EntregaFinalEtapa {
-  etapa_id: string;
-  nome: string;
-  ordem: number;
-  status: string;
-  entregue_em: string | null;
-  arquivo_nome: string | null;
-  arquivo_url: string;
-}
-
-export interface EntregaFinalPacote {
-  etapa_id: string;
-  arquivo_nome: string | null;
-  tipo_conteudo: string | null;
-  tamanho_bytes: number;
-  pode_enviar: boolean;
-  bloqueios: string[];
-}
-
-export interface EntregaFinalRevisaoResponse {
-  ordem_servico_id: string;
-  codigo: string;
-  status: StatusOrdemServico;
-  motivo_revisao: string | null;
-  cliente: EntregaFinalCliente;
-  etapas: EntregaFinalEtapa[];
-  pacote: EntregaFinalPacote;
-}
-
-// --- US-015 (Task 2): Aprovação e Reprovação ---
-
-export interface AprovarEntregaFinalRequest {
-  mensagem?: string;
-}
-
-export interface AprovarEntregaFinalResponse {
-  outbox_id: string;
-  idempotency_key: string;
-  status: StatusOrdemServico;
-}
-
-export interface ReprovarEntregaFinalRequest {
-  motivo: string;
-}
-
-export interface ReprovarEntregaFinalResponse {
-  etapa_id: string;
-  etapa_status: string;
-  ordem_servico_status: StatusOrdemServico;
-}
+} 
