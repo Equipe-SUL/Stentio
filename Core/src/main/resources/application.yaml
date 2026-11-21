@@ -77,6 +77,12 @@ app:
     diretorio: ${APP_ARQUIVOS_DIRETORIO:uploads}
     extensoes-permitidas: ${APP_ARQUIVOS_EXTENSOES:pdf,doc,docx,odt,rtf,txt,xls,xlsx,ppt,pptx,jpg,jpeg,png}
     maximo-por-solicitacao: ${APP_ARQUIVOS_MAXIMO:10}
+
+  # US-015: o mesmo limite que o email-service aplica ao anexo. Lido da mesma variável
+  # para que os dois nunca divirjam (RN.5) — divergência aqui vira e-mail recusado depois
+  # de o Core já ter dado o envio como aceito.
+  anexos:
+    limite-total-bytes: ${APP_ANEXOS_LIMITE_TOTAL_BYTES:10485760}
   orcamentos:
     token-validade: ${ORCAMENTO_TOKEN_VALIDADE:PT120H}
     url-consulta-publica: ${ORCAMENTO_URL_CONSULTA_PUBLICA:http://localhost:8082/api/v1/public/orcamentos}

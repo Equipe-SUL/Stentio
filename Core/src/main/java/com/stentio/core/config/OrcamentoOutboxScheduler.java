@@ -1,5 +1,6 @@
 package com.stentio.core.config;
 
+import com.stentio.core.service.EntregaFinalEmailDispatcher;
 import com.stentio.core.service.NotificacaoEtapaOutboxDispatcher;
 import com.stentio.core.service.OrcamentoEmailOutboxDispatcher;
 import com.stentio.core.service.OrcamentoOutboxDispatcher;
@@ -15,13 +16,16 @@ public class OrcamentoOutboxScheduler {
     private final OrcamentoOutboxDispatcher dispatcher;
     private final OrcamentoEmailOutboxDispatcher emailDispatcher;
     private final NotificacaoEtapaOutboxDispatcher notificacaoDispatcher;
+    private final EntregaFinalEmailDispatcher entregaFinalDispatcher;
 
     public OrcamentoOutboxScheduler(OrcamentoOutboxDispatcher dispatcher,
                                     OrcamentoEmailOutboxDispatcher emailDispatcher,
-                                    NotificacaoEtapaOutboxDispatcher notificacaoDispatcher) {
+                                    NotificacaoEtapaOutboxDispatcher notificacaoDispatcher,
+                                    EntregaFinalEmailDispatcher entregaFinalDispatcher) {
         this.dispatcher = dispatcher;
         this.emailDispatcher = emailDispatcher;
         this.notificacaoDispatcher = notificacaoDispatcher;
+        this.entregaFinalDispatcher = entregaFinalDispatcher;
     }
 
     @Scheduled(fixedDelayString = "${app.orcamentos.outbox.intervalo-ms:5000}")
@@ -37,6 +41,11 @@ public class OrcamentoOutboxScheduler {
         // depressa que as outras duas em uma rodada só.
         for (int i = 0; i < 50 && !Thread.currentThread().isInterrupted(); i++) {
             if (!notificacaoDispatcher.processarProximo()) break;
+        }
+        // US-015: uma entrega final por OS encerrada. Volume baixo, mas o limite fica
+        // aqui pelo mesmo motivo dos outros: nenhuma rodada pode virar varredura.
+        for (int i = 0; i < 20 && !Thread.currentThread().isInterrupted(); i++) {
+            if (!entregaFinalDispatcher.processarProximo()) break;
         }
     }
 }
