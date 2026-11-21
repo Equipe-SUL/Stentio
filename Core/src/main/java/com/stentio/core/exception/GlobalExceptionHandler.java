@@ -141,6 +141,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    /** US-024 RN.2 e RN.4: estado da certificação incompatível com a operação. */
+    @ExceptionHandler(CertificacaoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleCertificacaoInvalida(CertificacaoInvalidaException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(EtapaNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleEtapaNaoEncontrada(EtapaNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
