@@ -20,6 +20,7 @@ export interface DemandaRecurso {
   tipo_servico: string;
   idioma_origem: string;
   idioma_destino: string;
+  status?: SituacaoDemandaRecurso;
   situacao: SituacaoDemandaRecurso;
   prazo_estimado_horas: number;
   data_limite_entrega: string | null;
@@ -66,7 +67,18 @@ export interface PerfilRecurso extends PerfilRecursoCriado {
 
 export async function listarMinhasDemandas(): Promise<DemandaRecurso[]> {
   const { data } = await coreApi.get<DemandaRecurso[]>("/api/v1/recurso/etapas");
-  return data;
+
+  return (Array.isArray(data) ? data : []).map((item) => {
+    const situacaoNormalizada = (item.situacao || item.status || "PENDENTE").toUpperCase();
+    return {
+      ...item,
+      situacao: situacaoNormalizada,
+      liberada:
+        typeof item.liberada === "boolean"
+          ? item.liberada
+          : situacaoNormalizada !== "AGUARDANDO_ETAPA_ANTERIOR",
+    };
+  });
 }
 
 export async function aceitarEtapaRecurso(etapaId: string): Promise<void> {
