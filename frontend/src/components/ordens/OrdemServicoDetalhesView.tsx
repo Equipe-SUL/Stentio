@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -10,9 +10,17 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import { baixarArquivoOrdemServico, buscarOrdemServicoPorId } from "./ordensApi";
+import {
+  baixarArquivoOrdemServico,
+  buscarOrdemServicoPorId,
+  listarEtapasOrdemServico,
+} from "./ordensApi";
 import { OrdemServicoStatusBadge } from "./OrdemServicoStatusBadge";
-import type { OrdemServicoArquivo, OrdemServicoDetalhe } from "./types";
+import type {
+  OrdemServicoArquivo,
+  OrdemServicoDetalhe,
+  OrdemServicoEtapaResumo,
+} from "./types";
 import { getApiErrorMessage } from "../../lib/api";
 
 interface OrdemServicoDetalhesViewProps {
@@ -21,7 +29,7 @@ interface OrdemServicoDetalhesViewProps {
   ordemInicial?: OrdemServicoDetalhe | null;
 }
 
-function formatarData(isoString?: string): string {
+function formatarData(isoString?: string | null): string {
   if (!isoString) return "—";
   try {
     const data = new Date(isoString);
@@ -34,6 +42,34 @@ function formatarData(isoString?: string): string {
   }
 }
 
+function descreverDestinoAvanco(
+  etapaAtual: OrdemServicoEtapaResumo,
+  todasEtapas: OrdemServicoEtapaResumo[],
+): string {
+  const proxima = todasEtapas.find((e) => e.ordem === etapaAtual.ordem + 1);
+
+  if (!proxima) {
+    return "Última etapa concluída — produção avançou para verificação final da OS";
+  }
+
+  const nomeProxima = `Etapa ${proxima.ordem}${proxima.nome ? ` (${proxima.nome})` : ""}`;
+
+  switch (proxima.status) {
+    case "DISPARADA":
+      return `Avançou para ${nomeProxima} — convite automático disparado`;
+    case "ALOCADO":
+      return `Avançou para ${nomeProxima} — liberada para o recurso alocado${proxima.recurso_nome ? ` (${proxima.recurso_nome})` : ""}`;
+    case "ACEITA":
+      return `Avançou para ${nomeProxima} — em execução${proxima.recurso_nome ? ` por ${proxima.recurso_nome}` : ""}`;
+    case "ENTREGUE":
+      return `Avançou para ${nomeProxima} — já concluída`;
+    case "PENDENTE":
+      return `Avançou para ${nomeProxima} — liberada como pendente (aguardando alocação/disparo)`;
+    default:
+      return `Avançou para ${nomeProxima}`;
+  }
+}
+
 export function OrdemServicoDetalhesView({
   id,
   onVoltar,
@@ -41,6 +77,9 @@ export function OrdemServicoDetalhesView({
 }: OrdemServicoDetalhesViewProps) {
   const router = useRouter();
   const [ordem, setOrdem] = useState<OrdemServicoDetalhe | null>(ordemInicial ?? null);
+  const [etapas, setEtapas] = useState<OrdemServicoEtapaResumo[]>(
+    ordemInicial?.etapas ?? [],
+  );
   const [carregando, setCarregando] = useState(!ordemInicial);
   const [naoEncontrada, setNaoEncontrada] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -52,12 +91,14 @@ export function OrdemServicoDetalhesView({
     setErro(null);
 
     try {
-      const dados = await buscarOrdemServicoPorId(id);
+      const [dados, listaEtapas] = await Promise.all([
+        buscarOrdemServicoPorId(id),
+        listarEtapasOrdemServico(id),
+      ]);
       setOrdem(dados);
+      setEtapas(dados.etapas?.length ? dados.etapas : listaEtapas);
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
-        // RN1: Caso a consulta interna retorne o erro HTTP 404,
-        // a interface deve exibir uma mensagem informando que a Ordem de Serviço não foi encontrada.
         setNaoEncontrada(true);
       } else {
         setErro(getApiErrorMessage(err));
@@ -70,8 +111,20 @@ export function OrdemServicoDetalhesView({
   useEffect(() => {
     if (!ordemInicial || ordemInicial.id !== id) {
       carregarDetalhes();
+    } else if (!ordemInicial.etapas?.length) {
+      listarEtapasOrdemServico(id).then(setEtapas);
     }
   }, [id]);
+
+  const etapasOrdenadas = useMemo(
+    () => [...etapas].sort((a, b) => a.ordem - b.ordem),
+    [etapas],
+  );
+
+  const etapasEntregues = useMemo(
+    () => etapasOrdenadas.filter((e) => e.status === "ENTREGUE"),
+    [etapasOrdenadas],
+  );
 
   async function handleBaixar(url: string, nome: string, arquivoId: string) {
     try {
@@ -95,7 +148,6 @@ export function OrdemServicoDetalhesView({
     );
   }
 
-  // RN1: Mensagem de erro HTTP 404
   if (naoEncontrada) {
     return (
       <View className="items-center justify-center rounded-2xl border border-amber-200 bg-amber-50/60 p-8 text-center">
@@ -159,6 +211,8 @@ export function OrdemServicoDetalhesView({
 
   const { solicitacao, cliente } = ordem;
   const arquivos = solicitacao?.arquivos ?? [];
+  const aguardandoVerificacao = ordem.status === "AGUARDANDO_VERIFICACAO";
+  const encerrada = ordem.status === "ENCERRADA";
 
   return (
     <ScrollView
@@ -167,7 +221,81 @@ export function OrdemServicoDetalhesView({
       showsVerticalScrollIndicator={false}
     >
       <View className="gap-6">
-        {/* Cartão de Resumo e Status (CA3) */}
+        {/* Banner de atalho para revisão final (US-015) quando AGUARDANDO_VERIFICACAO */}
+        {aguardandoVerificacao ? (
+          <View className="flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-purple-200 bg-purple-50 p-5 shadow-sm">
+            <View className="flex-row items-start gap-3 flex-1">
+              <View className="h-10 w-10 items-center justify-center rounded-xl bg-purple-100 border border-purple-200">
+                <Ionicons name="checkmark-done-circle" size={22} color="#6b21a8" />
+              </View>
+              <View className="flex-1 gap-1">
+                <Text className="text-sm font-bold text-purple-950">
+                  Pronta para verificação final (US-015)
+                </Text>
+                <Text className="text-xs leading-5 text-purple-800">
+                  Todas as etapas de produção foram entregues. Revise o pacote final antes do
+                  envio ao cliente.
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => router.push(`/ordens/${ordem.id}/verificacao` as never)}
+              className="flex-row items-center justify-center gap-2 self-start md:self-auto rounded-xl bg-purple-700 px-4 py-2.5 active:bg-purple-800 shadow-sm"
+              accessibilityRole="button"
+              accessibilityLabel="Ir para revisão final da OS"
+            >
+              <Ionicons name="shield-checkmark-outline" size={17} color="#ffffff" />
+              <Text className="text-xs font-bold text-white tracking-wide">
+                Revisar pacote final
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {/* Banner de OS ENCERRADA com data/autor do envio (US-015 Task 3) */}
+        {encerrada || ordem.entregue_em || ordem.entregue_por ? (
+          <View className="flex-row items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 shadow-sm">
+            <View className="h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 border border-emerald-200">
+              <Ionicons name="checkmark-done-circle" size={22} color="#047857" />
+            </View>
+            <View className="flex-1 gap-1">
+              <Text className="text-sm font-bold text-emerald-950">
+                Ordem de Serviço Encerrada · Entrega Final Publicada
+              </Text>
+              <Text className="text-xs leading-5 text-emerald-900">
+                {ordem.entregue_em
+                  ? `Aprovada e publicada para envio ao cliente em ${formatarData(ordem.entregue_em)}`
+                  : "Aprovada e publicada para envio ao cliente"}
+                {ordem.entregue_por ? ` por ${ordem.entregue_por}.` : "."}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Banner de OS reaberta com motivo_revisao para o Gestor (CA.11) */}
+        {ordem.motivo_revisao ? (
+          <View className="flex-row items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-sm">
+            <View className="h-10 w-10 items-center justify-center rounded-xl bg-amber-100 border border-amber-200">
+              <Ionicons name="return-up-back" size={20} color="#b45309" />
+            </View>
+            <View className="flex-1 gap-1">
+              <Text className="text-sm font-bold text-amber-950">
+                Ordem de Serviço reaberta para correção
+              </Text>
+              <Text className="text-xs text-amber-900">
+                Motivo registrado na revisão final:
+              </Text>
+              <View className="mt-1 rounded-xl border border-amber-200 bg-white/85 px-3.5 py-2">
+                <Text className="text-xs font-medium text-neutral-800">
+                  “{ordem.motivo_revisao}”
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Cartão de Resumo e Status */}
         <View className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm">
           <View className="flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-neutral-100">
             <View className="gap-1">
@@ -189,6 +317,15 @@ export function OrdemServicoDetalhesView({
                   {formatarData(ordem.data_criacao)}
                 </Text>
               </View>
+
+              {ordem.entregue_em ? (
+                <View>
+                  <Text className="text-xs text-neutral-400">Entrega final</Text>
+                  <Text className="text-sm font-semibold text-emerald-800 mt-0.5">
+                    {formatarData(ordem.entregue_em)}
+                  </Text>
+                </View>
+              ) : null}
 
               <Pressable
                 onPress={() => router.push(`/ordens/${ordem.id}/workflow`)}
@@ -221,10 +358,84 @@ export function OrdemServicoDetalhesView({
                 {solicitacao?.id ? solicitacao.id.substring(0, 8) + "..." : "—"}
               </Text>
             </View>
+
+            {ordem.entregue_por ? (
+              <View className="flex-row items-center gap-1.5 rounded-lg bg-emerald-50/70 px-3 py-1.5 border border-emerald-200">
+                <Ionicons name="person-check-outline" size={14} color="#047857" />
+                <Text className="text-xs text-emerald-700">Enviada por:</Text>
+                <Text className="text-xs font-semibold text-emerald-900">
+                  {ordem.entregue_por}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
-        {/* Card de Gestão de Workflow e Etapas (CA.1) */}
+        {/* Histórico de Etapas Entregues e Avanço da Produção */}
+        {etapasEntregues.length > 0 ? (
+          <View className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm gap-4">
+            <View className="flex-row items-center justify-between border-b border-neutral-100 pb-3">
+              <View className="flex-row items-center gap-2.5">
+                <View className="h-9 w-9 rounded-xl bg-emerald-50 items-center justify-center border border-emerald-200">
+                  <Ionicons name="checkmark-done-outline" size={20} color="#047857" />
+                </View>
+                <View>
+                  <Text className="text-base font-bold text-neutral-900">
+                    Entregas Registradas & Avanço da Produção
+                  </Text>
+                  <Text className="text-xs text-neutral-500">
+                    Acompanhe quando cada etapa foi entregue e o destino automático do fluxo.
+                  </Text>
+                </View>
+              </View>
+
+              <View className="rounded-full bg-emerald-50 px-2.5 py-0.5 border border-emerald-200">
+                <Text className="text-xs font-semibold text-emerald-800">
+                  {etapasEntregues.length}/{etapasOrdenadas.length} concluídas
+                </Text>
+              </View>
+            </View>
+
+            <View className="gap-3">
+              {etapasEntregues.map((etapa) => (
+                <View
+                  key={etapa.id}
+                  className="gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4"
+                >
+                  <View className="flex-row flex-wrap items-center justify-between gap-2">
+                    <Text className="text-sm font-bold text-neutral-900">
+                      Etapa {etapa.ordem} · {etapa.nome}
+                    </Text>
+                    <View className="flex-row items-center gap-1.5 rounded-full bg-white px-2.5 py-1 border border-emerald-200">
+                      <Ionicons name="time-outline" size={13} color="#047857" />
+                      <Text className="text-xs font-medium text-emerald-800">
+                        Entregue em {formatarData(etapa.entregue_em)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="flex-row items-center gap-2 pt-1">
+                    <Ionicons name="arrow-forward-circle" size={16} color="#8c5230" />
+                    <Text className="flex-1 text-xs font-semibold text-[#744127]">
+                      {encerrada
+                        ? "Etapa concluída — OS encerrada após envio ao cliente"
+                        : descreverDestinoAvanco(etapa, etapasOrdenadas)}
+                    </Text>
+                  </View>
+
+                  {etapa.arquivo_nome ? (
+                    <Text className="text-xs text-neutral-500">
+                      Arquivo entregue:{" "}
+                      <Text className="font-medium text-neutral-700">{etapa.arquivo_nome}</Text>
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {/* Card de Gestão de Workflow e Etapas */}
         <View className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm gap-4">
           <View className="flex-col md:flex-row md:items-center justify-between gap-3 border-b border-neutral-100 pb-3">
             <View className="flex-row items-center gap-2.5">
@@ -250,7 +461,6 @@ export function OrdemServicoDetalhesView({
             </Pressable>
           </View>
 
-          {/* Opções CA.1: Carregar Modelo ou Adicionar Etapas Manualmente */}
           <View className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
             <Pressable
               onPress={() => router.push(`/ordens/${ordem.id}/workflow`)}
@@ -284,9 +494,8 @@ export function OrdemServicoDetalhesView({
           </View>
         </View>
 
-        {/* Informações Completas do Projeto (CA2) */}
+        {/* Informações Completas do Projeto */}
         <View className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Dados do Cliente */}
           <View className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm gap-4">
             <View className="flex-row items-center gap-2 border-b border-neutral-100 pb-3">
               <Ionicons name="people-outline" size={20} color="#6f4f28" />
@@ -316,7 +525,6 @@ export function OrdemServicoDetalhesView({
             </View>
           </View>
 
-          {/* Dados da Solicitação e Categoria */}
           <View className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm gap-4">
             <View className="flex-row items-center gap-2 border-b border-neutral-100 pb-3">
               <Ionicons name="layers-outline" size={20} color="#6f4f28" />
@@ -374,7 +582,7 @@ export function OrdemServicoDetalhesView({
           </View>
         ) : null}
 
-        {/* Arquivos Anexados (CA2) */}
+        {/* Arquivos Anexados */}
         <View className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm gap-4">
           <View className="flex-row items-center justify-between border-b border-neutral-100 pb-3">
             <View className="flex-row items-center gap-2">

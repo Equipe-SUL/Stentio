@@ -10,9 +10,14 @@ export interface DemandaRecurso {
   tipo_servico: string;
   idioma_origem: string;
   idioma_destino: string;
-  situacao: "PENDENTE" | "AGUARDANDO_ETAPA_ANTERIOR" | "ALOCADO" | string;
+  status?: SituacaoDemandaRecurso;
+  situacao: SituacaoDemandaRecurso;
   prazo_estimado_horas: number;
   data_limite_entrega: string | null;
+  liberada?: boolean;
+  entregue_em?: string | null;
+  arquivo_nome?: string | null;
+  motivo_revisao?: string | null;
 }
 
 export interface PerfilRecurso extends PerfilRecursoCriado {
