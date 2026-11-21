@@ -23,6 +23,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -64,9 +65,12 @@ class EtapaOrdemServicoControllerTest {
     private static EtapasOrdemServicoResponse resposta() {
         return new EtapasOrdemServicoResponse(OS_ID, StatusOrdemServico.EM_PLANEJAMENTO, List.of(
                 new EtapaOrdemServicoResponse(UUID.randomUUID(), 1, "Tradução Principal", TIPO_ID, "Tradução",
-                        StatusEtapaOrdemServico.PENDENTE, 24, null, null, null),
+                        StatusEtapaOrdemServico.PENDENTE, 24, null, null, null, null),
                 new EtapaOrdemServicoResponse(UUID.randomUUID(), 2, "Revisão Final", TIPO_ID, "Revisão",
-                        StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, 12, null, null, null)));
+                        StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, 12, null, null, null, null),
+                new EtapaOrdemServicoResponse(UUID.randomUUID(), 3, "Entrega aceite", TIPO_ID, "Tradução",
+                        StatusEtapaOrdemServico.ACEITA, 12, UUID.randomUUID(), "Recurso Teste", null,
+                        Instant.parse("2026-11-20T12:00:00Z"))));
     }
 
     @Test
@@ -82,7 +86,10 @@ class EtapaOrdemServicoControllerTest {
                 .andExpect(jsonPath("$.etapas[0].status").value("PENDENTE"))
                 .andExpect(jsonPath("$.etapas[0].prazo_estimado_horas").value(24))
                 .andExpect(jsonPath("$.etapas[0].tipo_servico_nome").value("Tradução"))
-                .andExpect(jsonPath("$.etapas[1].status").value("AGUARDANDO_ETAPA_ANTERIOR"));
+                .andExpect(jsonPath("$.etapas[1].status").value("AGUARDANDO_ETAPA_ANTERIOR"))
+                .andExpect(jsonPath("$.etapas[2].status").value("ACEITA"))
+                .andExpect(jsonPath("$.etapas[2].recurso_nome").value("Recurso Teste"))
+                .andExpect(jsonPath("$.etapas[2].aceito_em").value("2026-11-20T12:00:00Z"));
 
         var captor = ArgumentCaptor.forClass(EtapasOrdemServicoRequest.class);
         verify(service).definirManualmente(eq(OS_ID), captor.capture());

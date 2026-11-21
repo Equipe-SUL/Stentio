@@ -34,6 +34,7 @@ export default function MinhasDemandasScreen() {
   const [arquivo, setArquivo] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [etapaDoArquivo, setEtapaDoArquivo] = useState<string | null>(null);
   const [progresso, setProgresso] = useState<number | null>(null);
+  const [arquivoNomePorEtapa, setArquivoNomePorEtapa] = useState<Record<string, string>>({});
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -104,7 +105,8 @@ export default function MinhasDemandasScreen() {
       setEtapaEmAcao(etapaId);
       setProgresso(0);
       setErro("");
-      await enviarEntrega(etapaId, { uri: arquivo.uri, nome: arquivo.name, tipo: arquivo.mimeType ?? "application/octet-stream", file: arquivo.file }, setProgresso);
+      const resposta = await enviarEntrega(etapaId, { uri: arquivo.uri, nome: arquivo.name, tipo: arquivo.mimeType ?? "application/octet-stream", file: arquivo.file }, setProgresso);
+      setArquivoNomePorEtapa((atual) => ({ ...atual, [etapaId]: resposta.arquivo_nome }));
       setMensagem("Entrega enviada com sucesso.");
       setArquivo(null);
       setEtapaDoArquivo(null);
@@ -165,7 +167,7 @@ export default function MinhasDemandasScreen() {
         {demanda.situacao === "ENTREGUE" && demanda.arquivo_entrega_url ? (
           <Pressable onPress={() => void baixarEntrega(demanda.arquivo_entrega_url!, demanda.arquivo_entrega_nome || "entrega")} className="self-start flex-row items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2">
             <Ionicons name="download-outline" size={17} color="#6d28d9" />
-            <Text className="text-sm font-medium text-violet-800">{demanda.arquivo_entrega_nome || "Baixar arquivo entregue"}</Text>
+            <Text className="text-sm font-medium text-violet-800">{arquivoNomePorEtapa[demanda.etapa_id] || demanda.arquivo_entrega_nome || "Baixar arquivo entregue"}</Text>
           </Pressable>
         ) : null}
       </View>

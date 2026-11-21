@@ -269,8 +269,8 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
       setEtapaConfirmandoDisparoId(null);
       setErro(null);
       const resultado = await dispararEtapaParaElegiveis(ordemId, etapa.id);
-      setMensagemSucesso(resultado.recursosNotificados > 0
-        ? `Etapa disparada. ${resultado.recursosNotificados} ${resultado.recursosNotificados === 1 ? "recurso notificado" : "recursos notificados"}.`
+      setMensagemSucesso(resultado.recursos_notificados > 0
+        ? `Etapa disparada. ${resultado.recursos_notificados} ${resultado.recursos_notificados === 1 ? "recurso notificado" : "recursos notificados"}.`
         : "Nenhum recurso elegível foi encontrado para esta etapa.");
       aplicarWorkflow(await buscarWorkflowOrdem(ordemId));
     } catch (err) {
@@ -545,8 +545,9 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
           onConfirmarDisparo={(etapa) => void handleConfirmarDisparo(etapa)}
           onCancelarDisparo={() => setEtapaConfirmandoDisparoId(null)}
           onBaixarEntrega={(etapa) => {
-            if (etapa.arquivo_entrega_url) {
-              void baixarArquivoEntrega(etapa.arquivo_entrega_url, etapa.arquivo_entrega_nome || "entrega").catch((err) => setErro(getApiErrorMessage(err)));
+            if (etapa.id) {
+              const url = `/api/v1/ordens-servico/${ordemId}/etapas/${etapa.id}/arquivo`;
+              void baixarArquivoEntrega(url, etapa.arquivo_entrega_nome || "entrega").catch((err) => setErro(getApiErrorMessage(err)));
             }
           }}
         />

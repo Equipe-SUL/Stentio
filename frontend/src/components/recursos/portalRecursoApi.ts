@@ -19,16 +19,37 @@ export interface DemandaRecurso {
   arquivo_entrega_nome?: string | null;
 }
 
+interface DemandaRecursoApi {
+  etapa_id: string;
+  ordem_servico_id: string;
+  ordem_servico_codigo: string;
+  ordem: number;
+  nome: string;
+  tipo_servico: string;
+  idioma_origem: string;
+  idioma_destino: string;
+  status: DemandaRecurso["situacao"];
+  prazo_estimado_horas: number;
+  data_limite_entrega: string | null;
+}
+
 export interface EtapasPortalRecurso {
   disponiveis: DemandaRecurso[];
   minhas: DemandaRecurso[];
 }
 
 export interface EntregaEtapaResponse {
-  etapaId: string;
+  etapa_id: string;
   status: "ENTREGUE";
-  entregueEm: string;
-  arquivo: { nome: string; url: string };
+  entregue_em: string;
+  arquivo_nome: string;
+  arquivo_url: string;
+  avanco: null | {
+    proxima_etapa_id: string;
+    proxima_etapa_status: string;
+    convite_automatico: boolean;
+    recursos_notificados: number;
+  };
 }
 
 export interface PerfilRecurso extends PerfilRecursoCriado {
@@ -42,16 +63,18 @@ export interface PerfilRecurso extends PerfilRecursoCriado {
 }
 
 export async function listarEtapasPortal(): Promise<EtapasPortalRecurso> {
-  const { data } = await coreApi.get<DemandaRecurso[] | Partial<EtapasPortalRecurso>>("/api/v1/recurso/etapas");
-  if (Array.isArray(data)) {
-    return {
-      disponiveis: data.filter((etapa) => etapa.situacao === "DISPARADA"),
-      minhas: data.filter((etapa) => etapa.situacao !== "DISPARADA"),
-    };
-  }
+  const { data } = await coreApi.get<DemandaRecursoApi[]>("/api/v1/recurso/etapas");
+  const etapas: DemandaRecurso[] = data.map((etapa) => ({
+    ...etapa,
+    situacao: etapa.status,
+    arquivo_entrega_url: etapa.status === "ENTREGUE"
+      ? `/api/v1/recurso/etapas/${etapa.etapa_id}/entrega/arquivo`
+      : null,
+    arquivo_entrega_nome: etapa.status === "ENTREGUE" ? "Arquivo entregue" : null,
+  }));
   return {
-    disponiveis: data.disponiveis ?? [],
-    minhas: data.minhas ?? [],
+    disponiveis: etapas.filter((etapa) => etapa.situacao === "DISPARADA"),
+    minhas: etapas.filter((etapa) => etapa.situacao !== "DISPARADA"),
   };
 }
 

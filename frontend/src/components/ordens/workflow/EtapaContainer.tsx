@@ -351,7 +351,7 @@ export function EtapaContainer({
                 Aceita por {etapa.recurso_aceite_nome || etapa.aceito_por_nome || etapa.recurso_nome}{etapa.aceito_em ? ` em ${new Date(etapa.aceito_em).toLocaleString("pt-BR")}` : ""}
               </Text>
             ) : null}
-            {etapa.status === "ENTREGUE" && etapa.arquivo_entrega_url ? (
+            {etapa.status === "ENTREGUE" ? (
               <Pressable onPress={onBaixarEntrega} className="flex-row items-center gap-2 self-start rounded-lg border border-violet-200 bg-violet-50 px-3 py-2">
                 <Ionicons name="download-outline" size={16} color="#6d28d9" />
                 <Text className="text-xs font-semibold text-violet-800">Baixar {etapa.arquivo_entrega_nome || "arquivo entregue"}</Text>
