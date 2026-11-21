@@ -14,8 +14,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Quem pode ser alocado a uma etapa: ativo, verificado, com o par de idiomas da
- * solicitação e o tipo de serviço da etapa.
+ * Quem pode ser alocado a uma etapa: ativo, com certificação aprovada para o par de idiomas
+ * da solicitação (US-024), o par no cadastro e o tipo de serviço da etapa.
  *
  * <p>O par e o tipo saem da própria etapa, e não do front. Antes a tela de alocação listava
  * o catálogo inteiro de recursos e o gestor só descobria a incompatibilidade ao confirmar

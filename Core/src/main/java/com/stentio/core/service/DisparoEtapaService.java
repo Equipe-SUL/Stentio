@@ -27,7 +27,8 @@ import java.util.UUID;
  * US-013 CA.1 e US-014 CA.3: abre a etapa para os recursos elegíveis.
  *
  * <p>A elegibilidade não é regra nova: é a mesma consulta da US-012, que já cruza par de
- * idiomas, tipo de serviço, ativo e verificado. A US-014 reutiliza essa consulta como RN.4.
+ * idiomas, tipo de serviço, ativo e — desde a US-024 — certificação aprovada do par. A
+ * US-014 reutiliza essa consulta como RN.4.
  */
 @Service
 public class DisparoEtapaService {
@@ -68,9 +69,9 @@ public class DisparoEtapaService {
         if (elegiveis.isEmpty()) {
             // Disparar para ninguém deixaria a etapa presa em DISPARADA esperando um
             // aceite que não pode vir. O gestor precisa saber agora, e alocar à mão ou
-            // verificar alguém.
+            // aprovar a certificação de alguém.
             throw new AlocacaoInvalidaException(
-                    "Nenhum recurso verificado atende o par de idiomas e o tipo de serviço desta etapa");
+                    "Nenhum recurso com certificação aprovada atende o par de idiomas e o tipo de serviço desta etapa");
         }
 
         return efetivarDisparo(etapa, elegiveis, estaLiberada, ator.email());

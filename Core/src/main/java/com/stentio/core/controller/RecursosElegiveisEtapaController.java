@@ -28,8 +28,8 @@ public class RecursosElegiveisEtapaController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista os recursos que podem ser alocados à etapa: ativos, verificados, "
-            + "com o par de idiomas da solicitação e o tipo de serviço da etapa")
+    @Operation(summary = "Lista os recursos que podem ser alocados à etapa: ativos, com certificação "
+            + "aprovada para o par de idiomas da solicitação e o tipo de serviço da etapa")
     public List<RecursoDisponivelResponse> listar(@PathVariable("osId") UUID osId,
                                                    @PathVariable("etapaId") UUID etapaId) {
         return service.listar(osId, etapaId);
