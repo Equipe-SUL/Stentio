@@ -66,7 +66,7 @@ class AvancoEtapaServiceTest {
     @Test
     void preservaConviteNominalDaProximaEtapa() {
         EtapaOrdemServico proxima = novaEtapa(2);
-        proxima.alocar(recursoElegivel(), PRAZO, AGORA);
+        proxima.alocar(recursoElegivel(), PRAZO, AGORA, true);
         when(etapas.findByOrdemServicoAndOrdem(ordemServico, 2)).thenReturn(Optional.of(proxima));
 
         service.avancar(entregue);
@@ -79,7 +79,7 @@ class AvancoEtapaServiceTest {
     void preservaAceiteNominalAntecipadoDaProximaEtapa() {
         EtapaOrdemServico proxima = novaEtapa(2);
         Recurso recurso = recursoElegivel();
-        proxima.alocar(recurso, PRAZO, AGORA);
+        proxima.alocar(recurso, PRAZO, AGORA, true);
         proxima.aceitarPor(recurso, AGORA, false);
         when(etapas.findByOrdemServicoAndOrdem(ordemServico, 2)).thenReturn(Optional.of(proxima));
 
@@ -103,7 +103,7 @@ class AvancoEtapaServiceTest {
     private EtapaOrdemServico etapaEntregue(int ordem) {
         EtapaOrdemServico etapa = novaEtapa(ordem);
         Recurso recurso = recursoElegivel();
-        etapa.alocar(recurso, PRAZO, AGORA);
+        etapa.alocar(recurso, PRAZO, AGORA, true);
         etapa.aceitarPor(recurso, AGORA, true);
         etapa.entregar("entrega.docx", "2026/11/entrega.docx", AGORA, true);
         return etapa;
@@ -115,7 +115,7 @@ class AvancoEtapaServiceTest {
 
     private static Recurso recursoElegivel() {
         Recurso recurso = mock(Recurso.class);
-        when(recurso.elegivelParaAlocacao()).thenReturn(true);
+        when(recurso.isAtivo()).thenReturn(true);
         return recurso;
     }
 }

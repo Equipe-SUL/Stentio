@@ -110,8 +110,11 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
      * <p>É a consulta da US-012 ao contrário. Lá, dada a etapa, quem pode executá-la; aqui,
      * dado o profissional, quais etapas ele pode pegar. As duas competências são as mesmas
      * — par de idiomas em recursos_precos e especialidade em recursos_tipos_servico —, e o
-     * exists mantém ativo e verificado no mesmo lugar: um cadastro ainda não verificado
-     * simplesmente não casa, em vez de depender de uma segunda conferência no serviço.
+     * exists mantém ativo e a certificação do par no mesmo lugar: quem não tem o par
+     * aprovado simplesmente não casa, em vez de depender de uma conferência no serviço.
+     *
+     * <p>US-024: era r.verificado = true, um booleano global. Agora a pergunta é pelo par
+     * desta etapa — saber inglês não habilita ninguém a traduzir alemão.
      */
     @Query("""
             select distinct e from EtapaOrdemServico e
@@ -127,7 +130,12 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
                      join r.precos p
                     where r.id = :recursoId
                       and r.ativo = true
-                      and r.verificado = true
+                      and exists (
+                          select 1 from RecursoCertificacao c
+                           where c.recurso.id = r.id
+                             and c.idiomaOrigem.id = origem.id
+                             and c.idiomaDestino.id = destino.id
+                             and c.status = com.stentio.core.model.StatusCertificacao.APROVADA)
                       and t.id = ts.id
                       and p.idiomaOrigem.id = origem.id
                       and p.idiomaDestino.id = destino.id)

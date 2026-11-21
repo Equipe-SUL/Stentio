@@ -99,8 +99,8 @@ class PortalRecursoServiceTest {
         Instant agora = Instant.parse("2026-11-20T12:00:00Z");
         EtapaOrdemServico alocada = etapaDe("Revisão");
         Recurso recursoAlocado = mock(Recurso.class);
-        when(recursoAlocado.elegivelParaAlocacao()).thenReturn(true);
-        alocada.alocar(recursoAlocado, agora.plusSeconds(3600), agora);
+        when(recursoAlocado.isAtivo()).thenReturn(true);
+        alocada.alocar(recursoAlocado, agora.plusSeconds(3600), agora, true);
 
         EtapaOrdemServico conviteAberto = etapaDe("Tradução");
         conviteAberto.disparar(agora, true);

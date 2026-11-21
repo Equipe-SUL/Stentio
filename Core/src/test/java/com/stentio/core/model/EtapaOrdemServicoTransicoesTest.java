@@ -42,7 +42,7 @@ class EtapaOrdemServicoTransicoesTest {
         Recurso r = mock(Recurso.class);
         when(r.getId()).thenReturn(UUID.randomUUID());
         // alocar() confere a RN.5 da US-023 antes de qualquer outra coisa.
-        when(r.elegivelParaAlocacao()).thenReturn(true);
+        when(r.isAtivo()).thenReturn(true);
         return r;
     }
 
@@ -56,7 +56,7 @@ class EtapaOrdemServicoTransicoesTest {
     @Test
     @DisplayName("alocar deixa a etapa ALOCADO, esperando o aceite da pessoa escolhida")
     void alocarEsperaAceite() {
-        etapa.alocar(ana, PRAZO, AGORA);
+        etapa.alocar(ana, PRAZO, AGORA, true);
 
         assertEquals(StatusEtapaOrdemServico.ALOCADO, etapa.getStatus());
         assertTrue(etapa.pertenceA(ana));
@@ -88,7 +88,7 @@ class EtapaOrdemServicoTransicoesTest {
     @Test
     @DisplayName("disparar abre a etapa e descarta a alocação nominal anterior")
     void dispararDescartaAlocacao() {
-        etapa.alocar(ana, PRAZO, AGORA);
+        etapa.alocar(ana, PRAZO, AGORA, true);
 
         etapa.disparar(AGORA, true);
 
@@ -129,7 +129,7 @@ class EtapaOrdemServicoTransicoesTest {
         tipo.setNome("Revisão");
         EtapaOrdemServico posterior =
                 new EtapaOrdemServico(mock(OrdemServico.class), 2, "Revisão", tipo, 12);
-        posterior.alocar(ana, PRAZO, AGORA);
+        posterior.alocar(ana, PRAZO, AGORA, true);
 
         assertThrows(TransicaoEtapaInvalidaException.class, () -> posterior.disparar(AGORA, false));
         assertEquals(StatusEtapaOrdemServico.ALOCADO, posterior.getStatus());
@@ -160,7 +160,7 @@ class EtapaOrdemServicoTransicoesTest {
     @Test
     @DisplayName("RN.5: recusar devolve a etapa a PENDENTE, sem dono e sem prazo")
     void recusarLiberaAEtapa() {
-        etapa.alocar(ana, PRAZO, AGORA);
+        etapa.alocar(ana, PRAZO, AGORA, true);
 
         etapa.recusar(true);
 
@@ -177,7 +177,7 @@ class EtapaOrdemServicoTransicoesTest {
         tipo.setNome("Revisão");
         EtapaOrdemServico posterior =
                 new EtapaOrdemServico(mock(OrdemServico.class), 2, "Revisão", tipo, 12);
-        posterior.alocar(ana, PRAZO, AGORA);
+        posterior.alocar(ana, PRAZO, AGORA, true);
 
         posterior.recusar(false);
 
@@ -226,7 +226,7 @@ class EtapaOrdemServicoTransicoesTest {
         tipo.setNome("Revisão");
         EtapaOrdemServico posterior =
                 new EtapaOrdemServico(mock(OrdemServico.class), 2, "Revisão", tipo, 12);
-        posterior.alocar(ana, PRAZO, AGORA);
+        posterior.alocar(ana, PRAZO, AGORA, true);
         posterior.aceitarPor(ana, AGORA, false);
 
         assertThrows(TransicaoEtapaInvalidaException.class,
@@ -237,7 +237,7 @@ class EtapaOrdemServicoTransicoesTest {
     @Test
     @DisplayName("aceite nominal pode acontecer antes da liberação")
     void aceitaConviteNominalAntecipado() {
-        etapa.alocar(ana, PRAZO, AGORA);
+        etapa.alocar(ana, PRAZO, AGORA, true);
 
         etapa.aceitarPor(ana, AGORA, false);
 

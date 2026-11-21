@@ -51,8 +51,11 @@ class AceiteEtapaServiceTest {
     private final RecursoAutenticadoService recursoAutenticado = mock(RecursoAutenticadoService.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
 
+    private final CertificacaoConsultaService certificacoes = mock(CertificacaoConsultaService.class);
+
     private final AceiteEtapaService service = new AceiteEtapaService(
-            etapas, liberacao, recursoAutenticado, historico, Clock.fixed(AGORA, ZoneOffset.UTC));
+            etapas, liberacao, recursoAutenticado, historico, certificacoes,
+            Clock.fixed(AGORA, ZoneOffset.UTC));
 
     private final UUID etapaId = UUID.randomUUID();
     private final UsuarioAutenticado ator = new UsuarioAutenticado("ana@traducoes.com", UUID.randomUUID(), false);
@@ -67,6 +70,9 @@ class AceiteEtapaServiceTest {
 
     @BeforeEach
     void preparar() {
+        // US-024: o caso comum é o profissional certificado para o par. Os testes
+        // que exercitam a falta de certificação sobrescrevem este stub.
+        when(certificacoes.certificadoParaAEtapa(any(), any())).thenReturn(true);
         portugues = idioma();
         ingles = idioma();
         alemao = idioma();
@@ -220,7 +226,7 @@ class AceiteEtapaServiceTest {
     @Test
     @DisplayName("CA.6: convite nominal de outra pessoa não é aceitável, mesmo com perfil compatível")
     void naoAceitaConviteDeOutro() {
-        etapa.alocar(recurso("Elisa", traducao, portugues, ingles), PRAZO, AGORA);
+        etapa.alocar(recurso("Elisa", traducao, portugues, ingles), PRAZO, AGORA, true);
 
         assertThrows(AlocacaoInvalidaException.class, () -> service.aceitar(etapaId, ator));
         verify(etapas, never()).aceitarDisparada(any(), any(), any(), any(), any());
@@ -230,7 +236,7 @@ class AceiteEtapaServiceTest {
     @Test
     @DisplayName("CA.6: o convite nominal é aceito com a condição ALOCADO, não DISPARADA")
     void aceitaProprioConviteNominal() {
-        etapa.alocar(ana, PRAZO, AGORA);
+        etapa.alocar(ana, PRAZO, AGORA, true);
         when(liberacao.estaLiberada(etapa)).thenReturn(false);
         bancoAceitaOClaim();
 

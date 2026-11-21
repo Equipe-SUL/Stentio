@@ -50,8 +50,10 @@ class AlocacaoEtapaServiceTest {
     private final org.springframework.context.ApplicationEventPublisher eventos =
             mock(org.springframework.context.ApplicationEventPublisher.class);
 
+    private final CertificacaoConsultaService certificacoes = mock(CertificacaoConsultaService.class);
+
     private final AlocacaoEtapaService service = new AlocacaoEtapaService(
-            etapas, recursos, historico, Clock.fixed(AGORA, ZoneOffset.UTC), eventos);
+            etapas, recursos, historico, certificacoes, Clock.fixed(AGORA, ZoneOffset.UTC), eventos);
 
     private final UUID osId = UUID.randomUUID();
     private final UUID etapaId = UUID.randomUUID();
@@ -68,6 +70,9 @@ class AlocacaoEtapaServiceTest {
 
     @BeforeEach
     void preparar() {
+        // US-024: o caso comum é o profissional certificado para o par. Os testes
+        // que exercitam a falta de certificação sobrescrevem este stub.
+        when(certificacoes.certificadoParaAEtapa(any(), any())).thenReturn(true);
         portugues = idioma("Português");
         ingles = idioma("Inglês");
         alemao = idioma("Alemão");
