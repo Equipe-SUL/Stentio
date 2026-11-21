@@ -22,6 +22,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -55,7 +56,8 @@ class DashboardServiceTest {
         when(orcamentos.countByStatus(StatusOrcamento.AGUARDANDO_APROVACAO)).thenReturn(3L);
         when(orcamentos.countByStatus(StatusOrcamento.APROVADO)).thenReturn(68L);
         when(orcamentos.countByStatus(StatusOrcamento.REJEITADO)).thenReturn(32L);
-        when(ordensServico.countByStatus(StatusOrdemServico.EM_PLANEJAMENTO)).thenReturn(12L);
+        when(ordensServico.countByStatusIn(anyCollection())).thenReturn(12L);
+        when(ordensServico.countByStatus(StatusOrdemServico.ENCERRADA)).thenReturn(4L);
         when(etapas.countByDataLimiteEntregaBeforeAndRecursoIsNotNull(AGORA)).thenReturn(2L);
 
         DashboardResumoResponse resumo = dashboardService.resumo();
@@ -63,6 +65,7 @@ class DashboardServiceTest {
         assertEquals(5, resumo.totalOrcamentosEmElaboracao());
         assertEquals(3, resumo.totalOrcamentosAguardandoAprovacao());
         assertEquals(12, resumo.totalOsEmAndamento());
+        assertEquals(4, resumo.totalOsConcluidas());
         assertEquals(2, resumo.totalEtapasAtrasadas());
         assertEquals(68.0, resumo.taxaConversaoOrcamentos());
         verify(etapas).countByDataLimiteEntregaBeforeAndRecursoIsNotNull(AGORA);

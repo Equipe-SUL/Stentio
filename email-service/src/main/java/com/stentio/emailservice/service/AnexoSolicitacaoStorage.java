@@ -2,6 +2,7 @@ package com.stentio.emailservice.service;
 
 import com.stentio.emailservice.dto.MensagemEmail;
 import com.stentio.emailservice.dto.OrcamentoEmailMensagem;
+import com.stentio.emailservice.exception.AnexoIndisponivelException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -66,20 +67,48 @@ public class AnexoSolicitacaoStorage {
     }
 
     private byte[] ler(OrcamentoEmailMensagem.Anexo anexo) {
-        if (anexo == null || anexo.caminho() == null || anexo.caminho().isBlank()) {
+        return anexo == null ? null : lerCaminho(anexo.caminho());
+    }
+
+    /** A leitura em si, sem saber de que fluxo veio o pedido. */
+    private byte[] lerCaminho(String caminho) {
+        if (caminho == null || caminho.isBlank()) {
             return null;
         }
         try {
-            Path arquivo = resolverDentroDaBase(anexo.caminho());
+            Path arquivo = resolverDentroDaBase(caminho);
             if (arquivo == null || !Files.isRegularFile(arquivo) || !Files.isReadable(arquivo)) {
-                log.warn("Anexo {} não encontrado no volume compartilhado", anexo.caminho());
+                log.warn("Anexo {} não encontrado no volume compartilhado", caminho);
                 return null;
             }
             return Files.readAllBytes(arquivo);
         } catch (IOException ex) {
-            log.warn("Falha ao ler o anexo {}: {}", anexo.caminho(), ex.getMessage());
+            log.warn("Falha ao ler o anexo {}: {}", caminho, ex.getMessage());
             return null;
         }
+    }
+
+    /**
+     * US-015 RN.5: o anexo único da entrega final, que não admite envio parcial.
+     *
+     * <p>Diferente de {@link #carregar(List)}, que pula o arquivo grande demais para o
+     * e-mail do orçamento ainda chegar com o resto: aqui o arquivo é o conteúdo do e-mail.
+     * Mandar a mensagem sem ele diria ao cliente que o trabalho está pronto e não entregaria
+     * nada, então a falha é explícita e a mensagem volta para a fila.
+     */
+    public MensagemEmail.Anexo carregarObrigatorio(String nomeArquivo, String caminho, String tipoConteudo) {
+        byte[] conteudo = lerCaminho(caminho);
+        if (conteudo == null) {
+            throw new AnexoIndisponivelException(
+                    "Anexo " + nomeArquivo + " não pôde ser lido no volume compartilhado");
+        }
+        if (conteudo.length > limiteTotalBytes) {
+            throw new AnexoIndisponivelException(
+                    "Anexo " + nomeArquivo + " tem " + conteudo.length
+                            + " bytes e o limite é " + limiteTotalBytes);
+        }
+        String tipo = tipoConteudo == null || tipoConteudo.isBlank() ? TIPO_PADRAO : tipoConteudo;
+        return new MensagemEmail.Anexo(nomeArquivo, conteudo, tipo);
     }
 
     // O caminho vem de outro serviço pela fila, então é tratado como entrada não confiável:

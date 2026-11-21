@@ -49,10 +49,22 @@ public class DashboardService {
         this.clock = clock;
     }
 
+    /**
+     * US-015: a OS está em andamento do planejamento até a conferência do gestor.
+     *
+     * <p>Antes só EM_PLANEJAMENTO contava, e as OS que já estavam rodando sumiam do
+     * painel. PENDENTE_ALOCACAO fica de fora de propósito: ainda não começou nada.
+     */
+    private static final java.util.List<StatusOrdemServico> EM_ANDAMENTO = java.util.List.of(
+            StatusOrdemServico.EM_PLANEJAMENTO,
+            StatusOrdemServico.EM_EXECUCAO,
+            StatusOrdemServico.AGUARDANDO_VERIFICACAO);
+
     public DashboardResumoResponse resumo() {
         long emElaboracao = orcamentos.countByStatus(StatusOrcamento.EM_ELABORACAO);
         long aguardandoAprovacao = orcamentos.countByStatus(StatusOrcamento.AGUARDANDO_APROVACAO);
-        long osEmAndamento = ordensServico.countByStatus(StatusOrdemServico.EM_PLANEJAMENTO);
+        long osEmAndamento = ordensServico.countByStatusIn(EM_ANDAMENTO);
+        long osConcluidas = ordensServico.countByStatus(StatusOrdemServico.ENCERRADA);
         long etapasAtrasadas = etapas.countByDataLimiteEntregaBeforeAndRecursoIsNotNull(clock.instant());
 
         long aprovados = orcamentos.countByStatus(StatusOrcamento.APROVADO);
@@ -63,6 +75,7 @@ public class DashboardService {
                 emElaboracao,
                 aguardandoAprovacao,
                 osEmAndamento,
+                osConcluidas,
                 etapasAtrasadas,
                 taxaConversao
         );

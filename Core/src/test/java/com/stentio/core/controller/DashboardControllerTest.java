@@ -87,7 +87,7 @@ class DashboardControllerTest {
     @WithMockUser(username = "admin@stentio.com", roles = {"ADMIN"})
     @DisplayName("ADMIN pode acessar o resumo financeiro do dashboard")
     void adminPodeAcessarResumo() throws Exception {
-        when(dashboardService.resumo()).thenReturn(new DashboardResumoResponse(5, 3, 12, 2, 68.5));
+        when(dashboardService.resumo()).thenReturn(new DashboardResumoResponse(5, 3, 12, 4, 2, 68.5));
 
         mockMvc.perform(get(BASE_PATH + "/resumo"))
                 .andExpect(status().isOk())
@@ -102,7 +102,7 @@ class DashboardControllerTest {
     @WithMockUser(username = "gestor@stentio.com", roles = {"GESTOR_PROJETO"})
     @DisplayName("GESTOR_PROJETO pode acessar o resumo financeiro do dashboard")
     void gestorPodeAcessarResumo() throws Exception {
-        when(dashboardService.resumo()).thenReturn(new DashboardResumoResponse(5, 3, 12, 2, 68.5));
+        when(dashboardService.resumo()).thenReturn(new DashboardResumoResponse(5, 3, 12, 4, 2, 68.5));
 
         mockMvc.perform(get(BASE_PATH + "/resumo"))
                 .andExpect(status().isOk())
