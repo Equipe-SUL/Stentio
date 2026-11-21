@@ -24,6 +24,10 @@ export interface DemandaRecurso {
   situacao: SituacaoDemandaRecurso;
   prazo_estimado_horas: number;
   data_limite_entrega: string | null;
+  liberada?: boolean;
+  entregue_em?: string | null;
+  arquivo_nome?: string | null;
+  motivo_revisao?: string | null;
 }
 
 export interface PerfilRecurso extends PerfilRecursoCriado {
