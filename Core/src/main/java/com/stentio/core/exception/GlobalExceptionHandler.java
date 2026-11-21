@@ -141,6 +141,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    /** US-015 CA.2, CA.12: estado da OS incompatível com a operação pedida. */
+    @ExceptionHandler(TransicaoOrdemServicoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleTransicaoOrdemServico(TransicaoOrdemServicoInvalidaException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(EtapaNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleEtapaNaoEncontrada(EtapaNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
