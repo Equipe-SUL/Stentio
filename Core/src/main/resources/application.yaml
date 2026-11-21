@@ -27,7 +27,7 @@ spring:
     table: flyway_core_schema_history
     # Core e Auth compartilham public; o outro serviço pode criar tabelas primeiro.
     baseline-on-migrate: true
-    baseline-version: 0
+    baseline-version: 2
 
   data:
     web:
