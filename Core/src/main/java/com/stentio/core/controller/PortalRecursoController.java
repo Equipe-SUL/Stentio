@@ -157,4 +157,33 @@ public class PortalRecursoController {
     public RecursoResponse meuPerfil(Authentication autenticacao) {
         return portalRecursoService.meuPerfil(UsuarioAutenticado.de(autenticacao));
     }
+
+    /** US-024 RN.8: o profissional rebaixa o próprio documento. */
+    @GetMapping("/certificacoes/{id}/arquivo")
+    @Operation(summary = "Baixa o documento de certificação do profissional autenticado")
+    public ResponseEntity<Resource> baixarCertificacao(@PathVariable("id") UUID id,
+                                                       Authentication autenticacao) {
+        CertificacaoRecursoService.DocumentoCertificacao documento =
+                certificacaoRecursoService.localizarMeuDocumento(id, UsuarioAutenticado.de(autenticacao));
+        return comoAnexo(documento);
+    }
+
+    /**
+     * Sempre octet-stream e sempre attachment: o documento veio de fora e devolvê-lo com
+     * o tipo que o remetente declarou é o que transforma um upload em página executada no
+     * domínio da aplicação.
+     */
+    private ResponseEntity<Resource> comoAnexo(CertificacaoRecursoService.DocumentoCertificacao documento) {
+        Resource conteudo = arquivoStorageService.carregar(documento.caminho());
+        ContentDisposition anexo = ContentDisposition.attachment()
+                .filename(documento.nomeOriginal(), StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "no-referrer")
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, anexo.toString())
+                .body(conteudo);
+    }
 }

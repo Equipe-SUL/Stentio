@@ -141,6 +141,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    /** US-024 RN.8: documento de certificação de outro profissional. */
+    @ExceptionHandler(CertificacaoDeOutroRecursoException.class)
+    public ResponseEntity<ErroResponse> handleCertificacaoDeOutro(CertificacaoDeOutroRecursoException ex) {
+        return responder(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
     @ExceptionHandler(CertificacaoNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleCertificacaoNaoEncontrada(CertificacaoNaoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());

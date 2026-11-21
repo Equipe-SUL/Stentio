@@ -57,6 +57,14 @@ public class CertificacaoAnaliseService {
         return CertificacaoResponse.de(certificacao);
     }
 
+    /** CA.2: o gestor precisa ver o documento para decidir. */
+    @Transactional(readOnly = true)
+    public CertificacaoRecursoService.DocumentoCertificacao localizarDocumento(UUID certificacaoId) {
+        RecursoCertificacao certificacao = buscar(certificacaoId);
+        return new CertificacaoRecursoService.DocumentoCertificacao(
+                certificacao.getArquivoNome(), certificacao.getArquivoCaminho());
+    }
+
     private RecursoCertificacao buscar(UUID certificacaoId) {
         return certificacoes.buscarComRecurso(certificacaoId)
                 .orElseThrow(() -> new CertificacaoNaoEncontradaException(certificacaoId));

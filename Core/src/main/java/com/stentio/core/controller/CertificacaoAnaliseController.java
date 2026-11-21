@@ -4,10 +4,18 @@ import com.stentio.core.dto.CertificacaoPaginaResponse;
 import com.stentio.core.dto.CertificacaoResponse;
 import com.stentio.core.dto.RejeitarCertificacaoRequest;
 import com.stentio.core.model.StatusCertificacao;
+import com.stentio.core.service.ArquivoStorageService;
 import com.stentio.core.service.CertificacaoAnaliseService;
+import com.stentio.core.service.CertificacaoRecursoService;
 import com.stentio.core.support.UsuarioAutenticado;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -33,9 +42,12 @@ public class CertificacaoAnaliseController {
     static final String BASE_PATH = "/api/v1/recursos/certificacoes";
 
     private final CertificacaoAnaliseService certificacaoAnaliseService;
+    private final ArquivoStorageService arquivoStorageService;
 
-    public CertificacaoAnaliseController(CertificacaoAnaliseService certificacaoAnaliseService) {
+    public CertificacaoAnaliseController(CertificacaoAnaliseService certificacaoAnaliseService,
+                                         ArquivoStorageService arquivoStorageService) {
         this.certificacaoAnaliseService = certificacaoAnaliseService;
+        this.arquivoStorageService = arquivoStorageService;
     }
 
     @GetMapping
@@ -59,5 +71,27 @@ public class CertificacaoAnaliseController {
                                          @Valid @RequestBody RejeitarCertificacaoRequest corpo,
                                          Authentication autenticacao) {
         return certificacaoAnaliseService.rejeitar(id, corpo.motivo(), UsuarioAutenticado.de(autenticacao));
+    }
+
+    /** CA.2 e RN.8: o documento, para quem decide a alocação. */
+    @GetMapping("/{id}/arquivo")
+    @Operation(summary = "Baixa o documento de certificação para análise")
+    public ResponseEntity<Resource> baixar(@PathVariable("id") UUID id) {
+        CertificacaoRecursoService.DocumentoCertificacao documento =
+                certificacaoAnaliseService.localizarDocumento(id);
+        Resource conteudo = arquivoStorageService.carregar(documento.caminho());
+        ContentDisposition anexo = ContentDisposition.attachment()
+                .filename(documento.nomeOriginal(), StandardCharsets.UTF_8)
+                .build();
+
+        // Mesmo tratamento do download da entrega: o arquivo veio de fora, então sai como
+        // anexo genérico, nunca com o tipo que o remetente declarou.
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "no-referrer")
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, anexo.toString())
+                .body(conteudo);
     }
 }

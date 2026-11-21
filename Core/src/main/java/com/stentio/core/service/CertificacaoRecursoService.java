@@ -1,6 +1,8 @@
 package com.stentio.core.service;
 
 import com.stentio.core.dto.CertificacaoResponse;
+import com.stentio.core.exception.CertificacaoDeOutroRecursoException;
+import com.stentio.core.exception.CertificacaoNaoEncontradaException;
 import com.stentio.core.exception.ParNaoAtendidoException;
 import com.stentio.core.exception.SolicitacaoInvalidaException;
 import com.stentio.core.model.ArquivoArmazenado;
@@ -111,6 +113,28 @@ public class CertificacaoRecursoService {
         return certificacoes.listarDoRecurso(recurso.getId()).stream()
                 .map(CertificacaoResponse::de)
                 .toList();
+    }
+
+    /**
+     * US-024 RN.8: o profissional baixa o documento dele, e o id não basta como permissão.
+     *
+     * <p>A conferência é de dono, contra o recurso do token — um id de certificação de
+     * outra pessoa devolve 403, não o arquivo.
+     */
+    @Transactional(readOnly = true)
+    public DocumentoCertificacao localizarMeuDocumento(UUID certificacaoId, UsuarioAutenticado ator) {
+        Recurso recurso = recursoAutenticado.resolver(ator);
+        RecursoCertificacao certificacao = certificacoes.buscarComRecurso(certificacaoId)
+                .orElseThrow(() -> new CertificacaoNaoEncontradaException(certificacaoId));
+
+        if (!certificacao.pertenceA(recurso.getId())) {
+            throw new CertificacaoDeOutroRecursoException("Esta certificação não é sua");
+        }
+        return new DocumentoCertificacao(certificacao.getArquivoNome(), certificacao.getArquivoCaminho());
+    }
+
+    /** O que o download precisa, já conferido. */
+    public record DocumentoCertificacao(String nomeOriginal, String caminho) {
     }
 
     /**
