@@ -51,8 +51,11 @@ class AceiteEtapaServiceTest {
     private final RecursoAutenticadoService recursoAutenticado = mock(RecursoAutenticadoService.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
 
+    private final CertificacaoConsultaService certificacoes = mock(CertificacaoConsultaService.class);
+
     private final AceiteEtapaService service = new AceiteEtapaService(
-            etapas, liberacao, recursoAutenticado, historico, Clock.fixed(AGORA, ZoneOffset.UTC));
+            etapas, liberacao, recursoAutenticado, historico, certificacoes,
+            Clock.fixed(AGORA, ZoneOffset.UTC));
 
     private final UUID etapaId = UUID.randomUUID();
     private final UsuarioAutenticado ator = new UsuarioAutenticado("ana@traducoes.com", UUID.randomUUID(), false);
@@ -67,6 +70,9 @@ class AceiteEtapaServiceTest {
 
     @BeforeEach
     void preparar() {
+        // US-024: o caso comum é o profissional certificado para o par. Os testes
+        // que exercitam a falta de certificação sobrescrevem este stub.
+        when(certificacoes.certificadoParaAEtapa(any(), any())).thenReturn(true);
         portugues = idioma();
         ingles = idioma();
         alemao = idioma();
@@ -207,12 +213,24 @@ class AceiteEtapaServiceTest {
     }
 
     @Test
-    @DisplayName("US-023 RN.5: cadastro ainda não verificado não aceita nada")
-    void recusaRecursoNaoVerificado() {
+    @DisplayName("US-024 Cenário 4: sem certificação aprovada do par, o aceite é recusado")
+    void recusaSemCertificacaoDoPar() {
         etapa.disparar(AGORA, true);
-        Recurso semVerificacao = recurso("Diego", traducao, portugues, ingles);
-        semVerificacao.definirVerificacao(false);
-        when(recursoAutenticado.resolver(ator)).thenReturn(semVerificacao);
+        // O convite chegou por e-mail e o id da etapa viaja em texto: a certificação pode
+        // ter sido rejeitada entre o convite e o clique.
+        when(certificacoes.certificadoParaAEtapa(any(), any())).thenReturn(false);
+
+        assertThrows(AlocacaoInvalidaException.class, () -> service.aceitar(etapaId, ator));
+        verify(etapas, never()).aceitarDisparada(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("US-024 RN.5: cadastro inativo não aceita, mesmo certificado")
+    void recusaRecursoInativo() {
+        etapa.disparar(AGORA, true);
+        Recurso inativo = recurso("Diego", traducao, portugues, ingles);
+        inativo.desativar();
+        when(recursoAutenticado.resolver(ator)).thenReturn(inativo);
 
         assertThrows(AlocacaoInvalidaException.class, () -> service.aceitar(etapaId, ator));
     }
@@ -220,7 +238,7 @@ class AceiteEtapaServiceTest {
     @Test
     @DisplayName("CA.6: convite nominal de outra pessoa não é aceitável, mesmo com perfil compatível")
     void naoAceitaConviteDeOutro() {
-        etapa.alocar(recurso("Elisa", traducao, portugues, ingles), PRAZO, AGORA);
+        etapa.alocar(recurso("Elisa", traducao, portugues, ingles), PRAZO, AGORA, true);
 
         assertThrows(AlocacaoInvalidaException.class, () -> service.aceitar(etapaId, ator));
         verify(etapas, never()).aceitarDisparada(any(), any(), any(), any(), any());
@@ -230,7 +248,7 @@ class AceiteEtapaServiceTest {
     @Test
     @DisplayName("CA.6: o convite nominal é aceito com a condição ALOCADO, não DISPARADA")
     void aceitaProprioConviteNominal() {
-        etapa.alocar(ana, PRAZO, AGORA);
+        etapa.alocar(ana, PRAZO, AGORA, true);
         when(liberacao.estaLiberada(etapa)).thenReturn(false);
         bancoAceitaOClaim();
 

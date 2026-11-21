@@ -78,7 +78,7 @@ class ReprovacaoEntregaFinalServiceTest {
 
         executante = mock(Recurso.class);
         when(executante.getId()).thenReturn(UUID.randomUUID());
-        when(executante.elegivelParaAlocacao()).thenReturn(true);
+        when(executante.isAtivo()).thenReturn(true);
 
         TipoServico tipo = new TipoServico();
         tipo.setId(UUID.randomUUID());
@@ -86,7 +86,7 @@ class ReprovacaoEntregaFinalServiceTest {
 
         ultima = new EtapaOrdemServico(ordem, 2, "Revisão", tipo, 8);
         ReflectionTestUtils.setField(ultima, "id", UUID.randomUUID());
-        ultima.alocar(executante, PRAZO, ENTREGUE_EM);
+        ultima.alocar(executante, PRAZO, ENTREGUE_EM, true);
         ultima.aceitarPor(executante, ENTREGUE_EM, true);
         ultima.entregar("contrato-final.docx", "2026/11/contrato-final.docx", ENTREGUE_EM, true);
 

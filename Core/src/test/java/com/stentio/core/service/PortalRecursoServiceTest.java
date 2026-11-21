@@ -106,11 +106,12 @@ class PortalRecursoServiceTest {
     void informaLiberacaoDaEtapaAlocada() {
         EtapaOrdemServico etapa = etapaDe("Revisão", 2);
         Recurso recursoAlocado = mock(Recurso.class);
-        when(recursoAlocado.elegivelParaAlocacao()).thenReturn(true);
+        when(recursoAlocado.isAtivo()).thenReturn(true);
         etapa.alocar(
                 recursoAlocado,
                 Instant.parse("2026-11-22T12:00:00Z"),
-                Instant.parse("2026-11-21T12:00:00Z"));
+                Instant.parse("2026-11-21T12:00:00Z"),
+                true);
         UUID ordemId = etapa.getOrdemServico().getId();
         perfilCadastrado();
         when(etapas.listarPorRecurso(any())).thenReturn(List.of(etapa));
@@ -136,8 +137,8 @@ class PortalRecursoServiceTest {
         Instant agora = Instant.parse("2026-11-20T12:00:00Z");
         EtapaOrdemServico alocada = etapaDe("Revisão");
         Recurso recursoAlocado = mock(Recurso.class);
-        when(recursoAlocado.elegivelParaAlocacao()).thenReturn(true);
-        alocada.alocar(recursoAlocado, agora.plusSeconds(3600), agora);
+        when(recursoAlocado.isAtivo()).thenReturn(true);
+        alocada.alocar(recursoAlocado, agora.plusSeconds(3600), agora, true);
 
         EtapaOrdemServico conviteAberto = etapaDe("Tradução");
         conviteAberto.disparar(agora, true);

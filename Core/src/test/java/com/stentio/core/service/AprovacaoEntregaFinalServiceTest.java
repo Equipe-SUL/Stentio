@@ -105,9 +105,9 @@ class AprovacaoEntregaFinalServiceTest {
 
         Recurso executante = mock(Recurso.class);
         when(executante.getId()).thenReturn(UUID.randomUUID());
-        when(executante.elegivelParaAlocacao()).thenReturn(true);
+        when(executante.isAtivo()).thenReturn(true);
 
-        etapa.alocar(executante, Instant.parse("2026-11-25T12:00:00Z"), ENTREGUE_EM);
+        etapa.alocar(executante, Instant.parse("2026-11-25T12:00:00Z"), ENTREGUE_EM, true);
         etapa.aceitarPor(executante, ENTREGUE_EM, true);
         etapa.entregar(arquivo, "2026/11/" + arquivo, ENTREGUE_EM, true);
         return etapa;

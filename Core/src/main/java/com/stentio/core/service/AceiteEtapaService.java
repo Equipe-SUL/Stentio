@@ -34,17 +34,20 @@ public class AceiteEtapaService {
     private final EtapaLiberacaoService liberacao;
     private final RecursoAutenticadoService recursoAutenticado;
     private final HistoricoEtapaRepository historico;
+    private final CertificacaoConsultaService certificacoes;
     private final Clock clock;
 
     public AceiteEtapaService(EtapaOrdemServicoRepository etapas,
                               EtapaLiberacaoService liberacao,
                               RecursoAutenticadoService recursoAutenticado,
                               HistoricoEtapaRepository historico,
+                              CertificacaoConsultaService certificacoes,
                               Clock clock) {
         this.etapas = etapas;
         this.liberacao = liberacao;
         this.recursoAutenticado = recursoAutenticado;
         this.historico = historico;
+        this.certificacoes = certificacoes;
         this.clock = clock;
     }
 
@@ -95,9 +98,15 @@ public class AceiteEtapaService {
      * não é questão de competência.
      */
     private StatusEtapaOrdemServico estadoDeOndeSaiOAceite(EtapaOrdemServico etapa, Recurso recurso) {
-        if (!recurso.elegivelParaAlocacao()) {
+        // US-024 RN.5: a certificação do par substituiu o verificado global. Quem
+        // recebeu o convite por e-mail pode ter perdido a certificação desde então, e o
+        // id da etapa viaja em texto — a conferência precisa acontecer aqui, no aceite.
+        if (!recurso.isAtivo()) {
+            throw new AlocacaoInvalidaException("Seu cadastro está inativo");
+        }
+        if (!certificacoes.certificadoParaAEtapa(recurso, etapa)) {
             throw new AlocacaoInvalidaException(
-                    "Seu cadastro ainda não foi verificado pela equipe da Aliança");
+                    "Você não tem certificação aprovada para o par de idiomas desta etapa");
         }
 
         return switch (etapa.getStatus()) {

@@ -141,6 +141,29 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    /** US-024 RN.8: documento de certificação de outro profissional. */
+    @ExceptionHandler(CertificacaoDeOutroRecursoException.class)
+    public ResponseEntity<ErroResponse> handleCertificacaoDeOutro(CertificacaoDeOutroRecursoException ex) {
+        return responder(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(CertificacaoNaoEncontradaException.class)
+    public ResponseEntity<ErroResponse> handleCertificacaoNaoEncontrada(CertificacaoNaoEncontradaException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    /** US-024 RN.3: par de idiomas fora do cadastro do profissional. */
+    @ExceptionHandler(ParNaoAtendidoException.class)
+    public ResponseEntity<ErroResponse> handleParNaoAtendido(ParNaoAtendidoException ex) {
+        return responder(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /** US-024 RN.2 e RN.4: estado da certificação incompatível com a operação. */
+    @ExceptionHandler(CertificacaoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleCertificacaoInvalida(CertificacaoInvalidaException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     /** US-015 CA.6: o banco aponta para um arquivo que o armazenamento não devolve. */
     @ExceptionHandler(ArquivoEntregueIndisponivelException.class)
     public ResponseEntity<ErroResponse> handleArquivoIndisponivel(ArquivoEntregueIndisponivelException ex) {

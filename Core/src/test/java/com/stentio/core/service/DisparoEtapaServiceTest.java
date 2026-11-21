@@ -172,8 +172,8 @@ class DisparoEtapaServiceTest {
         EtapaOrdemServico bloqueada = new EtapaOrdemServico(
                 mock(OrdemServico.class), 2, "Revisão", traducao, 12);
         Recurso alocado = mock(Recurso.class);
-        when(alocado.elegivelParaAlocacao()).thenReturn(true);
-        bloqueada.alocar(alocado, PRAZO, AGORA);
+        when(alocado.isAtivo()).thenReturn(true);
+        bloqueada.alocar(alocado, PRAZO, AGORA, true);
         when(etapas.buscarParaAlocacao(osId, etapaId)).thenReturn(Optional.of(bloqueada));
         when(liberacao.estaLiberada(bloqueada)).thenReturn(false);
 
@@ -188,8 +188,8 @@ class DisparoEtapaServiceTest {
     @DisplayName("RN.6: etapa já aceita não volta para a fila")
     void naoDisparaEtapaJaAceita() {
         Recurso ana = mock(Recurso.class);
-        when(ana.elegivelParaAlocacao()).thenReturn(true);
-        etapa.alocar(ana, PRAZO, AGORA);
+        when(ana.isAtivo()).thenReturn(true);
+        etapa.alocar(ana, PRAZO, AGORA, true);
         etapa.aceitarPor(ana, AGORA, true);
         elegiveis(qualquerRecurso());
 
