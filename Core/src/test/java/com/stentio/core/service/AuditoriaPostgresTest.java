@@ -78,6 +78,7 @@ class AuditoriaPostgresTest {
     @Autowired OrdemServicoRepository ordensServico;
     @Autowired TipoServicoRepository tiposServico;
     @Autowired RecursoRepository recursos;
+    @Autowired RecursoCertificacaoRepository certificacoes;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
 
@@ -321,12 +322,13 @@ class AuditoriaPostgresTest {
 
     private UUID novoRecurso(String nome, TipoServico tipo, Idioma origem, Idioma destino) {
         Recurso recurso = new Recurso(nome, UUID.randomUUID() + "@teste.invalid", "11988887777");
-        // US-023 RN.5: recurso não verificado não pode receber etapas.
         recurso.definirVerificacao(true);
         recurso.definirTiposServico(List.of(tipo));
         recurso.definirPrecos(List.of(new Recurso.NovoPreco(
                 origem, destino, UnidadeCobranca.PALAVRA, new BigDecimal("0.35"))));
-        return recursos.saveAndFlush(recurso).getId();
+        Recurso salvo = recursos.saveAndFlush(recurso);
+        certificar(salvo, origem, destino);
+        return salvo.getId();
     }
 
     /** OS criada direto no banco, sem passar pela auditoria: o teste olha só o que vem depois. */
@@ -369,5 +371,17 @@ class AuditoriaPostgresTest {
     private LogAuditoriaPaginaResponse consultar(EntidadeAuditada entidade, UUID usuarioId,
                                                  Instant inicio, Instant fim, int pagina, int tamanho) {
         return logService.listar(new LogAuditoriaFiltro(entidade, null, usuarioId, inicio, fim, marca), pagina, tamanho);
+    }
+
+    /**
+     * US-024: o que decide elegibilidade agora é a certificação aprovada do par, não o
+     * verificado. Sem esta linha o recurso existe, atende o par no cadastro e mesmo assim
+     * não pode ser alocado.
+     */
+    private void certificar(Recurso recurso, Idioma origem, Idioma destino) {
+        RecursoCertificacao certificacao = new RecursoCertificacao(
+                recurso, origem, destino, "diploma.pdf", "2026/11/diploma.pdf", Instant.now());
+        certificacao.aprovar("gestor@stentio.com", Instant.now());
+        certificacoes.saveAndFlush(certificacao);
     }
 }

@@ -88,6 +88,7 @@ class AlocacaoEtapaPostgresTest {
     @Autowired OrdemServicoRepository ordensServico;
     @Autowired TipoServicoRepository tiposServico;
     @Autowired RecursoRepository recursos;
+    @Autowired RecursoCertificacaoRepository certificacoes;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
     @Autowired NotificacaoEtapaOutboxDispatcher notificacaoDispatcher;
@@ -208,12 +209,13 @@ class AlocacaoEtapaPostgresTest {
 
     private UUID novoRecurso(String nome, TipoServico tipo, Idioma origem, Idioma destino) {
         Recurso recurso = new Recurso(nome, UUID.randomUUID() + "@teste.invalid", "11988887777");
-        // US-023 RN.5: sem verificação o recurso nem aparece em buscarDisponiveis.
         recurso.definirVerificacao(true);
         recurso.definirTiposServico(List.of(tipo));
         recurso.definirPrecos(List.of(new Recurso.NovoPreco(
                 origem, destino, UnidadeCobranca.PALAVRA, new BigDecimal("0.35"))));
-        return recursos.saveAndFlush(recurso).getId();
+        Recurso salvo = recursos.saveAndFlush(recurso);
+        certificar(salvo, origem, destino);
+        return salvo.getId();
     }
 
     /** Monta três etapas na OS e devolve o id de cada uma, por ordem. */
@@ -496,7 +498,7 @@ class AlocacaoEtapaPostgresTest {
     private void entregarComoRecurso(EtapaOrdemServico etapa) {
         Instant agora = Instant.now();
         Recurso recurso = recursos.findById(anaId).orElseThrow();
-        etapa.alocar(recurso, DAQUI_A_UM_MES, agora);
+        etapa.alocar(recurso, DAQUI_A_UM_MES, agora, true);
         etapa.aceitarPor(recurso, agora, true);
         etapa.entregar("entrega.docx", "2026/11/entrega.docx", agora, true);
         etapas.saveAndFlush(etapa);
@@ -722,5 +724,17 @@ class AlocacaoEtapaPostgresTest {
                 "select count(*) from etapas_os where os_id = ?", Integer.class, osId));
         assertEquals(anaId, jdbc.queryForObject(
                 "select recurso_id from etapas_os where id = ?", UUID.class, primeira));
+    }
+
+    /**
+     * US-024: o que decide elegibilidade agora é a certificação aprovada do par, não o
+     * verificado. Sem esta linha o recurso existe, atende o par no cadastro e mesmo assim
+     * não pode ser alocado.
+     */
+    private void certificar(Recurso recurso, Idioma origem, Idioma destino) {
+        RecursoCertificacao certificacao = new RecursoCertificacao(
+                recurso, origem, destino, "diploma.pdf", "2026/11/diploma.pdf", Instant.now());
+        certificacao.aprovar("gestor@stentio.com", Instant.now());
+        certificacoes.saveAndFlush(certificacao);
     }
 }

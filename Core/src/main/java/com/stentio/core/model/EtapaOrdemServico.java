@@ -128,18 +128,23 @@ public class EtapaOrdemServico {
      * para ALOCADO e fica esperando o aceite — a mesma coisa que a US-012 já mostrava na
      * resposta, agora gravada em vez de deduzida.
      */
-    public void alocar(Recurso recurso, Instant dataLimiteEntrega, Instant agora) {
+    public void alocar(Recurso recurso, Instant dataLimiteEntrega, Instant agora,
+                       boolean certificadoParaOPar) {
         if (recurso == null) {
             throw new AlocacaoInvalidaException("Informe o recurso a alocar");
         }
-        // US-023 RN.5: inativo ou não verificado não recebe etapa. A pergunta é uma só,
-        // mas a mensagem diz qual das duas faltou — "não pode receber etapas" sem motivo
-        // manda o gestor procurar no lugar errado.
-        if (!recurso.elegivelParaAlocacao()) {
+        if (!recurso.isAtivo()) {
+            throw new AlocacaoInvalidaException(
+                    "O recurso " + recurso.getNome() + " está inativo e não pode receber etapas");
+        }
+        // US-024 RN.5: a certificação é por par, e o par mora na solicitação da OS, não
+        // aqui. Quem chama já tem essa resposta em mãos, e recebê-la como parâmetro é o
+        // mesmo caminho que a US-014 abriu com 'liberada': a entidade guarda a regra sem
+        // precisar navegar coleção nenhuma. Sem sobrecarga antiga, para ninguém alocar
+        // sem responder a pergunta.
+        if (!certificadoParaOPar) {
             throw new AlocacaoInvalidaException("O recurso " + recurso.getNome()
-                    + (recurso.isAtivo()
-                            ? " ainda não foi verificado e não pode receber etapas"
-                            : " está inativo e não pode receber etapas"));
+                    + " não tem certificação aprovada para o par de idiomas desta etapa");
         }
         if (dataLimiteEntrega == null || !dataLimiteEntrega.isAfter(agora)) {
             throw new AlocacaoInvalidaException("A data limite de entrega deve estar no futuro");

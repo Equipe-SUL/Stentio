@@ -106,14 +106,13 @@ public class Recurso {
         this.verificado = verificado;
     }
 
-    /**
-     * US-023 RN.5. Inativo ou não verificado não recebe etapa — as duas condições juntas,
-     * porque é esta a pergunta que a alocação faz, e quem pergunta não deve ter de lembrar
-     * de conferir as duas.
+    /*
+     * US-024 RN.5: elegivelParaAlocacao() saiu daqui. A elegibilidade deixou de caber num
+     * booleano do recurso — ela depende do par de idiomas da etapa, que o recurso não
+     * conhece. Quem decide agora é CertificacaoConsultaService, e a entidade só guarda
+     * 'ativo'. O campo 'verificado' continua existindo como "cadastro revisado" e não
+     * influencia mais alocação nem disparo.
      */
-    public boolean elegivelParaAlocacao() {
-        return ativo && verificado;
-    }
 
     public void atualizarDados(String nome, String email, String telefone) {
         this.nome = nome.trim();
