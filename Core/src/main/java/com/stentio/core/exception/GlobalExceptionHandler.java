@@ -141,6 +141,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    /** US-024 RN.3: par de idiomas fora do cadastro do profissional. */
+    @ExceptionHandler(ParNaoAtendidoException.class)
+    public ResponseEntity<ErroResponse> handleParNaoAtendido(ParNaoAtendidoException ex) {
+        return responder(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
     /** US-024 RN.2 e RN.4: estado da certificação incompatível com a operação. */
     @ExceptionHandler(CertificacaoInvalidaException.class)
     public ResponseEntity<ErroResponse> handleCertificacaoInvalida(CertificacaoInvalidaException ex) {
