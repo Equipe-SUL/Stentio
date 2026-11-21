@@ -48,6 +48,15 @@ export default function PortalRecursoLayout() {
             </Pressable>
             <Pressable
               accessibilityRole="button"
+              accessibilityState={{ selected: pathname === "/portal/certificacoes" }}
+              onPress={() => router.replace("/portal/certificacoes" as never)}
+              className={`flex-row items-center gap-2 rounded-lg px-3 py-2 ${pathname === "/portal/certificacoes" ? "bg-[#f5ede7]" : "bg-white"}`}
+            >
+              <Ionicons name="ribbon-outline" size={18} color="#8c5230" />
+              <Text className="text-sm font-medium text-neutral-800">Certificações</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
               accessibilityState={{ selected: pathname === "/portal/perfil" }}
               onPress={() => router.replace("/portal/perfil")}
               className={`flex-row items-center gap-2 rounded-lg px-3 py-2 ${pathname === "/portal/perfil" ? "bg-[#f5ede7]" : "bg-white"}`}

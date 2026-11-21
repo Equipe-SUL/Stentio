@@ -386,7 +386,7 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
               <Pressable onPress={() => router.push("/cadastro-recurso")} className="mt-5 items-center py-2">
-                <Text className="text-sm text-neutral-600">É profissional? <Text className="font-semibold text-[#8c5230]">Cadastre-se como recurso</Text></Text>
+                <Text className="text-sm text-neutral-600">Trabalha com tradução? <Text className="font-semibold text-[#8c5230]">Cadastre-se como recurso</Text></Text>
               </Pressable>
 
             </View>

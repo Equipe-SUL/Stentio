@@ -375,6 +375,13 @@ export function CadastroRecursoScreen() {
                   {camposErro.precos ? <Text className="text-xs text-red-600">{camposErro.precos}</Text> : null}
                 </View>
 
+                <View className="flex-row gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5">
+                  <Ionicons name="information-circle-outline" size={20} color="#b45309" />
+                  <Text className="flex-1 text-xs text-amber-800 leading-4">
+                    Após concluir seu cadastro, você poderá enviar as certificações de cada par de idiomas no Portal do Recurso para aprovação do gestor de projetos.
+                  </Text>
+                </View>
+
                 <View className="flex-row gap-3">
                   {!perfilExistente ? <Pressable onPress={() => setEtapa("conta")} className="flex-1 rounded-xl border border-neutral-300 px-4 py-3"><Text className="text-center font-medium text-neutral-700">Voltar</Text></Pressable> : null}
                   <Pressable disabled={enviando || carregandoCatalogos} onPress={() => void concluirPerfil()} className="flex-1 min-h-12 flex-row items-center justify-center gap-2 rounded-xl bg-[#8c5230] px-4 py-3">
