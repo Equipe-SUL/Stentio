@@ -124,3 +124,25 @@ export interface EntregaFinalRevisaoResponse {
   etapas: EntregaFinalEtapa[];
   pacote: EntregaFinalPacote;
 }
+
+// --- US-015 (Task 2): Aprovação e Reprovação ---
+
+export interface AprovarEntregaFinalRequest {
+  mensagem?: string;
+}
+
+export interface AprovarEntregaFinalResponse {
+  outbox_id: string;
+  idempotency_key: string;
+  status: StatusOrdemServico;
+}
+
+export interface ReprovarEntregaFinalRequest {
+  motivo: string;
+}
+
+export interface ReprovarEntregaFinalResponse {
+  etapa_id: string;
+  etapa_status: string;
+  ordem_servico_status: StatusOrdemServico;
+}

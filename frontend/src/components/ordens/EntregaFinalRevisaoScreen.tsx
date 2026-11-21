@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -13,11 +15,20 @@ import axios from "axios";
 import { CabecalhoTela } from "../navegacao/CabecalhoTela";
 import { coreApi, getApiErrorMessage } from "../../lib/api";
 import {
+  aprovarEntregaFinal,
   baixarArquivoOrdemServico,
+  buscarOrdemServicoPorId,
   buscarRevisaoEntregaFinal,
+  reprovarEntregaFinal,
 } from "./ordensApi";
 import { OrdemServicoStatusBadge } from "./OrdemServicoStatusBadge";
-import type { EntregaFinalEtapa, EntregaFinalRevisaoResponse } from "./types";
+import type {
+  AprovarEntregaFinalResponse,
+  EntregaFinalEtapa,
+  EntregaFinalRevisaoResponse,
+  ReprovarEntregaFinalResponse,
+  StatusOrdemServico,
+} from "./types";
 
 interface EntregaFinalRevisaoScreenProps {
   ordemId: string;
@@ -90,6 +101,30 @@ function formatarTamanhoBytes(bytes?: number | null): string {
   return `${valor.toFixed(indice === 0 ? 0 : 2).replace(".", ",")} ${unidades[indice]}`;
 }
 
+function mapearErroAcaoEntregaFinal(err: unknown, contexto: "aprovar" | "reprovar"): string {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
+    const detalheApi = getApiErrorMessage(err);
+
+    if (status === 409) {
+      return contexto === "aprovar"
+        ? "Conflito: já existe um envio em processamento na fila (outbox pendente) ou esta OS já foi encerrada/alterada."
+        : "Não é possível reprovar: já existe um envio pendente na fila ou esta OS já foi encerrada.";
+    }
+    if (status === 413) {
+      return "O arquivo da última etapa excede o tamanho máximo permitido para envio por e-mail (HTTP 413). Reduza o tamanho do arquivo ou solicite correção.";
+    }
+    if (status === 422) {
+      return "O arquivo da última etapa não foi encontrado no servidor ou está ilegível (HTTP 422). Solicite uma nova entrega ao recurso.";
+    }
+    if (status === 403) {
+      return "Você não possui permissão para executar esta ação.";
+    }
+    if (detalheApi) return detalheApi;
+  }
+  return getApiErrorMessage(err);
+}
+
 export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreenProps) {
   const router = useRouter();
   const roleUsuario = useMemo(() => obterRoleUsuarioAtual(), []);
@@ -99,8 +134,31 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [statusInvalidoConflito, setStatusInvalidoConflito] = useState(false);
+
+  // Download por etapa
   const [baixandoEtapaId, setBaixandoEtapaId] = useState<string | null>(null);
   const [erroDownload, setErroDownload] = useState<string | null>(null);
+
+  // Fluxo de Aprovação (Task 2)
+  const [modalAprovarAberto, setModalAprovarAberto] = useState(false);
+  const [mensagemCliente, setMensagemCliente] = useState("");
+  const [aprovando, setAprovando] = useState(false);
+  const [erroAprovar, setErroAprovar] = useState<string | null>(null);
+  const [resultadoAprovacao, setResultadoAprovacao] =
+    useState<AprovarEntregaFinalResponse | null>(null);
+  const [statusMonitoradoOs, setStatusMonitoradoOs] =
+    useState<StatusOrdemServico | null>(null);
+
+  // Fluxo de Reprovação (Task 2)
+  const [modalReprovarAberto, setModalReprovarAberto] = useState(false);
+  const [motivoReprovacao, setMotivoReprovacao] = useState("");
+  const [reprovando, setReprovando] = useState(false);
+  const [erroReprovar, setErroReprovar] = useState<string | null>(null);
+  const [resultadoReprovacao, setResultadoReprovacao] =
+    useState<ReprovarEntregaFinalResponse | null>(null);
+
+  // Trava síncrona adicional contra duplo clique
+  const emRequisicaoRef = useRef(false);
 
   const carregarRevisao = useCallback(async () => {
     if (!ordemId) {
@@ -116,6 +174,7 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
     try {
       const dados = await buscarRevisaoEntregaFinal(ordemId);
       setRevisao(dados);
+      setStatusMonitoradoOs(dados.status);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const status = err.response?.status;
@@ -148,6 +207,33 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
     }
   }, [acessoPermitido, carregarRevisao]);
 
+  // Polling leve após 202 Accepted até o broker confirmar ACK e a OS virar ENCERRADA
+  useEffect(() => {
+    if (!resultadoAprovacao || !ordemId) return;
+    if (statusMonitoradoOs === "ENCERRADA") return;
+
+    let ativo = true;
+    const intervalo = setInterval(async () => {
+      try {
+        const osAtual = await buscarOrdemServicoPorId(ordemId);
+        if (!ativo) return;
+        if (osAtual?.status) {
+          setStatusMonitoradoOs(osAtual.status);
+          if (osAtual.status === "ENCERRADA") {
+            clearInterval(intervalo);
+          }
+        }
+      } catch {
+        // Ignora falha transitória durante polling
+      }
+    }, 2500);
+
+    return () => {
+      ativo = false;
+      clearInterval(intervalo);
+    };
+  }, [resultadoAprovacao, statusMonitoradoOs, ordemId]);
+
   const etapasOrdenadas = useMemo(() => {
     if (!revisao?.etapas) return [];
     return [...revisao.etapas].sort((a, b) => a.ordem - b.ordem);
@@ -166,6 +252,73 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
       setBaixandoEtapaId(null);
     }
   }
+
+  function abrirModalAprovar() {
+    if (!revisao?.pacote?.pode_enviar || aprovando || reprovando || emRequisicaoRef.current) {
+      return;
+    }
+    setErroAprovar(null);
+    setModalAprovarAberto(true);
+  }
+
+  async function handleConfirmarAprovacao() {
+    if (!ordemId || emRequisicaoRef.current || aprovando) return;
+    emRequisicaoRef.current = true;
+    setAprovando(true);
+    setErroAprovar(null);
+
+    try {
+      const resposta = await aprovarEntregaFinal(ordemId, {
+        mensagem: mensagemCliente,
+      });
+      setResultadoAprovacao(resposta);
+      setStatusMonitoradoOs(resposta.status || "AGUARDANDO_VERIFICACAO");
+      setModalAprovarAberto(false);
+    } catch (err) {
+      setErroAprovar(mapearErroAcaoEntregaFinal(err, "aprovar"));
+    } finally {
+      setAprovando(false);
+      emRequisicaoRef.current = false;
+    }
+  }
+
+  function abrirModalReprovar() {
+    if (aprovando || reprovando || emRequisicaoRef.current) return;
+    setErroReprovar(null);
+    setModalReprovarAberto(true);
+  }
+
+  async function handleConfirmarReprovacao() {
+    if (!ordemId || emRequisicaoRef.current || reprovando) return;
+
+    const motivoLimpo = motivoReprovacao.trim();
+    if (!motivoLimpo) {
+      setErroReprovar("Informe o motivo da reprovação para orientar o profissional na correção.");
+      return;
+    }
+
+    emRequisicaoRef.current = true;
+    setReprovando(true);
+    setErroReprovar(null);
+
+    try {
+      const resposta = await reprovarEntregaFinal(ordemId, {
+        motivo: motivoLimpo,
+      });
+      setResultadoReprovacao(resposta);
+      setStatusMonitoradoOs(resposta.ordem_servico_status || "EM_EXECUCAO");
+      setModalReprovarAberto(false);
+    } catch (err) {
+      setErroReprovar(mapearErroAcaoEntregaFinal(err, "reprovar"));
+    } finally {
+      setReprovando(false);
+      emRequisicaoRef.current = false;
+    }
+  }
+
+  const operacaoFinalizada = Boolean(resultadoAprovacao || resultadoReprovacao);
+  const bloqueadoParaAcoes =
+    operacaoFinalizada || aprovando || reprovando;
 
   return (
     <ScrollView
@@ -244,6 +397,119 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
           </View>
         ) : (
           <View className="gap-6">
+            {/* Banner de status após Aprovação (202 Accepted -> Polling até ENCERRADA) */}
+            {resultadoAprovacao ? (
+              <View
+                className={`rounded-2xl border p-5 shadow-sm gap-3 ${
+                  statusMonitoradoOs === "ENCERRADA"
+                    ? "border-emerald-300 bg-emerald-50"
+                    : "border-sky-300 bg-sky-50"
+                }`}
+              >
+                <View className="flex-row items-start gap-3">
+                  <View
+                    className={`h-10 w-10 items-center justify-center rounded-xl border ${
+                      statusMonitoradoOs === "ENCERRADA"
+                        ? "bg-emerald-100 border-emerald-200"
+                        : "bg-sky-100 border-sky-200"
+                    }`}
+                  >
+                    {statusMonitoradoOs === "ENCERRADA" ? (
+                      <Ionicons name="checkmark-done-circle" size={22} color="#047857" />
+                    ) : (
+                      <ActivityIndicator size="small" color="#0369a1" />
+                    )}
+                  </View>
+
+                  <View className="flex-1 gap-1">
+                    <Text
+                      className={`text-base font-bold ${
+                        statusMonitoradoOs === "ENCERRADA"
+                          ? "text-emerald-950"
+                          : "text-sky-950"
+                      }`}
+                    >
+                      {statusMonitoradoOs === "ENCERRADA"
+                        ? "Publicado para envio e Ordem de Serviço encerrada"
+                        : "Envio em processamento — publicado na fila de disparo"}
+                    </Text>
+                    <Text
+                      className={`text-xs leading-5 ${
+                        statusMonitoradoOs === "ENCERRADA"
+                          ? "text-emerald-900"
+                          : "text-sky-900"
+                      }`}
+                    >
+                      {statusMonitoradoOs === "ENCERRADA"
+                        ? `O e-mail com o arquivo "${revisao.pacote?.arquivo_nome || "final"}" foi publicado para envio a ${revisao.cliente?.email || "o representante do cliente"} e a OS passou para ENCERRADA.`
+                        : "A solicitação foi registrada na fila de envio (outbox) e está aguardando confirmação de publicação para encerrar a Ordem de Serviço."}
+                    </Text>
+                    <Text className="text-[11px] font-mono text-neutral-600 pt-1">
+                      Outbox ID: {resultadoAprovacao.outbox_id} · Chave:{" "}
+                      {resultadoAprovacao.idempotency_key}
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="flex-row flex-wrap items-center justify-end gap-2.5 pt-1">
+                  <Pressable
+                    onPress={() => router.push(`/ordens/${revisao.ordem_servico_id}` as never)}
+                    className="rounded-xl bg-[#6f4f28] px-4 py-2 active:bg-[#5b4020]"
+                  >
+                    <Text className="text-xs font-bold text-white">
+                      Voltar para detalhes da OS
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Banner de status após Reprovação (200 OK -> ACEITA / EM_EXECUCAO) */}
+            {resultadoReprovacao ? (
+              <View className="rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-sm gap-3">
+                <View className="flex-row items-start gap-3">
+                  <View className="h-10 w-10 items-center justify-center rounded-xl bg-amber-100 border border-amber-200">
+                    <Ionicons name="return-up-back" size={22} color="#b45309" />
+                  </View>
+                  <View className="flex-1 gap-1">
+                    <Text className="text-base font-bold text-amber-950">
+                      Entrega reprovada e etapa reaberta para correção
+                    </Text>
+                    <Text className="text-xs leading-5 text-amber-900">
+                      A última etapa retornou para o status{" "}
+                      <Text className="font-bold">{resultadoReprovacao.etapa_status}</Text> com
+                      o mesmo profissional e prazo alocados, e a Ordem de Serviço voltou para{" "}
+                      <Text className="font-bold">
+                        {resultadoReprovacao.ordem_servico_status}
+                      </Text>
+                      . Nenhum e-mail foi enviado ao cliente.
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="flex-row flex-wrap items-center justify-end gap-2.5 pt-1">
+                  <Pressable
+                    onPress={() =>
+                      router.push(`/ordens/${revisao.ordem_servico_id}/workflow` as never)
+                    }
+                    className="rounded-xl border border-[#8c5230]/40 bg-white px-4 py-2 active:bg-[#ede2d6]"
+                  >
+                    <Text className="text-xs font-bold text-[#8c5230]">
+                      Ver workflow da OS
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => router.push(`/ordens/${revisao.ordem_servico_id}` as never)}
+                    className="rounded-xl bg-[#6f4f28] px-4 py-2 active:bg-[#5b4020]"
+                  >
+                    <Text className="text-xs font-bold text-white">
+                      Voltar para detalhes da OS
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
             {/* Cabeçalho de Identificação da OS */}
             <View className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm">
               <View className="flex-col md:flex-row md:items-center justify-between gap-4">
@@ -255,7 +521,7 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
                     <Text className="text-2xl md:text-3xl font-serif font-bold text-neutral-900">
                       {revisao.codigo}
                     </Text>
-                    <OrdemServicoStatusBadge status={revisao.status} />
+                    <OrdemServicoStatusBadge status={statusMonitoradoOs || revisao.status} />
                   </View>
                 </View>
 
@@ -459,7 +725,6 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
               </View>
 
               <View className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Destinatário */}
                 <View className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-4 gap-1.5">
                   <Text className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
                     Destinatário (Cliente)
@@ -475,7 +740,6 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
                   </View>
                 </View>
 
-                {/* Arquivo final selecionado */}
                 <View className="rounded-xl border border-[#8c5230]/30 bg-[#fbf8f5] p-4 gap-1.5">
                   <Text className="text-xs font-semibold uppercase tracking-wide text-[#8c5230]">
                     Arquivo Anexo do Pacote Final
@@ -532,16 +796,19 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
                 <View className="flex-row items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
                   <Ionicons name="checkmark-circle" size={18} color="#047857" />
                   <Text className="flex-1 text-xs font-medium text-emerald-900">
-                    Pacote validado e pronto para envio ao representante do cliente.
+                    Pacote validado e pronto para publicação na fila de envio ao representante.
                   </Text>
                 </View>
               )}
 
-              {/* Área de Decisão (Aprovar / Reprovar — conectada na Task 2) */}
+              {/* Ações de Decisão (Aprovar / Reprovar) */}
               <View className="flex-row flex-wrap items-center justify-end gap-3 border-t border-neutral-100 pt-4">
                 <Pressable
-                  disabled={true}
-                  className="flex-row items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2.5 opacity-60"
+                  onPress={abrirModalReprovar}
+                  disabled={bloqueadoParaAcoes}
+                  className={`flex-row items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2.5 ${
+                    bloqueadoParaAcoes ? "opacity-50" : "active:bg-red-50"
+                  }`}
                 >
                   <Ionicons name="close-circle-outline" size={17} color="#b91c1c" />
                   <Text className="text-xs font-bold text-red-700">
@@ -550,16 +817,17 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
                 </Pressable>
 
                 <Pressable
-                  disabled={!revisao.pacote?.pode_enviar}
+                  onPress={abrirModalAprovar}
+                  disabled={!revisao.pacote?.pode_enviar || bloqueadoParaAcoes}
                   className={`flex-row items-center gap-2 rounded-xl px-5 py-2.5 ${
-                    revisao.pacote?.pode_enviar
-                      ? "bg-[#6f4f28] opacity-90"
+                    revisao.pacote?.pode_enviar && !bloqueadoParaAcoes
+                      ? "bg-[#6f4f28] active:bg-[#5b4020]"
                       : "bg-neutral-300 opacity-60"
                   }`}
                 >
                   <Ionicons name="paper-plane-outline" size={16} color="#ffffff" />
                   <Text className="text-xs font-bold text-white">
-                    Aprovar e enviar ao cliente
+                    Aprovar e publicar para envio
                   </Text>
                 </Pressable>
               </View>
@@ -567,6 +835,201 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
           </View>
         )}
       </View>
+
+      {/* Modal de Confirmação da Aprovação (POST .../entrega-final/aprovar) */}
+      <Modal
+        visible={modalAprovarAberto}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!aprovando) setModalAprovarAberto(false);
+        }}
+      >
+        <View className="flex-1 items-center justify-center bg-black/50 px-4">
+          <View className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl gap-4">
+            <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-row items-center gap-2.5 flex-1">
+                <View className="h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-200">
+                  <Ionicons name="paper-plane-outline" size={20} color="#047857" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-bold text-neutral-900">
+                    Confirmar aprovação e publicação
+                  </Text>
+                  <Text className="text-xs text-neutral-500">
+                    O arquivo final será publicado na fila de e-mail para o representante.
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={() => setModalAprovarAberto(false)}
+                disabled={aprovando}
+                className="p-1"
+              >
+                <Ionicons name="close" size={20} color="#525252" />
+              </Pressable>
+            </View>
+
+            <View className="rounded-xl border border-neutral-200 bg-neutral-50 p-3.5 gap-1">
+              <Text className="text-xs text-neutral-600">
+                <Text className="font-bold text-neutral-800">Destinatário:</Text>{" "}
+                {revisao?.cliente?.email || "—"}
+              </Text>
+              <Text className="text-xs text-neutral-600" numberOfLines={1}>
+                <Text className="font-bold text-neutral-800">Arquivo anexo:</Text>{" "}
+                {revisao?.pacote?.arquivo_nome || "—"} (
+                {formatarTamanhoBytes(revisao?.pacote?.tamanho_bytes)})
+              </Text>
+            </View>
+
+            <View className="gap-1.5">
+              <Text className="text-xs font-semibold text-neutral-800">
+                Mensagem personalizada ao cliente (opcional)
+              </Text>
+              <TextInput
+                value={mensagemCliente}
+                onChangeText={setMensagemCliente}
+                editable={!aprovando}
+                multiline
+                numberOfLines={3}
+                placeholder="Ex.: Segue em anexo o documento final traduzido e revisado."
+                placeholderTextColor="#9ca3af"
+                className="min-h-[84px] rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900"
+                style={{ textAlignVertical: "top" }}
+              />
+            </View>
+
+            {erroAprovar ? (
+              <View className="flex-row items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
+                <Ionicons name="alert-circle" size={16} color="#b91c1c" />
+                <Text className="flex-1 text-xs leading-5 text-red-800">{erroAprovar}</Text>
+              </View>
+            ) : null}
+
+            <View className="flex-row items-center justify-end gap-2.5 pt-2">
+              <Pressable
+                onPress={() => setModalAprovarAberto(false)}
+                disabled={aprovando}
+                className="rounded-xl border border-neutral-300 bg-white px-4 py-2.5 active:bg-neutral-50"
+              >
+                <Text className="text-xs font-semibold text-neutral-700">Cancelar</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => void handleConfirmarAprovacao()}
+                disabled={aprovando}
+                className={`flex-row items-center gap-2 rounded-xl px-5 py-2.5 ${
+                  aprovando ? "bg-[#6f4f28]/70" : "bg-[#6f4f28] active:bg-[#5b4020]"
+                }`}
+              >
+                {aprovando ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Ionicons name="checkmark-circle-outline" size={16} color="#ffffff" />
+                )}
+                <Text className="text-xs font-bold text-white">
+                  {aprovando ? "Publicando..." : "Confirmar e publicar"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Reprovação (POST .../entrega-final/reprovar) */}
+      <Modal
+        visible={modalReprovarAberto}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!reprovando) setModalReprovarAberto(false);
+        }}
+      >
+        <View className="flex-1 items-center justify-center bg-black/50 px-4">
+          <View className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl gap-4">
+            <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-row items-center gap-2.5 flex-1">
+                <View className="h-10 w-10 items-center justify-center rounded-xl bg-red-50 border border-red-200">
+                  <Ionicons name="return-up-back-outline" size={20} color="#b91c1c" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-bold text-neutral-900">
+                    Reprovar entrega e solicitar correção
+                  </Text>
+                  <Text className="text-xs text-neutral-500">
+                    A última etapa voltará para ACEITA com o mesmo profissional e prazo.
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={() => setModalReprovarAberto(false)}
+                disabled={reprovando}
+                className="p-1"
+              >
+                <Ionicons name="close" size={20} color="#525252" />
+              </Pressable>
+            </View>
+
+            <View className="gap-1.5">
+              <Text className="text-xs font-semibold text-neutral-800">
+                Motivo da reprovação <Text className="text-red-600">*</Text>
+              </Text>
+              <TextInput
+                value={motivoReprovacao}
+                onChangeText={(texto) => {
+                  setMotivoReprovacao(texto);
+                  if (erroReprovar) setErroReprovar(null);
+                }}
+                editable={!reprovando}
+                multiline
+                numberOfLines={4}
+                placeholder="Descreva o que precisa ser corrigido no arquivo final (ex.: Falta a assinatura na última página)."
+                placeholderTextColor="#9ca3af"
+                className="min-h-[100px] rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900"
+                style={{ textAlignVertical: "top" }}
+              />
+            </View>
+
+            {erroReprovar ? (
+              <View className="flex-row items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
+                <Ionicons name="alert-circle" size={16} color="#b91c1c" />
+                <Text className="flex-1 text-xs leading-5 text-red-800">{erroReprovar}</Text>
+              </View>
+            ) : null}
+
+            <View className="flex-row items-center justify-end gap-2.5 pt-2">
+              <Pressable
+                onPress={() => setModalReprovarAberto(false)}
+                disabled={reprovando}
+                className="rounded-xl border border-neutral-300 bg-white px-4 py-2.5 active:bg-neutral-50"
+              >
+                <Text className="text-xs font-semibold text-neutral-700">Cancelar</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => void handleConfirmarReprovacao()}
+                disabled={reprovando || !motivoReprovacao.trim()}
+                className={`flex-row items-center gap-2 rounded-xl px-5 py-2.5 ${
+                  reprovando || !motivoReprovacao.trim()
+                    ? "bg-red-300"
+                    : "bg-red-700 active:bg-red-800"
+                }`}
+              >
+                {reprovando ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Ionicons name="return-up-back" size={16} color="#ffffff" />
+                )}
+                <Text className="text-xs font-bold text-white">
+                  {reprovando ? "Reprovando..." : "Confirmar reprovação"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
