@@ -67,7 +67,8 @@ import static org.mockito.Mockito.doThrow;
         "spring.data.mongodb.uri=mongodb://localhost:27017/stentio_test",
         "spring.mongodb.uri=mongodb://localhost:27017/stentio_test",
         "spring.rabbitmq.listener.simple.auto-startup=false",
-        "app.orcamentos.outbox.enabled=false"
+        "app.orcamentos.outbox.enabled=false",
+        "app.arquivos.diretorio=build/test-uploads"
 })
 class AlocacaoEtapaPostgresTest {
 
@@ -121,7 +122,8 @@ class AlocacaoEtapaPostgresTest {
             // empresa, e um representante chamado "Cliente ..." já fez alguém assertar o
             // campo errado achando que era o mesmo texto.
             Cliente cliente = clientes.saveAndFlush(new Cliente("Empresa US012", "Representante US012",
-                    UUID.randomUUID() + "@teste.invalid", "11999999999", "11144477735"));
+                    UUID.randomUUID() + "@teste.invalid", "11999999999",
+                    UUID.randomUUID().toString().replace("-", "").substring(0, 11)));
             clienteId = cliente.getId();
 
             CategoriaProjeto categoria = new CategoriaProjeto();
@@ -178,6 +180,9 @@ class AlocacaoEtapaPostgresTest {
             List<UUID> recursosDoTeste = new ArrayList<>(List.of(anaId, brunoId, carlosId, danielaId));
             recursosDoTeste.addAll(recursosExtras);
             for (UUID recurso : recursosDoTeste) {
+                jdbc.update("delete from certificacao_email_outbox where certificacao_id in "
+                        + "(select id from recursos_certificacoes where recurso_id = ?)", recurso);
+                jdbc.update("delete from recursos_certificacoes where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos_precos where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos_tipos_servico where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos where id = ?", recurso);
@@ -695,18 +700,18 @@ class AlocacaoEtapaPostgresTest {
     }
 
     @Test
-    @DisplayName("US-023 RN.5 no banco: recurso não verificado não é alocado nem aparece disponível")
-    void rn5NaoAlocaNemLista() {
+    @DisplayName("US-024 RN.5 no banco: verificado não decide; certificação aprovada permite alocação")
+    void rn5VerificadoNaoDecideMais() {
         UUID primeira = montarEtapas().getFirst();
 
         new TransactionTemplate(transactionManager).executeWithoutResult(status ->
                 jdbc.update("update recursos set verificado = false where id = ?", anaId));
 
-        assertThrows(AlocacaoInvalidaException.class, () -> alocacao.alocar(
-                osId, primeira, new AlocacaoEtapaRequest(anaId, DAQUI_A_UM_MES), gestor));
+        alocacao.alocar(osId, primeira, new AlocacaoEtapaRequest(anaId, DAQUI_A_UM_MES), gestor);
 
-        assertNull(jdbc.queryForObject("select recurso_id from etapas_os where id = ?", UUID.class, primeira));
-        assertEquals(0, contarHistorico(primeira));
+        assertEquals(anaId, jdbc.queryForObject(
+                "select recurso_id from etapas_os where id = ?", UUID.class, primeira));
+        assertEquals(1, contarHistorico(primeira));
     }
 
     @Test
