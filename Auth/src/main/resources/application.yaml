@@ -36,9 +36,9 @@ spring:
   flyway:
     locations: classpath:db/migration/auth
     table: flyway_auth_schema_history
-    # Auth e Core compartilham public; o outro serviço pode criar tabelas primeiro.
+    # O schema public é compartilhado; baseline 0 permite aplicar V1 mesmo se Core já criou tabelas.
     baseline-on-migrate: true
-    baseline-version: 1
+    baseline-version: ${AUTH_FLYWAY_BASELINE_VERSION:0}
 
   security:
     user:
