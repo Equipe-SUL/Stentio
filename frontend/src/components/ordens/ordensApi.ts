@@ -4,6 +4,7 @@ import type {
   ClienteOpcao,
   FiltrosOrdemServico,
   OrdemServicoDetalhe,
+  OrdemServicoEtapaResumo,
   OrdemServicoPagina,
 } from "./types";
 
@@ -35,6 +36,19 @@ export async function listarOrdensServico(
 export async function buscarOrdemServicoPorId(id: string): Promise<OrdemServicoDetalhe> {
   const { data } = await coreApi.get<OrdemServicoDetalhe>(`${ENDPOINTS.ordens}/${id}`);
   return data;
+}
+
+export async function listarEtapasOrdemServico(
+  ordemId: string,
+): Promise<OrdemServicoEtapaResumo[]> {
+  try {
+    const { data } = await coreApi.get<OrdemServicoEtapaResumo[]>(
+      `${ENDPOINTS.ordens}/${ordemId}/etapas`,
+    );
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function baixarArquivoOrdemServico(

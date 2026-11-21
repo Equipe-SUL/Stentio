@@ -1,5 +1,15 @@
+import { Platform } from "react-native";
 import { coreApi } from "../../lib/api";
 import type { PerfilRecursoCriado, UnidadePrecoRecurso } from "./cadastroRecursoApi";
+
+export type SituacaoDemandaRecurso =
+  | "PENDENTE"
+  | "AGUARDANDO_ETAPA_ANTERIOR"
+  | "ALOCADO"
+  | "DISPARADA"
+  | "ACEITA"
+  | "ENTREGUE"
+  | string;
 
 export interface DemandaRecurso {
   etapa_id: string;
@@ -10,9 +20,39 @@ export interface DemandaRecurso {
   tipo_servico: string;
   idioma_origem: string;
   idioma_destino: string;
-  situacao: "PENDENTE" | "AGUARDANDO_ETAPA_ANTERIOR" | "ALOCADO" | string;
+  status?: SituacaoDemandaRecurso;
+  situacao: SituacaoDemandaRecurso;
   prazo_estimado_horas: number;
   data_limite_entrega: string | null;
+  liberada?: boolean;
+  entregue_em?: string | null;
+  arquivo_nome?: string | null;
+}
+
+export interface AvancoEtapaResponse {
+  proxima_etapa_id: string;
+  proxima_etapa_status: "DISPARADA" | "ALOCADO" | "ACEITA" | "PENDENTE" | string;
+  convite_automatico: boolean;
+  recursos_notificados: number;
+}
+
+export interface EntregaEtapaResponse {
+  etapa_id: string;
+  status: "ENTREGUE" | string;
+  entregue_em: string;
+  arquivo_nome: string;
+  avanco: AvancoEtapaResponse | null;
+  ordem_servico: {
+    id: string;
+    status: "EM_EXECUCAO" | "AGUARDANDO_VERIFICACAO" | string;
+  };
+}
+
+export interface ArquivoEntregaPayload {
+  uri: string;
+  name: string;
+  mimeType?: string;
+  file?: File; // Web
 }
 
 export interface PerfilRecurso extends PerfilRecursoCriado {
@@ -27,10 +67,56 @@ export interface PerfilRecurso extends PerfilRecursoCriado {
 
 export async function listarMinhasDemandas(): Promise<DemandaRecurso[]> {
   const { data } = await coreApi.get<DemandaRecurso[]>("/api/v1/recurso/etapas");
-  return data;
+
+  return (Array.isArray(data) ? data : []).map((item) => {
+    const situacaoNormalizada = (item.situacao || item.status || "PENDENTE").toUpperCase();
+    return {
+      ...item,
+      situacao: situacaoNormalizada,
+      liberada:
+        typeof item.liberada === "boolean"
+          ? item.liberada
+          : situacaoNormalizada !== "AGUARDANDO_ETAPA_ANTERIOR",
+    };
+  });
 }
 
-export async function buscarMeuPerfilRecurso(): Promise<PerfilRecurso> {
-  const { data } = await coreApi.get<PerfilRecurso>("/api/v1/recurso/perfil");
+export async function aceitarEtapaRecurso(etapaId: string): Promise<void> {
+  await coreApi.post(`/api/v1/recurso/etapas/${etapaId}/aceitar`);
+}
+
+export async function entregarEtapaRecurso(
+  etapaId: string,
+  arquivo: ArquivoEntregaPayload,
+): Promise<EntregaEtapaResponse> {
+  const formData = new FormData();
+
+  if (Platform.OS === "web") {
+    if (arquivo.file instanceof File) {
+      formData.append("arquivo", arquivo.file, arquivo.name);
+    } else {
+      const response = await fetch(arquivo.uri);
+      const blob = await response.blob();
+      formData.append("arquivo", blob, arquivo.name);
+    }
+  } else {
+    formData.append("arquivo", {
+      uri: arquivo.uri,
+      name: arquivo.name,
+      type: arquivo.mimeType || "application/octet-stream",
+    } as unknown as Blob);
+  }
+
+  const { data } = await coreApi.post<EntregaEtapaResponse>(
+    `/api/v1/recurso/etapas/${etapaId}/entregar`,
+    formData,
+    {
+      // Sobrescreve qualquer default "application/json" do coreApi para o navegador
+      // gerar automaticamente "multipart/form-data; boundary=..."
+      headers: {
+        "Content-Type": undefined,
+      },
+    },
+  );
   return data;
 }
