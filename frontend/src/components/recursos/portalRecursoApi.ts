@@ -65,6 +65,11 @@ export interface PerfilRecurso extends PerfilRecursoCriado {
   }[];
 }
 
+export async function buscarMeuPerfilRecurso(): Promise<PerfilRecurso> {
+  const { data } = await coreApi.get<PerfilRecurso>("/api/v1/recurso/perfil");
+  return data;
+}
+
 export async function listarMinhasDemandas(): Promise<DemandaRecurso[]> {
   const { data } = await coreApi.get<DemandaRecurso[]>("/api/v1/recurso/etapas");
 

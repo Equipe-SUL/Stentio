@@ -32,7 +32,9 @@ public class EtapaOrdemServicoMapper {
                 etapa.getPrazoEstimadoHoras(),
                 etapa.getRecurso() == null ? null : etapa.getRecurso().getId(),
                 etapa.getRecurso() == null ? null : etapa.getRecurso().getNome(),
-                etapa.getDataLimiteEntrega());
+                etapa.getDataLimiteEntrega(),
+                etapa.getEntregueEm(),
+                etapa.getArquivoEntregueNome());
     }
 
     public ModeloWorkflowResponse paraModelo(ModeloWorkflow modelo) {

@@ -35,7 +35,7 @@ function formatarDataHora(valor?: string | null): string {
 
 function isEtapaLiberada(demanda: DemandaRecurso): boolean {
   if (typeof demanda.liberada === "boolean") return demanda.liberada;
-  return demanda.situacao !== "AGUARDANDO_ETAPA_ANTERIOR";
+  return demanda.ordem === 1;
 }
 
 function resumirResultadoAvanco(resultado: EntregaEtapaResponse): {
@@ -83,21 +83,38 @@ export default function MinhasDemandasScreen() {
   const [resultadoEntrega, setResultadoEntrega] = useState<EntregaEtapaResponse | null>(null);
   const [avisoAceite, setAvisoAceite] = useState("");
 
-  const carregar = useCallback(async (silencioso = false) => {
-    if (!silencioso) setCarregando(true);
-    setErro("");
+  const carregar = useCallback(async () => {
     try {
       setDemandas(await listarMinhasDemandas());
+      setErro("");
     } catch (error) {
       setErro(getApiErrorMessage(error));
     } finally {
-      if (!silencioso) setCarregando(false);
+      setCarregando(false);
     }
   }, []);
 
   useEffect(() => {
-    void carregar();
-  }, [carregar]);
+    let ativo = true;
+
+    listarMinhasDemandas()
+      .then((dados) => {
+        if (ativo) {
+          setDemandas(dados);
+          setErro("");
+        }
+      })
+      .catch((error: unknown) => {
+        if (ativo) setErro(getApiErrorMessage(error));
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   const disponiveis = useMemo(
     () => demandas.filter((d) => d.situacao === "DISPARADA"),
@@ -119,13 +136,13 @@ export default function MinhasDemandasScreen() {
       await aceitarEtapaRecurso(etapaId);
       setAvisoAceite("Etapa aceita com sucesso! Ela já está disponível em Minhas demandas.");
       setAbaAtiva("MINHAS");
-      await carregar(true);
+      await carregar();
     } catch (error) {
       if (isAxiosError(error) && error.response?.status === 409) {
         setErroAcao(
           "Esta etapa já foi aceita por outro recurso ou ainda aguarda a conclusão da etapa anterior.",
         );
-        await carregar(true);
+        await carregar();
       } else {
         setErroAcao(getApiErrorMessage(error));
       }
@@ -160,13 +177,13 @@ export default function MinhasDemandasScreen() {
       });
 
       setResultadoEntrega(resposta);
-      await carregar(true);
+      await carregar();
     } catch (error) {
       if (isAxiosError(error) && error.response?.status === 409) {
         setErroAcao(
           "Não foi possível registrar a entrega: a etapa já foi entregue ou a etapa anterior ainda não foi concluída.",
         );
-        await carregar(true);
+        await carregar();
       } else {
         setErroAcao(getApiErrorMessage(error));
       }

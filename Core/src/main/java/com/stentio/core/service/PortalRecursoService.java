@@ -29,13 +29,16 @@ public class PortalRecursoService {
     private final RecursoAutenticadoService recursoAutenticado;
     private final EtapaOrdemServicoRepository etapas;
     private final RecursoMapper recursoMapper;
+    private final EtapaLiberacaoService etapaLiberacao;
 
     public PortalRecursoService(RecursoAutenticadoService recursoAutenticado,
                                 EtapaOrdemServicoRepository etapas,
-                                RecursoMapper recursoMapper) {
+                                RecursoMapper recursoMapper,
+                                EtapaLiberacaoService etapaLiberacao) {
         this.recursoAutenticado = recursoAutenticado;
         this.etapas = etapas;
         this.recursoMapper = recursoMapper;
+        this.etapaLiberacao = etapaLiberacao;
     }
 
     // CA.5: "Meu perfil"
@@ -61,11 +64,11 @@ public class PortalRecursoService {
         return Stream.concat(
                         etapas.listarPorRecurso(recursoId).stream(),
                         etapas.listarDisponiveisPara(recursoId, StatusEtapaOrdemServico.DISPARADA).stream())
-                .map(PortalRecursoService::paraDemanda)
+                .map(this::paraDemanda)
                 .toList();
     }
 
-    private static DemandaRecursoResponse paraDemanda(EtapaOrdemServico etapa) {
+    private DemandaRecursoResponse paraDemanda(EtapaOrdemServico etapa) {
         Solicitacao solicitacao = etapa.getOrdemServico().getSolicitacao();
 
         return new DemandaRecursoResponse(
@@ -78,6 +81,7 @@ public class PortalRecursoService {
                 solicitacao.getIdiomaOrigem().getNome(),
                 solicitacao.getIdiomaDestino().getNome(),
                 etapa.getStatus(),
+                etapaLiberacao.estaLiberada(etapa),
                 etapa.getPrazoEstimadoHoras(),
                 etapa.getDataLimiteEntrega());
     }

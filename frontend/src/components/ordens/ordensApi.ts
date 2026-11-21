@@ -41,14 +41,13 @@ export async function buscarOrdemServicoPorId(id: string): Promise<OrdemServicoD
 export async function listarEtapasOrdemServico(
   ordemId: string,
 ): Promise<OrdemServicoEtapaResumo[]> {
-  try {
-    const { data } = await coreApi.get<OrdemServicoEtapaResumo[]>(
-      `${ENDPOINTS.ordens}/${ordemId}/etapas`,
-    );
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
+  const { data } = await coreApi.get<{ etapas: OrdemServicoEtapaResumo[] }>(
+    `${ENDPOINTS.ordens}/${ordemId}/etapas`,
+  );
+  if (!Array.isArray(data?.etapas)) {
+    throw new Error("A resposta do servidor para as etapas da OS é inválida.");
   }
+  return data.etapas;
 }
 
 export async function baixarArquivoOrdemServico(

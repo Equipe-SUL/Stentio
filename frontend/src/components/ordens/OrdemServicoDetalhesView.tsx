@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
+import { isAxiosError } from "axios";
 import {
   baixarArquivoOrdemServico,
   buscarOrdemServicoPorId,
@@ -40,6 +40,11 @@ function formatarData(isoString?: string | null): string {
   } catch {
     return isoString;
   }
+}
+
+function mensagemErro(error: unknown): string {
+  if (isAxiosError(error)) return getApiErrorMessage(error);
+  return error instanceof Error ? error.message : getApiErrorMessage(error);
 }
 
 function descreverDestinoAvanco(
@@ -85,11 +90,7 @@ export function OrdemServicoDetalhesView({
   const [erro, setErro] = useState<string | null>(null);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
-  const carregarDetalhes = async () => {
-    setCarregando(true);
-    setNaoEncontrada(false);
-    setErro(null);
-
+  const carregarDetalhes = useCallback(async () => {
     try {
       const [dados, listaEtapas] = await Promise.all([
         buscarOrdemServicoPorId(id),
@@ -97,24 +98,66 @@ export function OrdemServicoDetalhesView({
       ]);
       setOrdem(dados);
       setEtapas(dados.etapas?.length ? dados.etapas : listaEtapas);
+      setNaoEncontrada(false);
+      setErro(null);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.status === 404) {
+      if (isAxiosError(err) && err.response?.status === 404) {
         setNaoEncontrada(true);
+        setErro(null);
       } else {
-        setErro(getApiErrorMessage(err));
+        setNaoEncontrada(false);
+        setErro(mensagemErro(err));
       }
     } finally {
       setCarregando(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
+    let ativo = true;
+
     if (!ordemInicial || ordemInicial.id !== id) {
-      carregarDetalhes();
+      Promise.all([buscarOrdemServicoPorId(id), listarEtapasOrdemServico(id)])
+        .then(([dados, listaEtapas]) => {
+          if (ativo) {
+            setOrdem(dados);
+            setEtapas(dados.etapas?.length ? dados.etapas : listaEtapas);
+            setNaoEncontrada(false);
+            setErro(null);
+          }
+        })
+        .catch((err: unknown) => {
+          if (!ativo) return;
+          if (isAxiosError(err) && err.response?.status === 404) {
+            setNaoEncontrada(true);
+            setErro(null);
+          } else {
+            setNaoEncontrada(false);
+            setErro(mensagemErro(err));
+          }
+        })
+        .finally(() => {
+          if (ativo) setCarregando(false);
+        });
     } else if (!ordemInicial.etapas?.length) {
-      listarEtapasOrdemServico(id).then(setEtapas);
+      void listarEtapasOrdemServico(id)
+        .then((listaEtapas) => {
+          if (ativo) setEtapas(listaEtapas);
+        })
+        .catch((err: unknown) => {
+          if (ativo) setErro(mensagemErro(err));
+        });
     }
-  }, [id]);
+
+    return () => {
+      ativo = false;
+    };
+  }, [id, ordemInicial]);
+
+  const tentarCarregarDetalhes = () => {
+    setCarregando(true);
+    void carregarDetalhes();
+  };
 
   const etapasOrdenadas = useMemo(
     () => [...etapas].sort((a, b) => a.ordem - b.ordem),
@@ -171,7 +214,7 @@ export function OrdemServicoDetalhesView({
             </Pressable>
           ) : null}
           <Pressable
-            onPress={carregarDetalhes}
+            onPress={tentarCarregarDetalhes}
             className="rounded-lg border border-neutral-300 bg-white px-4 py-2.5 active:bg-neutral-50"
           >
             <Text className="font-medium text-neutral-700">Tentar novamente</Text>
@@ -199,7 +242,7 @@ export function OrdemServicoDetalhesView({
             </Pressable>
           ) : null}
           <Pressable
-            onPress={carregarDetalhes}
+            onPress={tentarCarregarDetalhes}
             className="rounded-lg bg-[#6f4f28] px-5 py-2.5 active:bg-[#5b4020]"
           >
             <Text className="font-medium text-white">Tentar novamente</Text>

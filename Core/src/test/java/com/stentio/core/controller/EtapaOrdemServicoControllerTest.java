@@ -64,9 +64,9 @@ class EtapaOrdemServicoControllerTest {
     private static EtapasOrdemServicoResponse resposta() {
         return new EtapasOrdemServicoResponse(OS_ID, StatusOrdemServico.EM_PLANEJAMENTO, List.of(
                 new EtapaOrdemServicoResponse(UUID.randomUUID(), 1, "Tradução Principal", TIPO_ID, "Tradução",
-                        StatusEtapaOrdemServico.PENDENTE, 24, null, null, null),
+                        StatusEtapaOrdemServico.PENDENTE, 24, null, null, null, null, null),
                 new EtapaOrdemServicoResponse(UUID.randomUUID(), 2, "Revisão Final", TIPO_ID, "Revisão",
-                        StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, 12, null, null, null)));
+                        StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, 12, null, null, null, null, null)));
     }
 
     @Test

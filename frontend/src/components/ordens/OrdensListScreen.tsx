@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -26,12 +26,14 @@ import type {
 type FiltroStatus =
   | "TODOS"
   | "PENDENTE_ALOCACAO"
+  | "EM_PLANEJAMENTO"
   | "EM_EXECUCAO"
   | "AGUARDANDO_VERIFICACAO";
 
 const STATUS_OPCOES: { valor: FiltroStatus; rotulo: string }[] = [
   { valor: "TODOS", rotulo: "Todas" },
   { valor: "PENDENTE_ALOCACAO", rotulo: "Pendente de Alocação" },
+  { valor: "EM_PLANEJAMENTO", rotulo: "Em Planejamento" },
   { valor: "EM_EXECUCAO", rotulo: "Em Execução" },
   { valor: "AGUARDANDO_VERIFICACAO", rotulo: "Aguardando Verificação" },
 ];
@@ -60,6 +62,7 @@ export function OrdensListScreen() {
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [chaveAtualizacao, setChaveAtualizacao] = useState(0);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("TODOS");
   const [clienteSelecionadoId, setClienteSelecionadoId] = useState("");
@@ -74,31 +77,33 @@ export function OrdensListScreen() {
     listarClientesOpcoes().then(setClientes);
   }, []);
 
-  const carregarOrdens = useCallback(async () => {
-    setCarregando(true);
-    setErro("");
+  useEffect(() => {
+    let ativo = true;
+    const statusParam = filtroStatus === "TODOS" ? undefined : filtroStatus;
 
-    try {
-      const statusParam = filtroStatus === "TODOS" ? undefined : filtroStatus;
-
-      const dados = await listarOrdensServico({
-        status: statusParam,
-        clienteId: clienteSelecionadoId || undefined,
-        pagina: paginaAtual,
-        tamanhoPagina: tamanhoPagina,
+    listarOrdensServico({
+      status: statusParam,
+      clienteId: clienteSelecionadoId || undefined,
+      pagina: paginaAtual,
+      tamanhoPagina,
+    })
+      .then((dados) => {
+        if (ativo) {
+          setPaginaDados(dados);
+          setErro("");
+        }
+      })
+      .catch((err: unknown) => {
+        if (ativo) setErro(getApiErrorMessage(err));
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
       });
 
-      setPaginaDados(dados);
-    } catch (err) {
-      setErro(getApiErrorMessage(err));
-    } finally {
-      setCarregando(false);
-    }
-  }, [filtroStatus, clienteSelecionadoId, paginaAtual, tamanhoPagina]);
-
-  useEffect(() => {
-    carregarOrdens();
-  }, [carregarOrdens]);
+    return () => {
+      ativo = false;
+    };
+  }, [filtroStatus, clienteSelecionadoId, paginaAtual, tamanhoPagina, chaveAtualizacao]);
 
   const ordensFiltradas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -117,13 +122,27 @@ export function OrdensListScreen() {
   );
 
   const handleMudarStatus = (novoStatus: FiltroStatus) => {
+    if (novoStatus === filtroStatus) return;
+    setCarregando(true);
     setFiltroStatus(novoStatus);
     setPaginaAtual(1);
   };
 
   const handleMudarCliente = (novoClienteId: string) => {
+    if (novoClienteId === clienteSelecionadoId) return;
+    setCarregando(true);
     setClienteSelecionadoId(novoClienteId);
     setPaginaAtual(1);
+  };
+
+  const handleMudarPagina = (novaPagina: number) => {
+    setCarregando(true);
+    setPaginaAtual(novaPagina);
+  };
+
+  const handleTentarNovamente = () => {
+    setCarregando(true);
+    setChaveAtualizacao((valor) => valor + 1);
   };
 
   const columns: ColumnDef<OrdemServicoResumo>[] = [
@@ -302,7 +321,7 @@ export function OrdensListScreen() {
                 {erro}
               </Text>
               <Pressable
-                onPress={carregarOrdens}
+                onPress={handleTentarNovamente}
                 className="rounded-lg border border-neutral-300 px-5 py-2.5 active:bg-neutral-50"
               >
                 <Text className="font-medium text-neutral-700">Tentar de novo</Text>
@@ -341,7 +360,7 @@ export function OrdensListScreen() {
 
                   <View className="flex-row items-center gap-2">
                     <Pressable
-                      onPress={() => setPaginaAtual((p) => Math.max(1, p - 1))}
+                      onPress={() => handleMudarPagina(Math.max(1, paginaAtual - 1))}
                       disabled={paginaAtual <= 1}
                       className={`flex-row items-center gap-1 rounded-lg border px-3 py-1.5 ${
                         paginaAtual <= 1
@@ -366,7 +385,7 @@ export function OrdensListScreen() {
                     </Pressable>
 
                     <Pressable
-                      onPress={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
+                      onPress={() => handleMudarPagina(Math.min(totalPaginas, paginaAtual + 1))}
                       disabled={paginaAtual >= totalPaginas}
                       className={`flex-row items-center gap-1 rounded-lg border px-3 py-1.5 ${
                         paginaAtual >= totalPaginas
