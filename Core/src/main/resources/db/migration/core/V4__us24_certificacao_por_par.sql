@@ -48,6 +48,29 @@ CREATE INDEX ix_recursos_certificacoes_fila
 CREATE INDEX ix_recursos_certificacoes_par_aprovado
     ON public.recursos_certificacoes USING btree (recurso_id, status);
 
+-- Outbox do aviso de rejeição. Tabela própria porque a notificacao_etapa_outbox tem FK
+-- obrigatória para etapa, e aqui não há etapa nenhuma — é um aviso sobre o cadastro.
+CREATE TABLE public.certificacao_email_outbox (
+    id uuid NOT NULL,
+    certificacao_id uuid NOT NULL,
+    destinatario character varying(150) NOT NULL,
+    payload text,
+    criado_em timestamp(6) with time zone NOT NULL,
+    enviado_em timestamp(6) with time zone,
+    proxima_tentativa_em timestamp(6) with time zone NOT NULL,
+    tentativas integer NOT NULL
+);
+
+ALTER TABLE ONLY public.certificacao_email_outbox
+    ADD CONSTRAINT certificacao_email_outbox_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.certificacao_email_outbox
+    ADD CONSTRAINT fk_certificacao_email_outbox_certificacao
+        FOREIGN KEY (certificacao_id) REFERENCES public.recursos_certificacoes(id);
+
+CREATE INDEX ix_certificacao_email_outbox_pendentes
+    ON public.certificacao_email_outbox USING btree (enviado_em, proxima_tentativa_em);
+
 -- RN.6: nenhuma carga inicial, de propósito. Quem está hoje com verificado = true não
 -- ganha certificação automática — passar um booleano global para três pares exigiria
 -- afirmar o que ninguém conferiu. Todo recurso envia o documento de cada par.

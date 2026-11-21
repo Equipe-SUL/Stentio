@@ -26,11 +26,14 @@ import java.util.UUID;
 public class CertificacaoAnaliseService {
 
     private final RecursoCertificacaoRepository certificacoes;
+    private final CertificacaoRejeicaoEmailService avisos;
     private final Clock clock;
 
     public CertificacaoAnaliseService(RecursoCertificacaoRepository certificacoes,
+                                      CertificacaoRejeicaoEmailService avisos,
                                       Clock clock) {
         this.certificacoes = certificacoes;
+        this.avisos = avisos;
         this.clock = clock;
     }
 
@@ -53,7 +56,13 @@ public class CertificacaoAnaliseService {
     @Transactional
     public CertificacaoResponse rejeitar(UUID certificacaoId, String motivo, UsuarioAutenticado ator) {
         RecursoCertificacao certificacao = buscar(certificacaoId);
-        certificacao.rejeitar(motivo, ator.email(), clock.instant());
+        java.time.Instant agora = clock.instant();
+
+        certificacao.rejeitar(motivo, ator.email(), agora);
+
+        // CA.5: na mesma transação. Se a rejeição não valer, ninguém é avisado à toa.
+        avisos.avisarRejeicao(certificacao, motivo, agora);
+
         return CertificacaoResponse.de(certificacao);
     }
 
