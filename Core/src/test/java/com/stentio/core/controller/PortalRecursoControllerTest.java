@@ -10,6 +10,7 @@ import com.stentio.core.model.StatusOrdemServico;
 import com.stentio.core.service.AceiteEtapaService;
 import com.stentio.core.service.ArquivoStorageService;
 import com.stentio.core.service.EntregaEtapaService;
+import com.stentio.core.service.CertificacaoRecursoService;
 import com.stentio.core.service.PortalRecursoService;
 import com.stentio.core.service.RecusaEtapaService;
 import com.stentio.core.service.TokenService;
@@ -75,6 +76,9 @@ class PortalRecursoControllerTest {
 
     @MockitoBean
     private ArquivoStorageService arquivoStorageService;
+
+    @MockitoBean
+    private CertificacaoRecursoService certificacaoRecursoService;
 
     @MockitoBean
     private TokenService tokenService;

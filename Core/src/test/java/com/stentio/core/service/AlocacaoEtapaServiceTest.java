@@ -226,17 +226,17 @@ class AlocacaoEtapaServiceTest {
     }
 
     @Test
-    @DisplayName("US-023 RN.5: recurso ainda não verificado pelo gestor não recebe etapa")
-    void recusaRecursoNaoVerificado() {
+    @DisplayName("US-024 RN.5: o verificado deixou de barrar a alocação; quem barra é a certificação")
+    void verificadoNaoDecideMais() {
         Recurso novato = recurso("Elisa Prado", traducao, portugues, ingles);
         novato.definirVerificacao(false);
         UUID elisaId = idRegistradoDe(novato);
 
-        var erro = assertThrows(AlocacaoInvalidaException.class, () -> alocar(elisaId, gestor));
+        // Certificada para o par, mesmo sem o "cadastro revisado": a alocação passa.
+        AlocacaoEtapaResponse resposta = alocar(elisaId, gestor);
 
-        assertTrue(erro.getMessage().contains("não foi verificado"));
-        assertFalse(etapa.alocada());
-        verifyNoInteractions(historico);
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, resposta.statusEtapa());
+        assertTrue(etapa.alocada());
     }
 
     @Test
