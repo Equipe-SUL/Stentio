@@ -1,4 +1,12 @@
-export type StatusOrdemServico = "PENDENTE_ALOCACAO" | string;
+export type StatusOrdemServico =
+  | "PENDENTE_ALOCACAO"
+  | "EM_PLANEJAMENTO"
+  | "EM_EXECUCAO"
+  | "AGUARDANDO_VERIFICACAO"
+  | "CONCLUIDA"
+  | "FINALIZADA"
+  | "CANCELADA"
+  | string;
 
 export interface OrdemServicoResumo {
   id: string;
@@ -36,6 +44,23 @@ export interface OrdemServicoCliente {
   nome: string;
 }
 
+export interface OrdemServicoEtapaResumo {
+  id: string;
+  ordem: number;
+  nome: string;
+  status:
+    | "PENDENTE"
+    | "AGUARDANDO_ETAPA_ANTERIOR"
+    | "ALOCADO"
+    | "DISPARADA"
+    | "ACEITA"
+    | "ENTREGUE"
+    | string;
+  entregue_em?: string | null;
+  arquivo_nome?: string | null;
+  recurso_nome?: string | null;
+}
+
 export interface OrdemServicoDetalhe {
   id: string;
   codigo: string;
@@ -44,6 +69,7 @@ export interface OrdemServicoDetalhe {
   data_criacao: string;
   cliente: OrdemServicoCliente;
   solicitacao: OrdemServicoSolicitacao;
+  etapas?: OrdemServicoEtapaResumo[];
 }
 
 export interface FiltrosOrdemServico {
@@ -56,4 +82,4 @@ export interface FiltrosOrdemServico {
 export interface ClienteOpcao {
   id: string;
   nomeEmpresa: string;
-}
+} 
