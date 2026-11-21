@@ -2,8 +2,10 @@ import { Platform } from "react-native";
 import { coreApi } from "../../lib/api";
 import type {
   ClienteOpcao,
+  EntregaFinalRevisaoResponse,
   FiltrosOrdemServico,
   OrdemServicoDetalhe,
+  OrdemServicoEtapaResumo,
   OrdemServicoPagina,
 } from "./types";
 
@@ -34,6 +36,28 @@ export async function listarOrdensServico(
 
 export async function buscarOrdemServicoPorId(id: string): Promise<OrdemServicoDetalhe> {
   const { data } = await coreApi.get<OrdemServicoDetalhe>(`${ENDPOINTS.ordens}/${id}`);
+  return data;
+}
+
+export async function listarEtapasOrdemServico(
+  ordemId: string,
+): Promise<OrdemServicoEtapaResumo[]> {
+  try {
+    const { data } = await coreApi.get<OrdemServicoEtapaResumo[]>(
+      `${ENDPOINTS.ordens}/${ordemId}/etapas`,
+    );
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function buscarRevisaoEntregaFinal(
+  ordemId: string,
+): Promise<EntregaFinalRevisaoResponse> {
+  const { data } = await coreApi.get<EntregaFinalRevisaoResponse>(
+    `${ENDPOINTS.ordens}/${ordemId}/entrega-final`,
+  );
   return data;
 }
 
