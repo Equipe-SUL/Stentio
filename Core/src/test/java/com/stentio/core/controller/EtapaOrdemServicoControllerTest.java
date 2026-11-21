@@ -23,6 +23,8 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -64,9 +66,17 @@ class EtapaOrdemServicoControllerTest {
     private static EtapasOrdemServicoResponse resposta() {
         return new EtapasOrdemServicoResponse(OS_ID, StatusOrdemServico.EM_PLANEJAMENTO, List.of(
                 new EtapaOrdemServicoResponse(UUID.randomUUID(), 1, "Tradução Principal", TIPO_ID, "Tradução",
-                        StatusEtapaOrdemServico.PENDENTE, 24, null, null, null, null, null),
+                        StatusEtapaOrdemServico.PENDENTE, 24, null, null, null, null, null, null),
                 new EtapaOrdemServicoResponse(UUID.randomUUID(), 2, "Revisão Final", TIPO_ID, "Revisão",
-                        StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, 12, null, null, null, null, null)));
+                        StatusEtapaOrdemServico.AGUARDANDO_ETAPA_ANTERIOR, 12, null, null, null, null, null, null)));
+    }
+
+    private static EtapasOrdemServicoResponse respostaComEtapaAceita() {
+        List<EtapaOrdemServicoResponse> etapas = new ArrayList<>(resposta().etapas());
+        etapas.add(new EtapaOrdemServicoResponse(UUID.randomUUID(), 3, "Entrega aceite", TIPO_ID, "Tradução",
+                StatusEtapaOrdemServico.ACEITA, 12, UUID.randomUUID(), "Recurso Teste", null,
+                Instant.parse("2026-11-20T12:00:00Z"), null, null));
+        return new EtapasOrdemServicoResponse(OS_ID, StatusOrdemServico.EM_PLANEJAMENTO, etapas);
     }
 
     @Test
@@ -106,11 +116,14 @@ class EtapaOrdemServicoControllerTest {
     @WithMockUser(roles = "GESTOR_PROJETO")
     @DisplayName("Lista as etapas da OS")
     void lista() throws Exception {
-        when(service.listar(OS_ID)).thenReturn(resposta());
+        when(service.listar(OS_ID)).thenReturn(respostaComEtapaAceita());
 
         mockMvc.perform(get(BASE_PATH))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.etapas[0].ordem").value(1));
+                .andExpect(jsonPath("$.etapas[0].ordem").value(1))
+                .andExpect(jsonPath("$.etapas[2].status").value("ACEITA"))
+                .andExpect(jsonPath("$.etapas[2].recurso_nome").value("Recurso Teste"))
+                .andExpect(jsonPath("$.etapas[2].aceito_em").value("2026-11-20T12:00:00Z"));
     }
 
     @Test
