@@ -141,6 +141,11 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    @ExceptionHandler(CertificacaoNaoEncontradaException.class)
+    public ResponseEntity<ErroResponse> handleCertificacaoNaoEncontrada(CertificacaoNaoEncontradaException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
     /** US-024 RN.3: par de idiomas fora do cadastro do profissional. */
     @ExceptionHandler(ParNaoAtendidoException.class)
     public ResponseEntity<ErroResponse> handleParNaoAtendido(ParNaoAtendidoException ex) {

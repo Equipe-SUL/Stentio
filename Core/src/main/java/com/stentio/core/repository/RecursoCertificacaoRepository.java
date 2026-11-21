@@ -58,6 +58,8 @@ public interface RecursoCertificacaoRepository extends JpaRepository<RecursoCert
     @Query("""
             select c from RecursoCertificacao c
               join fetch c.recurso
+              join fetch c.idiomaOrigem
+              join fetch c.idiomaDestino
              where c.id = :id
             """)
     Optional<RecursoCertificacao> buscarComRecurso(@Param("id") UUID id);
