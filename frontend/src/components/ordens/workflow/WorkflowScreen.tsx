@@ -19,7 +19,6 @@ import {
   aplicarModeloWorkflow,
   buscarWorkflowOrdem,
   listarModelosWorkflow,
-  listarRecursosWorkflow,
   listarTiposServicoWorkflow,
   salvarNovoModeloWorkflow,
   salvarWorkflowManual,
@@ -49,7 +48,6 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
   const [ordem, setOrdem] = useState<OrdemServicoDetalhe | null>(null);
   const [etapas, setEtapas] = useState<EtapaWorkflow[]>([]);
   const [tiposServico, setTiposServico] = useState<TipoServicoOption[]>([]);
-  const [recursos, setRecursos] = useState<RecursoOption[]>([]);
   const [modelos, setModelos] = useState<ModeloWorkflow[]>([]);
 
   // Estados de carregamento e feedback
@@ -84,18 +82,16 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
         setCarregandoGeral(true);
         setErro(null);
 
-        const [dadosOrdem, dadosWorkflow, listaTipos, listaRecursos] = await Promise.all([
+        const [dadosOrdem, dadosWorkflow, listaTipos] = await Promise.all([
           buscarOrdemServicoPorId(ordemId),
           buscarWorkflowOrdem(ordemId),
           listarTiposServicoWorkflow(),
-          listarRecursosWorkflow(),
         ]);
 
         if (!ativo) return;
         setOrdem(dadosOrdem);
         aplicarWorkflow(dadosWorkflow);
         setTiposServico(listaTipos);
-        setRecursos(listaRecursos);
         setTemAlteracoesPendentes(false);
       } catch (err: unknown) {
         if (!ativo) return;
@@ -557,8 +553,8 @@ export function WorkflowScreen({ ordemId }: WorkflowScreenProps) {
       <ModalAlocarRecurso
         key={modalAlocacaoEtapa?.id ?? "sem-etapa"}
         visible={Boolean(modalAlocacaoEtapa)}
+        ordemServicoId={ordemId}
         etapa={modalAlocacaoEtapa}
-        recursos={recursos}
         tiposServico={tiposServico}
         onFechar={() => setModalAlocacaoEtapa(null)}
         onConfirmarAlocacao={handleConfirmarAlocacao}
