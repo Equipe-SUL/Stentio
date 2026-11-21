@@ -152,6 +152,7 @@ class AuditoriaPostgresTest {
             jdbc.update("delete from clientes where id = ?", clienteId);
             jdbc.update("delete from categorias_projeto where id = ?", categoriaId);
             for (UUID recurso : List.of(anaId, brunoId)) {
+                jdbc.update("delete from recursos_certificacoes where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos_precos where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos_tipos_servico where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos where id = ?", recurso);
