@@ -27,6 +27,8 @@ export interface DemandaRecurso {
   liberada?: boolean;
   entregue_em?: string | null;
   arquivo_nome?: string | null;
+  /** Só nas etapas ENTREGUE: rota do Core para o profissional baixar o próprio arquivo. */
+  arquivo_entrega_url?: string | null;
 }
 
 export interface AvancoEtapaResponse {
@@ -41,6 +43,7 @@ export interface EntregaEtapaResponse {
   status: "ENTREGUE" | string;
   entregue_em: string;
   arquivo_nome: string;
+  arquivo_url?: string;
   avanco: AvancoEtapaResponse | null;
   ordem_servico: {
     id: string;
@@ -82,6 +85,10 @@ export async function listarMinhasDemandas(): Promise<DemandaRecurso[]> {
         typeof item.liberada === "boolean"
           ? item.liberada
           : situacaoNormalizada !== "AGUARDANDO_ETAPA_ANTERIOR",
+      arquivo_entrega_url:
+        situacaoNormalizada === "ENTREGUE"
+          ? `/api/v1/recurso/etapas/${item.etapa_id}/entrega/arquivo`
+          : null,
     };
   });
 }
@@ -90,9 +97,14 @@ export async function aceitarEtapaRecurso(etapaId: string): Promise<void> {
   await coreApi.post(`/api/v1/recurso/etapas/${etapaId}/aceitar`);
 }
 
+export async function recusarEtapaRecurso(etapaId: string): Promise<void> {
+  await coreApi.post(`/api/v1/recurso/etapas/${etapaId}/recusar`);
+}
+
 export async function entregarEtapaRecurso(
   etapaId: string,
   arquivo: ArquivoEntregaPayload,
+  aoProgredir?: (percentual: number) => void,
 ): Promise<EntregaEtapaResponse> {
   const formData = new FormData();
 
@@ -121,7 +133,25 @@ export async function entregarEtapaRecurso(
       headers: {
         "Content-Type": undefined,
       },
+      // Upload de até 10 MB: o timeout padrão de 15 s do coreApi derrubaria conexões lentas.
+      timeout: 0,
+      onUploadProgress: (event) => {
+        if (event.total) aoProgredir?.(Math.round((event.loaded / event.total) * 100));
+      },
     },
   );
   return data;
+}
+
+export async function baixarEntrega(url: string, nomeArquivo: string): Promise<void> {
+  if (Platform.OS !== "web" || typeof window === "undefined") return;
+  const { data } = await coreApi.get(url, { responseType: "blob" });
+  const blobUrl = window.URL.createObjectURL(new Blob([data]));
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
 }

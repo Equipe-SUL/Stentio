@@ -33,6 +33,7 @@ public class EtapaOrdemServicoMapper {
                 etapa.getRecurso() == null ? null : etapa.getRecurso().getId(),
                 etapa.getRecurso() == null ? null : etapa.getRecurso().getNome(),
                 etapa.getDataLimiteEntrega(),
+                etapa.getAceitoEm(),
                 etapa.getEntregueEm(),
                 etapa.getArquivoEntregueNome());
     }

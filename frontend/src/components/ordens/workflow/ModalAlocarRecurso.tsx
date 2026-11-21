@@ -1,4 +1,4 @@
-import React, { createElement, useMemo, useState } from "react";
+import React, { createElement, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -13,11 +13,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { getApiErrorMessage } from "../../../lib/api";
 import type { EtapaWorkflow, RecursoOption, TipoServicoOption } from "./types";
+import { listarRecursosElegiveisEtapa } from "./workflowApi";
 
 interface ModalAlocarRecursoProps {
   visible: boolean;
+  ordemServicoId: string;
   etapa: EtapaWorkflow | null;
-  recursos: RecursoOption[];
   tiposServico: TipoServicoOption[];
   onFechar: () => void;
   onConfirmarAlocacao: (
@@ -149,13 +150,40 @@ function SeletorData({
 
 export function ModalAlocarRecurso({
   visible,
+  ordemServicoId,
   etapa,
-  recursos,
   tiposServico,
   onFechar,
   onConfirmarAlocacao,
 }: ModalAlocarRecursoProps) {
   const [busca, setBusca] = useState("");
+  // Só quem atende o par de idiomas e o tipo de serviço da etapa: a lista vem filtrada do
+  // Core, com a mesma regra que a alocação valida. Antes vinha o catálogo inteiro, e o
+  // gestor só descobria a incompatibilidade ao confirmar.
+  const [recursos, setRecursos] = useState<RecursoOption[]>([]);
+  // Começa carregando: o WorkflowScreen recria o modal a cada etapa (key = id da etapa),
+  // então cada abertura parte deste estado inicial.
+  const [carregandoRecursos, setCarregandoRecursos] = useState(true);
+  const [erroRecursos, setErroRecursos] = useState<string | null>(null);
+
+  const etapaId = etapa?.id;
+  useEffect(() => {
+    if (!visible || !etapaId) return;
+    let ativo = true;
+    listarRecursosElegiveisEtapa(ordemServicoId, etapaId)
+      .then((lista) => {
+        if (ativo) setRecursos(lista);
+      })
+      .catch((err) => {
+        if (ativo) setErroRecursos(getApiErrorMessage(err));
+      })
+      .finally(() => {
+        if (ativo) setCarregandoRecursos(false);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [visible, ordemServicoId, etapaId]);
   const [recursoSelecionadoId, setRecursoSelecionadoId] = useState<string | null>(
     etapa?.recurso_id ?? null,
   );
@@ -267,14 +295,28 @@ export function ModalAlocarRecurso({
 
           {/* Lista de Recursos */}
           <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={true}>
-            {recursosFiltrados.length === 0 ? (
+            {carregandoRecursos ? (
+              <View className="items-center justify-center py-10">
+                <ActivityIndicator size="small" color="#8c5230" />
+                <Text className="text-xs text-neutral-500 mt-2">Buscando recursos compatíveis...</Text>
+              </View>
+            ) : erroRecursos ? (
+              <View className="items-center justify-center py-10">
+                <Ionicons name="alert-circle-outline" size={32} color="#dc2626" />
+                <Text className="text-xs text-red-700 mt-2 text-center">{erroRecursos}</Text>
+              </View>
+            ) : recursosFiltrados.length === 0 ? (
               <View className="items-center justify-center py-10">
                 <Ionicons name="people-outline" size={32} color="#d4d4d4" />
                 <Text className="text-sm font-medium text-neutral-500 mt-2">
-                  Nenhum recurso encontrado
+                  {recursos.length === 0
+                    ? "Nenhum recurso compatível com esta etapa"
+                    : "Nenhum recurso encontrado"}
                 </Text>
                 <Text className="text-xs text-neutral-400 mt-0.5 text-center">
-                  Verifique o termo digitado ou cadastre profissionais na aba Recursos.
+                  {recursos.length === 0
+                    ? `Nenhum recurso ativo e verificado atende o par de idiomas da solicitação e o tipo de serviço ${tipoServicoNome}.`
+                    : "Verifique o termo digitado."}
                 </Text>
               </View>
             ) : (
@@ -282,9 +324,6 @@ export function ModalAlocarRecurso({
                 {recursosFiltrados.map((recurso) => {
                   const isAtual = etapa.recurso_id === recurso.id;
                   const selecionado = recursoSelecionadoId === recurso.id;
-                  const temEspecialidade = recurso.tiposServico?.some(
-                    (ts) => ts.id === etapa.tipo_servico_id || ts.nome === tipoServicoNome,
-                  );
 
                   return (
                     <Pressable
@@ -315,13 +354,11 @@ export function ModalAlocarRecurso({
                             <Text className="text-sm font-bold text-neutral-900 truncate">
                               {recurso.nome}
                             </Text>
-                            {temEspecialidade ? (
-                              <View className="rounded-full bg-blue-50 border border-blue-200 px-2 py-0.2">
-                                <Text className="text-[10px] font-semibold text-blue-700">
-                                  Habilitado em {tipoServicoNome}
-                                </Text>
-                              </View>
-                            ) : null}
+                            <View className="rounded-full bg-blue-50 border border-blue-200 px-2 py-0.2">
+                              <Text className="text-[10px] font-semibold text-blue-700">
+                                Habilitado em {tipoServicoNome}
+                              </Text>
+                            </View>
                           </View>
                           {recurso.email ? (
                             <Text className="text-xs text-neutral-500 truncate mt-0.5">

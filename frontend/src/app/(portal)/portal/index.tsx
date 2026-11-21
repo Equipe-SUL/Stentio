@@ -1,18 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { isAxiosError } from "axios";
 import { getApiErrorMessage } from "../../../lib/api";
 import {
   aceitarEtapaRecurso,
+  baixarEntrega,
   entregarEtapaRecurso,
   listarMinhasDemandas,
+  recusarEtapaRecurso,
   type DemandaRecurso,
   type EntregaEtapaResponse,
 } from "../../../components/recursos/portalRecursoApi";
 
 type AbaPortal = "MINHAS" | "DISPONIVEIS";
+
+const LIMITE_ENTREGA_BYTES = 10 * 1024 * 1024;
+const EXTENSOES_ENTREGA = new Set(["pdf", "doc", "docx", "odt", "rtf", "txt", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png"]);
 
 const STATUS: Record<string, { label: string; cor: string }> = {
   PENDENTE: { label: "Pendente", cor: "bg-amber-50 text-amber-800 border-amber-200" },
@@ -82,6 +87,7 @@ export default function MinhasDemandasScreen() {
   const [etapaProcessandoId, setEtapaProcessandoId] = useState<string | null>(null);
   const [resultadoEntrega, setResultadoEntrega] = useState<EntregaEtapaResponse | null>(null);
   const [avisoAceite, setAvisoAceite] = useState("");
+  const [progresso, setProgresso] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -151,6 +157,36 @@ export default function MinhasDemandasScreen() {
     }
   }
 
+  async function handleRecusar(etapaId: string) {
+    setErroAcao("");
+    setAvisoAceite("");
+    setEtapaProcessandoId(etapaId);
+    try {
+      await recusarEtapaRecurso(etapaId);
+      setAvisoAceite("Alocação recusada. O gestor será notificado.");
+      await carregar();
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 409) {
+        setErroAcao("Esta etapa não pode mais ser recusada. A lista foi atualizada.");
+        await carregar();
+      } else {
+        setErroAcao(getApiErrorMessage(error));
+      }
+    } finally {
+      setEtapaProcessandoId(null);
+    }
+  }
+
+  async function handleBaixarEntrega(demanda: DemandaRecurso) {
+    if (!demanda.arquivo_entrega_url) return;
+    setErroAcao("");
+    try {
+      await baixarEntrega(demanda.arquivo_entrega_url, demanda.arquivo_nome || "entrega");
+    } catch (error) {
+      setErroAcao(getApiErrorMessage(error));
+    }
+  }
+
   async function handleSelecionarEEntregar(demanda: DemandaRecurso) {
     // Bloqueio defensivo na UI caso já esteja entregue
     if (demanda.situacao === "ENTREGUE") return;
@@ -167,14 +203,29 @@ export default function MinhasDemandasScreen() {
       if (selecao.canceled || !selecao.assets?.length) return;
 
       const asset = selecao.assets[0];
-      setEtapaProcessandoId(demanda.etapa_id);
+      const extensao = asset.name.split(".").pop()?.toLowerCase() ?? "";
+      if (!EXTENSOES_ENTREGA.has(extensao)) {
+        setErroAcao("Tipo de arquivo não permitido. Envie PDF, Office, texto ou imagem compatível.");
+        return;
+      }
+      if (asset.size !== undefined && asset.size > LIMITE_ENTREGA_BYTES) {
+        setErroAcao("O arquivo ultrapassa o limite de 10 MB.");
+        return;
+      }
 
-      const resposta = await entregarEtapaRecurso(demanda.etapa_id, {
-        uri: asset.uri,
-        name: asset.name,
-        mimeType: asset.mimeType,
-        file: (asset as unknown as { file?: File }).file,
-      });
+      setEtapaProcessandoId(demanda.etapa_id);
+      setProgresso(0);
+
+      const resposta = await entregarEtapaRecurso(
+        demanda.etapa_id,
+        {
+          uri: asset.uri,
+          name: asset.name,
+          mimeType: asset.mimeType,
+          file: (asset as unknown as { file?: File }).file,
+        },
+        setProgresso,
+      );
 
       setResultadoEntrega(resposta);
       await carregar();
@@ -189,6 +240,7 @@ export default function MinhasDemandasScreen() {
       }
     } finally {
       setEtapaProcessandoId(null);
+      setProgresso(null);
     }
   }
 
@@ -442,17 +494,30 @@ export default function MinhasDemandasScreen() {
                   {/* Barra de ações por situação da etapa */}
                   <View className="flex-row flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-3">
                     {entregue ? (
-                      <View className="flex-row items-center gap-2">
-                        <Ionicons name="checkmark-done-circle" size={18} color="#047857" />
-                        <Text className="text-xs font-medium text-neutral-600">
-                          Entrega concluída
-                          {demanda.arquivo_nome ? ` (${demanda.arquivo_nome})` : ""}
-                          {demanda.entregue_em
-                            ? ` em ${formatarDataHora(demanda.entregue_em)}`
-                            : ""}
-                          . Reenvio bloqueado.
-                        </Text>
-                      </View>
+                      <>
+                        <View className="flex-1 flex-row items-center gap-2">
+                          <Ionicons name="checkmark-done-circle" size={18} color="#047857" />
+                          <Text className="flex-1 text-xs font-medium text-neutral-600">
+                            Entrega concluída
+                            {demanda.arquivo_nome ? ` (${demanda.arquivo_nome})` : ""}
+                            {demanda.entregue_em
+                              ? ` em ${formatarDataHora(demanda.entregue_em)}`
+                              : ""}
+                            . Reenvio bloqueado.
+                          </Text>
+                        </View>
+                        {demanda.arquivo_entrega_url && Platform.OS === "web" ? (
+                          <Pressable
+                            onPress={() => void handleBaixarEntrega(demanda)}
+                            className="flex-row items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5"
+                          >
+                            <Ionicons name="download-outline" size={16} color="#404040" />
+                            <Text className="text-xs font-semibold text-neutral-700">
+                              Baixar arquivo entregue
+                            </Text>
+                          </Pressable>
+                        ) : null}
+                      </>
                     ) : demanda.situacao === "DISPARADA" ? (
                       <>
                         <Text className="text-xs text-neutral-500">
@@ -482,22 +547,31 @@ export default function MinhasDemandasScreen() {
                             ? "Você foi alocado e a etapa já está liberada para início."
                             : "Convite nominal: você já pode aceitar antecipadamente, mas a entrega aguarda a etapa anterior."}
                         </Text>
-                        <Pressable
-                          disabled={processando}
-                          onPress={() => void handleAceitar(demanda.etapa_id)}
-                          className="flex-row items-center gap-2 rounded-xl bg-[#8c5230] px-4 py-2.5"
-                        >
-                          {processando ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                          ) : (
-                            <>
-                              <Ionicons name="checkmark-outline" size={16} color="#fff" />
-                              <Text className="text-xs font-semibold text-white">
-                                Aceitar demanda
-                              </Text>
-                            </>
-                          )}
-                        </Pressable>
+                        <View className="flex-row flex-wrap gap-2">
+                          <Pressable
+                            disabled={processando}
+                            onPress={() => void handleRecusar(demanda.etapa_id)}
+                            className="rounded-xl border border-neutral-300 bg-white px-4 py-2.5"
+                          >
+                            <Text className="text-xs font-semibold text-neutral-700">Recusar</Text>
+                          </Pressable>
+                          <Pressable
+                            disabled={processando}
+                            onPress={() => void handleAceitar(demanda.etapa_id)}
+                            className="flex-row items-center gap-2 rounded-xl bg-[#8c5230] px-4 py-2.5"
+                          >
+                            {processando ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <>
+                                <Ionicons name="checkmark-outline" size={16} color="#fff" />
+                                <Text className="text-xs font-semibold text-white">
+                                  Aceitar demanda
+                                </Text>
+                              </>
+                            )}
+                          </Pressable>
+                        </View>
                       </>
                     ) : demanda.situacao === "ACEITA" && liberada ? (
                       <>
@@ -510,7 +584,14 @@ export default function MinhasDemandasScreen() {
                           className="flex-row items-center gap-2 rounded-xl bg-[#8c5230] px-4 py-2.5"
                         >
                           {processando ? (
-                            <ActivityIndicator size="small" color="#fff" />
+                            <>
+                              <ActivityIndicator size="small" color="#fff" />
+                              {progresso !== null ? (
+                                <Text className="text-xs font-semibold text-white">
+                                  Enviando {progresso}%
+                                </Text>
+                              ) : null}
+                            </>
                           ) : (
                             <>
                               <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
