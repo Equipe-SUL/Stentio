@@ -248,7 +248,7 @@ export function CadastroRecursoScreen() {
       });
       router.replace("/portal");
     } catch (error) {
-      const falha = errosDeCadastro(error);
+      const falha = errosDeCadastro(error, "perfil");
       setCamposErro((atuais) => ({ ...atuais, ...falha.campos }));
       setErroGeral(falha.geral);
     } finally {
