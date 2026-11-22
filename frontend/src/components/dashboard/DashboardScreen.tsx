@@ -92,8 +92,11 @@ export function DashboardScreen() {
               </View>
             </View>
 
-            <View className="items-start gap-3" style={{ minWidth: compacto ? 0 : 300 }}>
-              <View className="flex-row flex-wrap items-center gap-2">
+            <View
+              className="w-full items-start gap-3 md:w-auto"
+              style={{ minWidth: compacto ? 0 : 300 }}
+            >
+              <View className="w-full flex-row flex-wrap items-center gap-2 md:w-auto md:flex-nowrap">
                 <Pressable
                   accessibilityRole="switch"
                   accessibilityState={{ checked: autoAtualizar }}
@@ -138,9 +141,9 @@ export function DashboardScreen() {
                   <Text className="text-xs font-semibold text-white">Atualizar</Text>
                 </Pressable>
               </View>
-              <View className="flex-row flex-wrap items-center gap-2">
+              <View className="w-full flex-row flex-wrap items-center gap-2 md:w-auto">
                 <View className="h-2 w-2 rounded-full" style={{ backgroundColor: atualizando ? "#d0a05c" : "#3c9f79" }} />
-                <Text className="text-[11px] text-[#85796d]">
+                <Text className="min-w-0 flex-1 text-[11px] text-[#85796d]">
                   {atualizando ? "Buscando dados..." : dataUltimaAtualizacao ? `Atualizado às ${dataUltimaAtualizacao}` : "Aguardando primeira atualização"}
                   {autoAtualizar
                     ? atualizacaoAtiva && proximaAtualizacao !== null
