@@ -56,6 +56,13 @@ function resumirResultadoAvanco(resultado: EntregaEtapaResponse): {
     };
   }
 
+  if (!avanco.convite_automatico && avanco.recursos_notificados === 0) {
+    return {
+      titulo: "Entrega registrada · Próxima etapa pendente",
+      descricao: `O arquivo "${resultado.arquivo_nome}" foi enviado. A próxima etapa foi liberada, mas ficou pendente porque nenhum recurso elegível foi encontrado para disparo automático.`,
+    };
+  }
+
   if (avanco.convite_automatico) {
     const qtd = avanco.recursos_notificados;
     return {

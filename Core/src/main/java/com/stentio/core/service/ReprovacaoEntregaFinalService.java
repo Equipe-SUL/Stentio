@@ -58,7 +58,7 @@ public class ReprovacaoEntregaFinalService {
     @Transactional
     public ReprovacaoEntregaFinalResponse reprovar(UUID ordemServicoId, String motivo,
                                                    UsuarioAutenticado ator) {
-        OrdemServico ordem = revisao.buscarParaRevisao(ordemServicoId);
+        OrdemServico ordem = revisao.buscarParaAtualizacao(ordemServicoId);
 
         // CA.12: a OS já encerrada cai aqui, porque sair de ENCERRADA não é transição válida.
         revisao.exigirAguardandoVerificacao(ordem);
@@ -66,7 +66,8 @@ public class ReprovacaoEntregaFinalService {
         // CA.12: com envio aguardando confirmação, reprovar abriria a porta para o cliente
         // receber um pacote que a equipe acabou de recusar. É também o que garante que o
         // dispatcher nunca encontre a OS fora de AGUARDANDO_VERIFICACAO ao encerrar.
-        if (outbox.existsByOrdemServicoIdAndEnviadoEmIsNull(ordemServicoId)) {
+        if (outbox.existsByOrdemServicoIdAndEnviadoEmIsNull(ordemServicoId)
+                || outbox.existsByOrdemServicoIdAndEnviadoEmIsNotNullAndEncerradoEmIsNull(ordemServicoId)) {
             throw new TransicaoOrdemServicoInvalidaException(
                     "Há um envio desta ordem de serviço aguardando confirmação; "
                             + "não é possível reprovar agora");

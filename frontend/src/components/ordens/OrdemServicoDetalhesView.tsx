@@ -230,7 +230,7 @@ export function OrdemServicoDetalhesView({
               </View>
               <View className="flex-1 gap-1">
                 <Text className="text-sm font-bold text-purple-950">
-                  Pronta para verificação final (US-015)
+                  Pronta para verificação final
                 </Text>
                 <Text className="text-xs leading-5 text-purple-800">
                   Todas as etapas de produção foram entregues. Revise o pacote final antes do

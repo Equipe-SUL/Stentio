@@ -18,9 +18,12 @@ import com.stentio.core.support.UsuarioAutenticado;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -93,14 +96,19 @@ public class EntregaEtapaService {
         // linha do banco referencia.
         String caminhoSubstituido = etapa.getArquivoEntregueCaminho();
 
+        Instant agora = clock.instant();
         String statusAnterior = EventosAuditoria.statusEtapa(etapa);
         ArquivoArmazenado salvo = storage.salvarTodos(List.of(arquivo)).getFirst();
         RoteamentoEtapaService.Resultado resultadoRoteamento;
         try {
-            etapa.entregar(salvo.nomeOriginal(), salvo.caminho(), clock.instant(), estaLiberada);
-            etapas.save(etapa);
-            // Antes do roteamento: o log fica na ordem em que as coisas aconteceram,
-            // a entrega e depois o avanço que ela provoca.
+            int atualizadas = etapas.entregar(etapaId, recurso, salvo.nomeOriginal(), salvo.caminho(),
+                    agora, StatusEtapaOrdemServico.ACEITA, StatusEtapaOrdemServico.ENTREGUE);
+            if (atualizadas != 1) {
+                throw new TransicaoEtapaInvalidaException(
+                        "A etapa " + etapa.getNome() + " não está mais em execução para receber entrega");
+            }
+            etapa = etapas.buscarParaAceite(etapaId)
+                    .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
             eventos.publishEvent(EventosAuditoria.etapa(etapa, statusAnterior,
                     "Arquivo " + salvo.nomeOriginal() + " entregue por " + recurso.getNome() + ".", null));
             resultadoRoteamento = roteamento.rotear(etapa);
@@ -108,17 +116,10 @@ public class EntregaEtapaService {
                     etapa, EventoEtapa.ENTREGA, recurso, recurso.getEmail(), etapa.getEntregueEm()));
             historico.save(new HistoricoEtapa(
                     etapa, EventoEtapa.AVANCO, null, "sistema", etapa.getEntregueEm()));
+            agendarLimpeza(salvo.caminho(), caminhoSubstituido);
         } catch (RuntimeException ex) {
-            // O arquivo já está no disco e o banco não vai registrá-lo: apaga agora, senão
-            // fica ocupando espaço sem ninguém que saiba que ele existe.
             storage.remover(List.of(salvo.caminho()));
             throw ex;
-        }
-
-        // Só depois que a gravação passou. Apagar antes deixaria a etapa sem arquivo
-        // nenhum se a transição falhasse no meio.
-        if (caminhoSubstituido != null && !caminhoSubstituido.equals(salvo.caminho())) {
-            storage.remover(List.of(caminhoSubstituido));
         }
 
         EntregaEtapaResponse.Avanco avanco = resultadoRoteamento.proximaEtapa()
@@ -139,6 +140,27 @@ public class EntregaEtapaService {
                 new EntregaEtapaResponse.OrdemServico(
                         etapa.getOrdemServico().getId(),
                         etapa.getOrdemServico().getStatus()));
+    }
+
+    private void agendarLimpeza(String caminhoNovo, String caminhoSubstituido) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                if (caminhoSubstituido != null && !caminhoSubstituido.equals(caminhoNovo)) {
+                    storage.remover(List.of(caminhoSubstituido));
+                }
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                if (status != TransactionSynchronization.STATUS_COMMITTED) {
+                    storage.remover(List.of(caminhoNovo));
+                }
+            }
+        });
     }
 
     /** O que o download precisa saber, já conferido. */

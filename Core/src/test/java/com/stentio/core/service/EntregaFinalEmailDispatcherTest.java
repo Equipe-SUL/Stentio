@@ -28,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -75,6 +77,7 @@ class EntregaFinalEmailDispatcherTest {
         assertTrue(dispatcher.processarProximo());
 
         assertEquals(AGORA, envio.getEnviadoEm());
+        assertEquals(AGORA, envio.getEncerradoEm());
         assertNull(envio.getPayload());
         assertEquals(StatusOrdemServico.ENCERRADA, ordem.getStatus());
         assertEquals(AGORA, ordem.getEntregueEm());
@@ -124,14 +127,30 @@ class EntregaFinalEmailDispatcherTest {
     @Test
     @DisplayName("publicado mas sem conseguir encerrar: o envio continua marcado, para não republicar")
     void encerramentoQueFalhaNaoDesfazOEnvio() {
-        // A OS saiu de AGUARDANDO_VERIFICACAO por fora. Depois do ACK a mensagem já está
-        // no broker: desfazer tudo faria a próxima rodada mandar o pacote de novo.
         ordem.reprovarEntrega("reprovada por fora do fluxo");
 
         assertTrue(dispatcher.processarProximo());
 
         assertEquals(AGORA, envio.getEnviadoEm());
+        assertNull(envio.getPayload());
+        assertNull(envio.getEncerradoEm());
+        assertEquals(AGORA.plusSeconds(30), envio.getProximaTentativaEm());
         assertEquals(StatusOrdemServico.EM_EXECUCAO, ordem.getStatus());
+    }
+
+    @Test
+    @DisplayName("linha publicada sem encerramento só tenta fechar a OS, sem publicar de novo")
+    void publicadaSemEncerramentoNaoRepublica() throws Exception {
+        when(repository.buscarPendenteComLock(AGORA)).thenReturn(Optional.empty());
+        envio.setEnviadoEm(AGORA);
+        when(repository.buscarPublicadaSemEncerramentoComLock(AGORA))
+                .thenReturn(Optional.of(envio));
+
+        assertTrue(dispatcher.processarProximo());
+
+        verify(publisher, never()).publicar(any());
+        assertEquals(StatusOrdemServico.ENCERRADA, ordem.getStatus());
+        assertEquals(AGORA, envio.getEncerradoEm());
     }
 
     @Test

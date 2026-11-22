@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -11,7 +18,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
+import { isAxiosError } from "axios";
 import { CabecalhoTela } from "../navegacao/CabecalhoTela";
 import { coreApi, getApiErrorMessage } from "../../lib/api";
 import {
@@ -102,7 +109,7 @@ function formatarTamanhoBytes(bytes?: number | null): string {
 }
 
 function mapearErroAcaoEntregaFinal(err: unknown, contexto: "aprovar" | "reprovar"): string {
-  if (axios.isAxiosError(err)) {
+  if (isAxiosError(err)) {
     const status = err.response?.status;
     const detalheApi = getApiErrorMessage(err);
 
@@ -176,7 +183,7 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
       setRevisao(dados);
       setStatusMonitoradoOs(dados.status);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
+      if (isAxiosError(err)) {
         const status = err.response?.status;
         if (status === 409) {
           setStatusInvalidoConflito(true);
@@ -199,13 +206,17 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
     }
   }, [ordemId]);
 
-  useEffect(() => {
+  const carregarRevisaoQuandoPermitido = useEffectEvent(() => {
     if (acessoPermitido) {
       void carregarRevisao();
     } else {
       setCarregando(false);
     }
-  }, [acessoPermitido, carregarRevisao]);
+  });
+
+  useEffect(() => {
+    queueMicrotask(carregarRevisaoQuandoPermitido);
+  }, [acessoPermitido, ordemId]);
 
   // Polling leve após 202 Accepted até o broker confirmar ACK e a OS virar ENCERRADA
   useEffect(() => {
@@ -234,10 +245,11 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
     };
   }, [resultadoAprovacao, statusMonitoradoOs, ordemId]);
 
+  const etapasRevisao = revisao?.etapas;
   const etapasOrdenadas = useMemo(() => {
-    if (!revisao?.etapas) return [];
-    return [...revisao.etapas].sort((a, b) => a.ordem - b.ordem);
-  }, [revisao?.etapas]);
+    if (!etapasRevisao) return [];
+    return [...etapasRevisao].sort((a, b) => a.ordem - b.ordem);
+  }, [etapasRevisao]);
 
   async function handleBaixarArquivoEtapa(etapa: EntregaFinalEtapa) {
     if (!etapa.arquivo_url) return;

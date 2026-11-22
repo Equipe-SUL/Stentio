@@ -54,6 +54,9 @@ public class EntregaFinalEmailOutbox {
     @Column(name = "enviado_em")
     private Instant enviadoEm;
 
+    @Column(name = "encerrado_em")
+    private Instant encerradoEm;
+
     @Column(name = "proxima_tentativa_em", nullable = false)
     private Instant proximaTentativaEm;
 

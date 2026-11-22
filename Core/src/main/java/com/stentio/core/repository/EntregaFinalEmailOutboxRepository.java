@@ -30,4 +30,18 @@ public interface EntregaFinalEmailOutboxRepository extends JpaRepository<Entrega
              for update skip locked
             """, nativeQuery = true)
     Optional<EntregaFinalEmailOutbox> buscarPendenteComLock(@Param("agora") Instant agora);
+
+    /** Publicada no broker, mas sem confirmação de encerramento da ordem de serviço. */
+    @Query(value = """
+            select * from entrega_final_email_outbox
+             where enviado_em is not null
+               and encerrado_em is null
+               and proxima_tentativa_em <= :agora
+             order by criado_em, id
+             limit 1
+             for update skip locked
+            """, nativeQuery = true)
+    Optional<EntregaFinalEmailOutbox> buscarPublicadaSemEncerramentoComLock(@Param("agora") Instant agora);
+
+    boolean existsByOrdemServicoIdAndEnviadoEmIsNotNullAndEncerradoEmIsNull(UUID ordemServicoId);
 }
