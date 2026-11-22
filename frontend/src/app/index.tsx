@@ -341,6 +341,8 @@ export default function LoginScreen() {
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
+                  returnKeyType="go"
+                  onSubmitEditing={handleLogin}
                   className="flex-1 py-4 text-zinc-900 text-base"
                 />
                 <TouchableOpacity 
