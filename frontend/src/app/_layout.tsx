@@ -59,6 +59,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <Head>
           <title>{tituloDaPagina(pathname)}</title>
+          <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         </Head>
         <Stack screenOptions={{ headerShown: false }} />
       </QueryClientProvider>
