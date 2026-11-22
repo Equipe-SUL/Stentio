@@ -92,7 +92,7 @@ function PaginaOrcamento({ token }: { token: string }) {
   }
   return (
     <main className="orcamento-publico">
-      <Head><title>Seu orçamento | Stentio</title><meta name="referrer" content="no-referrer" /><meta name="robots" content="noindex, nofollow" /></Head>
+      <Head><meta name="referrer" content="no-referrer" /><meta name="robots" content="noindex, nofollow" /></Head>
       <style>{css}</style>
       <div className="op-container">
         <header className="op-brand">
