@@ -1,6 +1,7 @@
 package com.stentio.core.service;
 
 import com.stentio.core.dto.AceiteEtapaResponse;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.exception.TransicaoEtapaInvalidaException;
@@ -13,6 +14,7 @@ import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
 import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.support.UsuarioAutenticado;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,17 +36,23 @@ public class AceiteEtapaService {
     private final EtapaLiberacaoService liberacao;
     private final RecursoAutenticadoService recursoAutenticado;
     private final HistoricoEtapaRepository historico;
+    private final CertificacaoConsultaService certificacoes;
+    private final ApplicationEventPublisher eventos;
     private final Clock clock;
 
     public AceiteEtapaService(EtapaOrdemServicoRepository etapas,
                               EtapaLiberacaoService liberacao,
                               RecursoAutenticadoService recursoAutenticado,
                               HistoricoEtapaRepository historico,
+                              CertificacaoConsultaService certificacoes,
+                              ApplicationEventPublisher eventos,
                               Clock clock) {
         this.etapas = etapas;
         this.liberacao = liberacao;
         this.recursoAutenticado = recursoAutenticado;
         this.historico = historico;
+        this.certificacoes = certificacoes;
+        this.eventos = eventos;
         this.clock = clock;
     }
 
@@ -78,6 +86,8 @@ public class AceiteEtapaService {
         // CA.8: o rastro sai depois do UPDATE vencedor, nunca da tentativa.
         historico.save(new HistoricoEtapa(
                 aceita, EventoEtapa.ACEITE, recurso, ator.email(), aceita.getAceitoEm()));
+        eventos.publishEvent(EventosAuditoria.etapa(aceita, esperado.name(),
+                "Etapa aceita por " + recurso.getNome() + ".", null));
 
         return new AceiteEtapaResponse(
                 aceita.getId(),
@@ -95,9 +105,15 @@ public class AceiteEtapaService {
      * não é questão de competência.
      */
     private StatusEtapaOrdemServico estadoDeOndeSaiOAceite(EtapaOrdemServico etapa, Recurso recurso) {
-        if (!recurso.elegivelParaAlocacao()) {
+        // US-024 RN.5: a certificação do par substituiu o verificado global. Quem
+        // recebeu o convite por e-mail pode ter perdido a certificação desde então, e o
+        // id da etapa viaja em texto — a conferência precisa acontecer aqui, no aceite.
+        if (!recurso.isAtivo()) {
+            throw new AlocacaoInvalidaException("Seu cadastro está inativo");
+        }
+        if (!certificacoes.certificadoParaAEtapa(recurso, etapa)) {
             throw new AlocacaoInvalidaException(
-                    "Seu cadastro ainda não foi verificado pela equipe da Aliança");
+                    "Você não tem certificação aprovada para o par de idiomas desta etapa");
         }
 
         return switch (etapa.getStatus()) {

@@ -35,17 +35,20 @@ public class AlocacaoEtapaService {
     private final EtapaOrdemServicoRepository etapas;
     private final RecursoRepository recursos;
     private final HistoricoEtapaRepository historico;
+    private final CertificacaoConsultaService certificacoes;
     private final Clock clock;
     private final ApplicationEventPublisher eventos;
 
     public AlocacaoEtapaService(EtapaOrdemServicoRepository etapas,
                                 RecursoRepository recursos,
                                 HistoricoEtapaRepository historico,
+                                CertificacaoConsultaService certificacoes,
                                 Clock clock,
                                 ApplicationEventPublisher eventos) {
         this.etapas = etapas;
         this.recursos = recursos;
         this.historico = historico;
+        this.certificacoes = certificacoes;
         this.clock = clock;
         this.eventos = eventos;
     }
@@ -71,7 +74,8 @@ public class AlocacaoEtapaService {
         String statusAnterior = EventosAuditoria.statusEtapa(etapa);
 
         Instant agora = clock.instant();
-        etapa.alocar(recurso, requisicao.dataLimiteEntrega(), agora);
+        etapa.alocar(recurso, requisicao.dataLimiteEntrega(), agora,
+                certificacoes.certificadoParaAEtapa(recurso, etapa));
         etapas.save(etapa);
 
         // CA.4: o histórico entra na mesma transação da alocação. Em transações separadas,

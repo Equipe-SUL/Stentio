@@ -50,8 +50,10 @@ class AlocacaoEtapaServiceTest {
     private final org.springframework.context.ApplicationEventPublisher eventos =
             mock(org.springframework.context.ApplicationEventPublisher.class);
 
+    private final CertificacaoConsultaService certificacoes = mock(CertificacaoConsultaService.class);
+
     private final AlocacaoEtapaService service = new AlocacaoEtapaService(
-            etapas, recursos, historico, Clock.fixed(AGORA, ZoneOffset.UTC), eventos);
+            etapas, recursos, historico, certificacoes, Clock.fixed(AGORA, ZoneOffset.UTC), eventos);
 
     private final UUID osId = UUID.randomUUID();
     private final UUID etapaId = UUID.randomUUID();
@@ -68,6 +70,9 @@ class AlocacaoEtapaServiceTest {
 
     @BeforeEach
     void preparar() {
+        // US-024: o caso comum é o profissional certificado para o par. Os testes
+        // que exercitam a falta de certificação sobrescrevem este stub.
+        when(certificacoes.certificadoParaAEtapa(any(), any())).thenReturn(true);
         portugues = idioma("Português");
         ingles = idioma("Inglês");
         alemao = idioma("Alemão");
@@ -221,17 +226,17 @@ class AlocacaoEtapaServiceTest {
     }
 
     @Test
-    @DisplayName("US-023 RN.5: recurso ainda não verificado pelo gestor não recebe etapa")
-    void recusaRecursoNaoVerificado() {
+    @DisplayName("US-024 RN.5: o verificado deixou de barrar a alocação; quem barra é a certificação")
+    void verificadoNaoDecideMais() {
         Recurso novato = recurso("Elisa Prado", traducao, portugues, ingles);
         novato.definirVerificacao(false);
         UUID elisaId = idRegistradoDe(novato);
 
-        var erro = assertThrows(AlocacaoInvalidaException.class, () -> alocar(elisaId, gestor));
+        // Certificada para o par, mesmo sem o "cadastro revisado": a alocação passa.
+        AlocacaoEtapaResponse resposta = alocar(elisaId, gestor);
 
-        assertTrue(erro.getMessage().contains("não foi verificado"));
-        assertFalse(etapa.alocada());
-        verifyNoInteractions(historico);
+        assertEquals(StatusEtapaOrdemServico.ALOCADO, resposta.statusEtapa());
+        assertTrue(etapa.alocada());
     }
 
     @Test
@@ -304,5 +309,17 @@ class AlocacaoEtapaServiceTest {
         AlocacaoEtapaResponse resposta = alocar(brunoId, gestor);
 
         assertEquals("Bruno Lima", resposta.recurso().nome());
+    }
+
+    @Test
+    @DisplayName("US-024 Cenário 4: sem certificação aprovada do par, o gestor não consegue alocar")
+    void naoAlocaSemCertificacaoDoPar() {
+        UUID anaId = idRegistradoDe(recurso("Ana Silva", traducao, portugues, ingles));
+        when(certificacoes.certificadoParaAEtapa(any(), any())).thenReturn(false);
+
+        var erro = assertThrows(AlocacaoInvalidaException.class, () -> alocar(anaId, gestor));
+
+        assertTrue(erro.getMessage().contains("certificação"));
+        verify(etapas, never()).save(any());
     }
 }

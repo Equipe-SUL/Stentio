@@ -36,19 +36,24 @@ public interface RecursoRepository extends JpaRepository<Recurso, UUID>, JpaSpec
      * <p>O distinct é necessário porque um recurso pode ter vários preços para o mesmo par
      * (um por unidade de cobrança) e apareceria repetido.
      *
-     * <p>US-023 RN.5: entra também o filtro de verificado. Quem se auto-cadastrou e ainda
-     * não passou pelo gestor não aparece para alocação — a lista é o que o gestor pode
-     * escolher, e oferecer alguém que a alocação depois recusaria seria pior que omitir.
+     * <p>US-024 RN.5: no lugar do verificado global, a certificação aprovada do par. A
+     * lista é o que o gestor pode escolher, e oferecer alguém que a alocação depois
+     * recusaria seria pior que omitir.
      */
     @Query("""
             select distinct r from Recurso r
               join r.tiposServico t
               join r.precos p
              where r.ativo = true
-               and r.verificado = true
                and t.id = :tipoServicoId
                and p.idiomaOrigem.id = :idiomaOrigemId
                and p.idiomaDestino.id = :idiomaDestinoId
+               and exists (
+                   select 1 from RecursoCertificacao c
+                    where c.recurso.id = r.id
+                      and c.idiomaOrigem.id = :idiomaOrigemId
+                      and c.idiomaDestino.id = :idiomaDestinoId
+                      and c.status = com.stentio.core.model.StatusCertificacao.APROVADA)
              order by r.nome asc
             """)
     List<Recurso> buscarDisponiveis(@Param("idiomaOrigemId") UUID idiomaOrigemId,

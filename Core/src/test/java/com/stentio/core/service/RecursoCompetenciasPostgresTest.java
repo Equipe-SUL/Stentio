@@ -17,6 +17,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -63,6 +64,7 @@ class RecursoCompetenciasPostgresTest {
     @Autowired OrdemServicoRepository ordensServico;
     @Autowired TipoServicoRepository tiposServico;
     @Autowired RecursoRepository recursos;
+    @Autowired RecursoCertificacaoRepository certificacoes;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
 
@@ -112,6 +114,7 @@ class RecursoCompetenciasPostgresTest {
                 jdbc.update("delete from solicitacoes where id = ?", solicitacaoId);
             }
             for (UUID recurso : recursosCriados) {
+                jdbc.update("delete from recursos_certificacoes where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos_precos where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos_tipos_servico where recurso_id = ?", recurso);
                 jdbc.update("delete from recursos where id = ?", recurso);
@@ -158,23 +161,33 @@ class RecursoCompetenciasPostgresTest {
     // ------------------------------------------------------------------ elegíveis da etapa
 
     @Test
-    @DisplayName("Alocação: lista só quem tem o par English → Espanhol e o serviço Formatação da etapa")
+    @DisplayName("Alocação: lista só quem tem o par English → Espanhol certificado e o serviço Formatação da etapa")
     void elegiveisDaEtapa() {
         UUID etapaId = criarOsComEtapa(inglesId, espanholId, formatacaoId);
 
         // Caso do print: tem o serviço, mas só o par inverso (Espanhol → English).
-        criarRecurso("Álvaro par invertido", null, List.of(formatacaoId, traducaoId),
+        UUID alvaro = criarRecurso("Álvaro par invertido", null, List.of(formatacaoId, traducaoId),
                 List.<UUID[]>of(new UUID[]{espanholId, inglesId}));
-        // Tem o par, mas não o serviço.
-        criarRecurso("Bruno sem formatação", null, List.of(traducaoId),
+        certificar(alvaro, espanholId, inglesId, StatusCertificacao.APROVADA);
+        // Tem o par e a certificação, mas não o serviço.
+        UUID bruno = criarRecurso("Bruno sem formatação", null, List.of(traducaoId),
                 List.<UUID[]>of(new UUID[]{inglesId, espanholId}));
-        // Tem tudo, mas não foi verificado.
-        UUID naoVerificado = criarRecurso("Carla não verificada", null, List.of(formatacaoId),
+        certificar(bruno, inglesId, espanholId, StatusCertificacao.APROVADA);
+        // US-024: tem o par e o serviço, mas nenhuma certificação.
+        criarRecurso("Carla sem certificação", null, List.of(formatacaoId),
                 List.<UUID[]>of(new UUID[]{inglesId, espanholId}));
-        jdbc.update("update recursos set verificado = false where id = ?", naoVerificado);
-        // Atende tudo.
+        // US-024: certificação do par ainda em análise.
+        UUID diego = criarRecurso("Diego certificação pendente", null, List.of(formatacaoId),
+                List.<UUID[]>of(new UUID[]{inglesId, espanholId}));
+        certificar(diego, inglesId, espanholId, StatusCertificacao.PENDENTE);
+        // US-024: certificado só no par invertido, embora atenda English → Espanhol no cadastro.
+        UUID eva = criarRecurso("Eva certificada no par invertido", null, List.of(formatacaoId),
+                List.of(new UUID[]{inglesId, espanholId}, new UUID[]{espanholId, inglesId}));
+        certificar(eva, espanholId, inglesId, StatusCertificacao.APROVADA);
+        // Atende tudo, com a certificação do par aprovada.
         UUID joao = criarRecurso("João habilitado", null, List.of(formatacaoId, revisaoId),
                 List.<UUID[]>of(new UUID[]{inglesId, espanholId}));
+        certificar(joao, inglesId, espanholId, StatusCertificacao.APROVADA);
 
         List<RecursoDisponivelResponse> lista = elegiveis.listar(osId, etapaId);
 
@@ -213,6 +226,19 @@ class RecursoCompetenciasPostgresTest {
         });
         recursosCriados.add(id);
         return id;
+    }
+
+    /** US-024: certificação do par, aprovada ou ainda em análise. */
+    private void certificar(UUID recursoId, UUID origemId, UUID destinoId, StatusCertificacao status) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
+            RecursoCertificacao certificacao = new RecursoCertificacao(recursos.findById(recursoId).orElseThrow(),
+                    idiomas.findById(origemId).orElseThrow(), idiomas.findById(destinoId).orElseThrow(),
+                    "diploma.pdf", "teste/diploma.pdf", Instant.now());
+            if (status == StatusCertificacao.APROVADA) {
+                certificacao.aprovar("gestor@teste.invalid", Instant.now());
+            }
+            certificacoes.saveAndFlush(certificacao);
+        });
     }
 
     /** OS com uma etapa do tipo informado, para uma solicitação origem → destino. */

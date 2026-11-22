@@ -1,5 +1,6 @@
 package com.stentio.core.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.exception.SolicitacaoInvalidaException;
 import com.stentio.core.model.EtapaOrdemServico;
@@ -30,8 +31,10 @@ class EntregaEtapaServiceTest {
     private final ArquivoStorageService storage = mock(ArquivoStorageService.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
     private final RoteamentoEtapaService roteamento = mock(RoteamentoEtapaService.class);
+    private final ApplicationEventPublisher eventos = mock(ApplicationEventPublisher.class);
     private final EntregaEtapaService service = new EntregaEtapaService(
             etapas, liberacao, recursoAutenticado, storage, historico, roteamento,
+            eventos,
             Clock.fixed(Instant.parse("2026-11-20T12:00:00Z"), ZoneOffset.UTC));
 
     private final UUID etapaId = UUID.randomUUID();

@@ -1,6 +1,7 @@
 package com.stentio.core.service;
 
 import com.stentio.core.dto.DisparoEtapaResponse;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.exception.TransicaoEtapaInvalidaException;
@@ -13,7 +14,9 @@ import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
 import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.repository.RecursoRepository;
+import com.stentio.core.support.AtorAuditoria;
 import com.stentio.core.support.UsuarioAutenticado;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +30,8 @@ import java.util.UUID;
  * US-013 CA.1 e US-014 CA.3: abre a etapa para os recursos elegíveis.
  *
  * <p>A elegibilidade não é regra nova: é a mesma consulta da US-012, que já cruza par de
- * idiomas, tipo de serviço, ativo e verificado. A US-014 reutiliza essa consulta como RN.4.
+ * idiomas, tipo de serviço, ativo e — desde a US-024 — certificação aprovada do par. A
+ * US-014 reutiliza essa consulta como RN.4.
  */
 @Service
 public class DisparoEtapaService {
@@ -37,6 +41,7 @@ public class DisparoEtapaService {
     private final RecursoRepository recursos;
     private final ConviteEtapaEmailService convites;
     private final HistoricoEtapaRepository historico;
+    private final ApplicationEventPublisher eventos;
     private final Clock clock;
 
     public DisparoEtapaService(EtapaOrdemServicoRepository etapas,
@@ -44,12 +49,14 @@ public class DisparoEtapaService {
                                RecursoRepository recursos,
                                ConviteEtapaEmailService convites,
                                HistoricoEtapaRepository historico,
+                               ApplicationEventPublisher eventos,
                                Clock clock) {
         this.etapas = etapas;
         this.liberacao = liberacao;
         this.recursos = recursos;
         this.convites = convites;
         this.historico = historico;
+        this.eventos = eventos;
         this.clock = clock;
     }
 
@@ -68,12 +75,12 @@ public class DisparoEtapaService {
         if (elegiveis.isEmpty()) {
             // Disparar para ninguém deixaria a etapa presa em DISPARADA esperando um
             // aceite que não pode vir. O gestor precisa saber agora, e alocar à mão ou
-            // verificar alguém.
+            // aprovar a certificação de alguém.
             throw new AlocacaoInvalidaException(
-                    "Nenhum recurso verificado atende o par de idiomas e o tipo de serviço desta etapa");
+                    "Nenhum recurso com certificação aprovada atende o par de idiomas e o tipo de serviço desta etapa");
         }
 
-        return efetivarDisparo(etapa, elegiveis, estaLiberada, ator.email());
+        return efetivarDisparo(etapa, elegiveis, estaLiberada, ator.email(), null);
     }
 
     @Transactional
@@ -93,18 +100,26 @@ public class DisparoEtapaService {
             return Optional.empty();
         }
 
-        return Optional.of(efetivarDisparo(etapa, elegiveis, estaLiberada, "sistema"));
+        // Roda dentro da entrega do recurso, mas quem dispara é o sistema, não ele.
+        return Optional.of(efetivarDisparo(etapa, elegiveis, estaLiberada, "sistema", AtorAuditoria.sistema()));
     }
 
+    /** @param atorAuditoria nulo para usar o usuário autenticado (disparo manual do gestor) */
     private DisparoEtapaResponse efetivarDisparo(EtapaOrdemServico etapa,
                                                  List<Recurso> elegiveis,
                                                  boolean estaLiberada,
-                                                 String realizadoPor) {
+                                                 String realizadoPor,
+                                                 AtorAuditoria atorAuditoria) {
         Instant agora = clock.instant();
+        String statusAnterior = EventosAuditoria.statusEtapa(etapa);
         etapa.disparar(agora, estaLiberada);
         etapas.save(etapa);
         convites.convidar(etapa, elegiveis, agora);
         historico.save(new HistoricoEtapa(etapa, EventoEtapa.DISPARO, null, realizadoPor, agora));
+        eventos.publishEvent(EventosAuditoria.etapa(etapa, statusAnterior,
+                "Etapa disparada para " + elegiveis.size()
+                        + (elegiveis.size() == 1 ? " recurso elegível." : " recursos elegíveis."),
+                atorAuditoria));
 
         return new DisparoEtapaResponse(etapa.getId(), etapa.getStatus(), elegiveis.size());
     }

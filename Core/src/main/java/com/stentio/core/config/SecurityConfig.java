@@ -35,6 +35,7 @@ public class SecurityConfig {
 
     private static final String ROTAS_CLIENTES = "/api/v1/clientes/**";
     private static final String ROTAS_RECURSOS = "/api/v1/recursos/**";
+    private static final String ROTAS_CERTIFICACOES = "/api/v1/recursos/certificacoes/**";
     private static final String ROTA_AUTO_CADASTRO_RECURSO = "/api/v1/recursos/auto-cadastro";
     // US-023: o portal do profissional, no singular. Tudo o que o papel RECURSO alcança.
     private static final String ROTAS_PORTAL_RECURSO = "/api/v1/recurso/**";
@@ -117,6 +118,12 @@ public class SecurityConfig {
                         .hasRole(Role.RECURSO.name())
                         // US-023 CA.5: o portal, e só ele, é do profissional.
                         .requestMatchers(ROTAS_PORTAL_RECURSO).hasRole(Role.RECURSO.name())
+                        // US-024 CA.6: antes da regra geral de /api/v1/recursos, que libera
+                        // GET para toda a equipe. A fila de certificações expõe documentos
+                        // pessoais enviados pelos profissionais, e quem decide alocação é
+                        // quem precisa deles — ATENDENTE e FINANCEIRO ficam de fora.
+                        .requestMatchers(ROTAS_CERTIFICACOES)
+                        .hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
                         // US-023 CA.7: era "authenticated"; com o RECURSO existindo, isso
                         // passaria a lista de todos os profissionais, com e-mail e preço de
                         // cada um, para qualquer profissional cadastrado.

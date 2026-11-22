@@ -1,12 +1,14 @@
 package com.stentio.core.controller;
 
 import com.stentio.core.dto.AceiteEtapaResponse;
+import com.stentio.core.dto.CertificacaoResponse;
 import com.stentio.core.dto.DemandaRecursoResponse;
 import com.stentio.core.dto.EntregaEtapaResponse;
 import com.stentio.core.dto.EtapaStatusResponse;
 import com.stentio.core.dto.RecursoResponse;
 import com.stentio.core.service.AceiteEtapaService;
 import com.stentio.core.service.ArquivoStorageService;
+import com.stentio.core.service.CertificacaoRecursoService;
 import com.stentio.core.service.EntregaEtapaService;
 import com.stentio.core.service.PortalRecursoService;
 import com.stentio.core.service.RecusaEtapaService;
@@ -16,6 +18,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,7 +26,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -52,17 +57,45 @@ public class PortalRecursoController {
     private final RecusaEtapaService recusaEtapaService;
     private final EntregaEtapaService entregaEtapaService;
     private final ArquivoStorageService arquivoStorageService;
+    private final CertificacaoRecursoService certificacaoRecursoService;
 
     public PortalRecursoController(PortalRecursoService portalRecursoService,
                                    AceiteEtapaService aceiteEtapaService,
                                    RecusaEtapaService recusaEtapaService,
                                    EntregaEtapaService entregaEtapaService,
-                                   ArquivoStorageService arquivoStorageService) {
+                                   ArquivoStorageService arquivoStorageService,
+                                   CertificacaoRecursoService certificacaoRecursoService) {
         this.portalRecursoService = portalRecursoService;
         this.aceiteEtapaService = aceiteEtapaService;
         this.recusaEtapaService = recusaEtapaService;
         this.entregaEtapaService = entregaEtapaService;
         this.arquivoStorageService = arquivoStorageService;
+        this.certificacaoRecursoService = certificacaoRecursoService;
+    }
+
+    /**
+     * US-024 CA.1: envia ou reenvia o documento de um par de idiomas.
+     *
+     * <p>O par vem como campos do formulário, não no caminho: são dois ids e o arquivo na
+     * mesma requisição multipart.
+     */
+    @PostMapping(value = "/certificacoes", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Envia o documento de certificação de um par de idiomas")
+    public CertificacaoResponse enviarCertificacao(
+            @RequestParam("idioma_origem_id") UUID idiomaOrigemId,
+            @RequestParam("idioma_destino_id") UUID idiomaDestinoId,
+            @RequestPart("arquivo") MultipartFile arquivo,
+            Authentication autenticacao) {
+        return certificacaoRecursoService.enviar(
+                idiomaOrigemId, idiomaDestinoId, arquivo, UsuarioAutenticado.de(autenticacao));
+    }
+
+    /** US-024 CA.5: o profissional acompanha o status e o motivo de cada recusa. */
+    @GetMapping("/certificacoes")
+    @Operation(summary = "Lista as certificações do profissional autenticado")
+    public List<CertificacaoResponse> minhasCertificacoes(Authentication autenticacao) {
+        return certificacaoRecursoService.minhasCertificacoes(UsuarioAutenticado.de(autenticacao));
     }
 
     /**
@@ -123,5 +156,34 @@ public class PortalRecursoController {
     @Operation(summary = "Devolve o perfil de competências do profissional autenticado")
     public RecursoResponse meuPerfil(Authentication autenticacao) {
         return portalRecursoService.meuPerfil(UsuarioAutenticado.de(autenticacao));
+    }
+
+    /** US-024 RN.8: o profissional rebaixa o próprio documento. */
+    @GetMapping("/certificacoes/{id}/arquivo")
+    @Operation(summary = "Baixa o documento de certificação do profissional autenticado")
+    public ResponseEntity<Resource> baixarCertificacao(@PathVariable("id") UUID id,
+                                                       Authentication autenticacao) {
+        CertificacaoRecursoService.DocumentoCertificacao documento =
+                certificacaoRecursoService.localizarMeuDocumento(id, UsuarioAutenticado.de(autenticacao));
+        return comoAnexo(documento);
+    }
+
+    /**
+     * Sempre octet-stream e sempre attachment: o documento veio de fora e devolvê-lo com
+     * o tipo que o remetente declarou é o que transforma um upload em página executada no
+     * domínio da aplicação.
+     */
+    private ResponseEntity<Resource> comoAnexo(CertificacaoRecursoService.DocumentoCertificacao documento) {
+        Resource conteudo = arquivoStorageService.carregar(documento.caminho());
+        ContentDisposition anexo = ContentDisposition.attachment()
+                .filename(documento.nomeOriginal(), StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "no-referrer")
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, anexo.toString())
+                .body(conteudo);
     }
 }
