@@ -53,7 +53,18 @@ const markdownStyles: NonNullable<MarkdownProps["style"]> = {
   bullet_list_content: { flex: 1 },
   ordered_list_icon: { color: "#27272a", fontSize: 14, lineHeight: 20, marginRight: 8 },
   ordered_list_content: { flex: 1 },
-  code_inline: { fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", backgroundColor: "#f4f4f5", lineHeight: 22 },
+  code_inline: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 13,
+    lineHeight: 20,
+    backgroundColor: "#f4f4f5",
+    borderRadius: 3,
+    borderWidth: 0,
+    margin: 0,
+    padding: 0,
+    paddingHorizontal: 3,
+    paddingVertical: 0,
+  },
   fence: { fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", backgroundColor: "#f4f4f5", padding: 8, borderRadius: 6 },
   blockquote: { borderLeftWidth: 3, borderLeftColor: "#c5a995", paddingLeft: 8, color: "#52525b" },
   link: { color: "#6f3e24", textDecorationLine: "underline" },
@@ -238,6 +249,12 @@ export function ChatbotWidget({ role }: { role: Role }) {
               multiline
               maxLength={2000}
               editable={!enviando}
+              onKeyPress={(event) => {
+                const tecla = event.nativeEvent as typeof event.nativeEvent & { ctrlKey?: boolean };
+                if (Platform.OS !== "web" || tecla.key !== "Enter" || !tecla.ctrlKey) return;
+                event.preventDefault();
+                void enviar();
+              }}
               onSubmitEditing={() => void enviar()}
               style={styles.input}
             />
