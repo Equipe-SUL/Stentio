@@ -47,6 +47,7 @@ export function FormularioEdicaoUsuario({
   const [cargo, setCargo] = useState<Cargo>("Atendente");
   const [status, setStatus] = useState<Status>("Ativo");
   const [senha, setSenha] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
   // Preenche os campos sempre que o usuário selecionado para edição mudar
@@ -57,6 +58,7 @@ export function FormularioEdicaoUsuario({
       setCargo(usuario.cargo);
       setStatus(usuario.status);
       setSenha(usuario.senha);
+      setMostrarSenha(false);
     }
   }, [usuario]);
 
@@ -159,20 +161,35 @@ export function FormularioEdicaoUsuario({
             <Text className="text-sm font-medium text-neutral-700">
               Senha (em branco para manter)
             </Text>
-            <TextInput
-              value={senha}
-              onChangeText={setSenha}
-              placeholder="Nova senha (opcional)"
-              secureTextEntry
-              autoCapitalize="none"
-              className="rounded-lg border border-neutral-300 px-4 py-3 text-neutral-900"
-            />
+            <View className="flex-row items-center rounded-lg border border-neutral-300 pl-4 pr-2">
+              <TextInput
+                value={senha}
+                onChangeText={setSenha}
+                placeholder="Nova senha (opcional)"
+                secureTextEntry={!mostrarSenha}
+                autoCapitalize="none"
+                className="min-w-0 flex-1 py-3 text-neutral-900"
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                onPress={() => setMostrarSenha((mostrar) => !mostrar)}
+                className="p-2"
+                hitSlop={8}
+              >
+                <Ionicons
+                  name={mostrarSenha ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#8c5230"
+                />
+              </Pressable>
+            </View>
           </View>
 
-          <View className="flex-row items-center justify-between pt-2">
+          <View className="flex-col items-stretch gap-3 pt-2 md:flex-row md:items-center md:justify-between md:gap-0">
             <Pressable
               onPress={onDelete}
-              className="flex-row items-center gap-2"
+              className="flex-row self-start items-center gap-2"
               accessibilityLabel="Excluir usuário"
             >
               <Ionicons name="trash-outline" size={18} color="#dc2626" />
@@ -180,14 +197,14 @@ export function FormularioEdicaoUsuario({
             </Pressable>
 
             <View className="flex-row gap-2">
-              <Pressable onPress={onCancel} className="rounded-lg border border-neutral-300 px-5 py-3">
+              <Pressable onPress={onCancel} className="flex-1 items-center rounded-lg border border-neutral-300 px-5 py-3 md:flex-none">
                 <Text className="font-medium text-neutral-700">Cancelar</Text>
               </Pressable>
 
               <Pressable
                 onPress={handleSubmit}
                 disabled={enviando}
-                className="rounded-lg bg-neutral-900 px-5 py-3"
+                className="flex-1 items-center rounded-lg bg-neutral-900 px-5 py-3 md:flex-none"
               >
                 {enviando ? (
                   <ActivityIndicator color="#fff" />
