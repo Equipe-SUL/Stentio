@@ -256,20 +256,20 @@ export default function MinhasDemandasScreen() {
   return (
     <ScrollView className="flex-1" contentContainerClassName="items-center p-5 py-8 md:p-8">
       <View className="w-full max-w-5xl gap-6">
-        <View className="flex-row flex-wrap items-start justify-between gap-4">
-          <View className="flex-1 gap-1">
+        <View className="flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <View className="w-full gap-1 md:flex-1">
             <Text className="text-2xl font-bold text-neutral-900">Demandas de produção</Text>
             <Text className="text-sm text-neutral-600">
               Acompanhe suas etapas alocadas, convites abertos e registre suas entregas.
             </Text>
           </View>
 
-          <View className="flex-row rounded-xl border border-neutral-200 bg-white p-1">
+          <View className="w-full flex-row rounded-xl border border-neutral-200 bg-white p-1 md:w-auto">
             <Pressable
               accessibilityRole="tab"
               accessibilityState={{ selected: abaAtiva === "MINHAS" }}
               onPress={() => setAbaAtiva("MINHAS")}
-              className={`flex-row items-center gap-2 rounded-lg px-3.5 py-2 ${
+              className={`flex-1 flex-row items-center justify-center gap-2 rounded-lg px-3 py-2 md:flex-none ${
                 abaAtiva === "MINHAS" ? "bg-[#8c5230]" : "bg-transparent"
               }`}
             >
@@ -299,7 +299,7 @@ export default function MinhasDemandasScreen() {
               accessibilityRole="tab"
               accessibilityState={{ selected: abaAtiva === "DISPONIVEIS" }}
               onPress={() => setAbaAtiva("DISPONIVEIS")}
-              className={`flex-row items-center gap-2 rounded-lg px-3.5 py-2 ${
+              className={`flex-1 flex-row items-center justify-center gap-2 rounded-lg px-3 py-2 md:flex-none ${
                 abaAtiva === "DISPONIVEIS" ? "bg-[#8c5230]" : "bg-transparent"
               }`}
             >
