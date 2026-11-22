@@ -39,7 +39,9 @@ export default function MeuPerfilRecursoScreen() {
     try {
       const [perfilData, certsData] = await Promise.all([
         buscarMeuPerfilRecurso(),
-        listarMinhasCertificacoes(),
+        // O perfil é o conteúdo da tela; a certificação é só o selo de cada par.
+        // Uma falha na rota nova não pode levar junto o que já funcionava.
+        listarMinhasCertificacoes().catch(() => [] as CertificacaoResponse[]),
       ]);
       setPerfil(perfilData);
       setCertificacoes(certsData);
@@ -52,7 +54,10 @@ export default function MeuPerfilRecursoScreen() {
 
   useEffect(() => {
     let ativo = true;
-    Promise.all([buscarMeuPerfilRecurso(), listarMinhasCertificacoes()])
+    Promise.all([
+      buscarMeuPerfilRecurso(),
+      listarMinhasCertificacoes().catch(() => [] as CertificacaoResponse[]),
+    ])
       .then(([perfilData, certsData]) => {
         if (ativo) {
           setPerfil(perfilData);
