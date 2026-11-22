@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Recria um conjunto amplo de dados de teste usando as APIs do Stentio.
+"""Adiciona os catálogos usados nos testes manuais pelas APIs do Stentio.
 
-Por segurança, o modo padrão apenas mostra o plano. --apply limpa as tabelas
-públicas do banco *_test local antes de criar os dados. As contas de teste usam
-a senha compartilhada Teste123!.
+Por segurança, o modo padrão apenas mostra o plano. --apply cria somente idiomas,
+tipos de serviço e categorias de projeto ausentes, sem alterar dados existentes.
 """
 
 from __future__ import annotations
@@ -14,16 +13,15 @@ import ipaddress
 import json
 import os
 import secrets
-import sys
 import subprocess
+import sys
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
-
 
 QUANTIDADE = 20
 QUANTIDADE_RECURSOS_PORTAL = 4
@@ -31,12 +29,13 @@ SENHA_TESTE = "Teste123!"
 PAPEIS = ("ADMIN", "ATENDENTE", "GESTOR_PROJETO", "FINANCEIRO")
 UNIDADES = ("PALAVRA", "HORA", "PAGINA")
 CATEGORIAS_PROJETO = (
-    "Tradução Simples",
+    "Tradução",
     "Tradução Juramentada",
     "Legenda",
     "Revisão",
     "Dublagem",
 )
+TIPOS_SERVICO = CATEGORIAS_PROJETO
 EMPRESAS_TESTE = (
     "XPTO Ltda.",
     "Esperança Ltda.",
@@ -310,10 +309,117 @@ def requisitar(
         raise ErroBuildtest(f"Resposta não JSON em {metodo} {caminho}") from erro
 
 
-def exigir_id(resposta: dict | None, contexto: str) -> str:
+def exigir_id(resposta: dict | list | None, contexto: str) -> str:
     if not isinstance(resposta, dict) or not resposta.get("id"):
         raise ErroBuildtest(f"A resposta de {contexto} não trouxe o campo id.")
     return str(resposta["id"])
+
+
+def listar_catalogo(core_url: str, token: str, endpoint: str, contexto: str) -> list[dict]:
+    registros: list[dict] = []
+    pagina = 0
+
+    while True:
+        resposta = requisitar(
+            core_url,
+            "GET",
+            f"{endpoint}?{urlencode({'page': pagina, 'size': 100})}",
+            token=token,
+        )
+        if not isinstance(resposta, dict) or not isinstance(resposta.get("content"), list):
+            raise ErroBuildtest(f"A listagem de {contexto} veio em formato inesperado.")
+        if not isinstance(resposta.get("totalPages"), int):
+            raise ErroBuildtest(f"A paginação de {contexto} veio em formato inesperado.")
+
+        registros.extend(
+            registro for registro in resposta["content"] if isinstance(registro, dict)
+        )
+        if pagina + 1 >= resposta["totalPages"]:
+            return registros
+        pagina += 1
+
+
+def criar_catalogos(core_url: str, token: str) -> None:
+    categorias_existentes = {
+        str(registro.get("nome", "")).casefold()
+        for registro in listar_catalogo(
+            core_url, token, "/api/v1/categorias-projeto", "categorias de projeto"
+        )
+    }
+    idiomas_existentes = listar_catalogo(
+        core_url, token, "/api/v1/idiomas", "idiomas"
+    )
+    codigos_idioma_existentes = {
+        str(registro.get("codigoIso", "")).casefold() for registro in idiomas_existentes
+    }
+    nomes_idioma_existentes = {
+        str(registro.get("nome", "")).casefold() for registro in idiomas_existentes
+    }
+    tipos_existentes = {
+        str(registro.get("nome", "")).casefold()
+        for registro in listar_catalogo(
+            core_url, token, "/api/v1/tipos-servico", "tipos de serviço"
+        )
+    }
+
+    criados_categorias = 0
+    for nome in CATEGORIAS_PROJETO:
+        if nome.casefold() in categorias_existentes:
+            continue
+        resposta = requisitar(
+            core_url,
+            "POST",
+            "/api/v1/categorias-projeto",
+            token=token,
+            dados={"nome": nome},
+        )
+        exigir_id(resposta, f"categoria {nome}")
+        categorias_existentes.add(nome.casefold())
+        criados_categorias += 1
+
+    criados_idiomas = 0
+    for codigo_iso, nome in IDIOMAS_OFICIAIS:
+        codigo_iso = codigo_iso.lower()
+        nome_criado = "Português" if codigo_iso == "pt-br" else nome
+        if (
+            codigo_iso.casefold() in codigos_idioma_existentes
+            or nome_criado.casefold() in nomes_idioma_existentes
+        ):
+            continue
+        resposta = requisitar(
+            core_url,
+            "POST",
+            "/api/v1/idiomas",
+            token=token,
+            dados={"nome": nome_criado, "codigoIso": codigo_iso},
+        )
+        exigir_id(resposta, f"idioma {codigo_iso}")
+        codigos_idioma_existentes.add(codigo_iso.casefold())
+        nomes_idioma_existentes.add(nome_criado.casefold())
+        criados_idiomas += 1
+
+    criados_tipos = 0
+    for nome in TIPOS_SERVICO:
+        if nome.casefold() in tipos_existentes:
+            continue
+        resposta = requisitar(
+            core_url,
+            "POST",
+            "/api/v1/tipos-servico",
+            token=token,
+            dados={"nome": nome},
+        )
+        exigir_id(resposta, f"tipo de serviço {nome}")
+        tipos_existentes.add(nome.casefold())
+        criados_tipos += 1
+
+    print("\nCatálogos verificados (somente registros ausentes foram criados):")
+    print(f"  idiomas: {criados_idiomas} criados; {QUANTIDADE_IDIOMAS} previstos")
+    print(f"  tipos de serviço: {criados_tipos} criados; {len(TIPOS_SERVICO)} previstos")
+    print(
+        f"  categorias de projeto: {criados_categorias} criadas; "
+        f"{len(CATEGORIAS_PROJETO)} previstas"
+    )
 
 
 def digitos_cnpj(base: str) -> str:
@@ -626,7 +732,7 @@ def criar_dados(
         )
         solicitacoes.append((exigir_id(resposta, f"solicitação {indice + 1}"), par))
 
-    agora = datetime.now(timezone.utc)
+    agora = datetime.now(UTC)
     orcamentos: list[str] = []
     clientes_aprovados: dict[str, int] = {}
     for indice, (solicitacao_id, cliente_indice) in enumerate(solicitacoes[QUANTIDADE:], start=QUANTIDADE):
@@ -733,7 +839,7 @@ def criar_dados(
             raise ErroBuildtest(f"A OS {ordem_id} não retornou etapas após aplicar o modelo.")
         etapas_planejadas += 1
         primeira_etapa = etapas["etapas"][0]
-        prazo = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(timespec="seconds").replace("+00:00", "Z")
+        prazo = (datetime.now(UTC) + timedelta(days=7)).isoformat(timespec="seconds").replace("+00:00", "Z")
         requisitar(
             core_url,
             "POST",
@@ -811,15 +917,16 @@ def criar_dados(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Gera massa de teste para Auth e Core.")
+    parser = argparse.ArgumentParser(
+        description="Adiciona somente os catálogos necessários para os testes manuais."
+    )
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="limpa e recria os dados em um banco local *_test",
+        help="cria idiomas, tipos de serviço e categorias ausentes; preserva os demais dados",
     )
     parser.add_argument("--auth-url", help="URL base do Auth (padrão: localhost:SERVER_PORT)")
     parser.add_argument("--core-url", help="URL base do Core (padrão: localhost:CORE_SERVER_PORT)")
-    parser.add_argument("--email-url", help="URL base do email-service (padrão: localhost:EMAIL_SERVICE_PORT)")
     parser.add_argument("--admin-email", help="e-mail de administrador; também aceita BUILDTEST_ADMIN_EMAIL")
     args = parser.parse_args()
 
@@ -834,38 +941,18 @@ def main() -> int:
         env_raiz,
         f"http://127.0.0.1:{valor_config('CORE_SERVER_PORT', env_raiz, '8082')}",
     )
-    email_url = args.email_url or valor_config(
-        "BUILDTEST_EMAIL_URL",
-        env_raiz,
-        f"http://127.0.0.1:{valor_config('EMAIL_SERVICE_PORT', env_raiz, '8083')}",
-    )
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S") + secrets.token_hex(2)
-
-    print("Plano de massa de teste:")
-    print(f"  {QUANTIDADE} usuários de equipe e {QUANTIDADE_RECURSOS_PORTAL} contas/perfis RECURSO.")
-    print(f"  {QUANTIDADE} clientes, tipos de serviço e recursos de equipe; {len(CATEGORIAS_PROJETO)} categorias.")
-    print(f"  {QUANTIDADE_IDIOMAS} idiomas oficiais com códigos ISO/BCP 47,")
-    print("  pares de idiomas, tabelas de preço e workflows.")
-    print("  100 solicitações: 20 pendentes de orçamento e 80 com orçamento.")
-    print("  80 orçamentos: 20 em elaboração, 20 aguardando, 20 rejeitados e 20 aprovados.")
-    print("  20 ordens de serviço: 10 pendentes de alocação e 10 planejadas/alocadas.")
-    print(
-        "  --apply limpa e recria as tabelas públicas do banco *_test; preserva usuarios, "
-        "exceto contas buildtest anteriores."
-    )
-    print("  Recursos usados em OS são verificados; 3 perfis RECURSO ficam pendentes e 1 recebe uma etapa.")
-    print("  A trilha de auditoria inclui ATENDENTE, GESTOR_PROJETO, TOKEN_PUBLICO e SISTEMA.")
-    print("  --apply aceita somente APIs locais, bancos terminados em _test e SMTP local.")
-    print("  --apply exige SMTP local (MailHog recomendado); não envia e-mails para servidores externos.")
-    print("  Envios acionam o outbox de e-mail, sempre com destinatários no domínio reservado .test.")
+    print("Plano para os testes manuais:")
+    print(f"  {QUANTIDADE_IDIOMAS} idiomas com códigos em minúsculas (ex.: Português, pt-br).")
+    print(f"  {len(TIPOS_SERVICO)} tipos de serviço e as mesmas {len(CATEGORIAS_PROJETO)} categorias.")
+    print("  Nenhum dado existente será apagado ou alterado; somente catálogos ausentes serão criados.")
 
     if not args.apply:
         print("\nSimulação: nenhuma conexão ou gravação realizada. Use --apply para executar.")
         return 0
 
-    if not host_local(auth_url) or not host_local(core_url) or not host_local(email_url):
+    if not host_local(auth_url) or not host_local(core_url):
         raise ErroBuildtest(
-            "Por segurança, --apply idempotente aceita somente URLs localhost/loopback."
+            "Por segurança, --apply aceita somente URLs localhost/loopback."
         )
 
     admin_email = (
@@ -897,28 +984,8 @@ def main() -> int:
         raise ErroBuildtest("O login informado não autenticou uma conta ADMIN.")
     token = str(login["token"])
 
-    requisitar(email_url, "GET", "/actuator/health")
-    smtp = requisitar(email_url, "GET", "/api/v1/smtp", token=token)
-    if not isinstance(smtp, dict) or not smtp_local(str(smtp.get("host", ""))):
-        raise ErroBuildtest(
-            "Configure um SMTP local antes do seed (MailHog recomendado em mailhog:1025). "
-            "Nenhum dado foi limpo."
-        )
-    if str(smtp.get("host", "")).lower() == "mailhog" and smtp.get("port") != 1025:
-        raise ErroBuildtest(
-            "MailHog no Docker Compose deve usar a porta 1025. Nenhum dado foi limpo."
-        )
-
-    database_auth = valor_config("POSTGRES_DB", env_raiz, "stentio")
-    database_core = valor_config("CORE_POSTGRES_DB", env_raiz, "") or database_auth
-    usuario_db = valor_config("POSTGRES_USER", env_raiz, "postgres")
-
-    print(
-        f"\nATENÇÃO: --apply limpa os dados de {database_core} e remove usuários "
-        "buildtest anteriores, preservando a conta administradora."
-    )
-    limpar_dados_de_teste(database_auth, database_core, usuario_db)
-    criar_dados(auth_url, core_url, admin_email, admin_senha, run_id)
+    requisitar(core_url, "GET", "/actuator/health")
+    criar_catalogos(core_url, token)
     return 0
 
 
