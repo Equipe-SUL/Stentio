@@ -53,7 +53,7 @@ function renderFieldValue<T>(item: T, field: FieldDef<T>) {
   // Campo opcional e vazio não deve virar a palavra "null" na tabela.
   if (valor === null || valor === undefined || valor === "") {
     return (
-      <Text className="text-sm text-neutral-400" numberOfLines={1}>
+      <Text className="shrink text-sm text-neutral-400" numberOfLines={1}>
         —
       </Text>
     );
@@ -61,7 +61,7 @@ function renderFieldValue<T>(item: T, field: FieldDef<T>) {
 
   if (field.type === "iso") {
     return (
-      <Text className="font-mono text-xs uppercase text-neutral-600" numberOfLines={1}>
+      <Text className="shrink font-mono text-xs uppercase text-neutral-600" numberOfLines={1}>
         {String(valor)}
       </Text>
     );
@@ -72,14 +72,14 @@ function renderFieldValue<T>(item: T, field: FieldDef<T>) {
   if (field.type === "select") {
     const opcao = (field.options ?? []).find((o) => o.value === String(valor ?? ""));
     return (
-      <Text className="text-sm text-neutral-800" numberOfLines={1}>
+      <Text className="shrink text-sm text-neutral-800" numberOfLines={1}>
         {opcao ? opcao.label : "—"}
       </Text>
     );
   }
 
   return (
-    <Text className="text-sm text-neutral-800" numberOfLines={1}>
+    <Text className="shrink text-sm text-neutral-800" numberOfLines={1}>
       {field.formatDisplay ? field.formatDisplay(valor) : String(valor)}
     </Text>
   );
@@ -217,6 +217,7 @@ export function CrudSection<T extends EntityBase>({
     ...fields.map((field) => ({
       key: field.key,
       header: field.label,
+      flex: field.tableFlex,
       render: (item: T) => renderFieldValue(item, field),
     })),
     ...(temAcoes
