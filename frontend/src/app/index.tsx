@@ -393,16 +393,6 @@ export default function LoginScreen() {
 
             </View>
 
-            <View className="md:hidden w-full bg-white px-6 pt-12 pb-8 mt-12 border-t border-zinc-100 items-center">
-              <View className="w-full max-w-md">
-                <BrandingCarousel 
-                  textColor="text-[#8c5230]" 
-                  dotActiveColor="#8c5230" 
-                  dotInactiveColor="#d1b2a3" 
-                />
-              </View>
-            </View>
-
           </View>
 
         </View>
