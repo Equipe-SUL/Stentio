@@ -66,6 +66,7 @@ export function AppShell({
   const isMobile = width < 768;
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [grupoAberto, setGrupoAberto] = useState<GrupoAberto | null>(null);
+  const [chatAberto, setChatAberto] = useState(false);
   const iniciais = iniciaisDoNome(usuario.nome);
 
   const isRouteActive = (route?: Href) => {
@@ -393,12 +394,35 @@ export function AppShell({
                     </TouchableOpacity>
                   );
                 })}
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={chatAberto ? "Fechar assistente Stentio" : "Abrir assistente Stentio"}
+                  accessibilityState={{ expanded: chatAberto, selected: chatAberto }}
+                  onPress={() => setChatAberto((aberto) => !aberto)}
+                  style={[
+                    styles.dockButton,
+                    chatAberto && styles.dockButtonActive,
+                  ]}
+                >
+                  <Ionicons
+                    name={chatAberto ? "close" : "chatbubbles-outline"}
+                    size={27}
+                    color={chatAberto ? "#ffffff" : "#d6c5ba"}
+                  />
+                  <View
+                    style={[styles.activeDot, { opacity: chatAberto ? 1 : 0 }]}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
           )}
         </View>
       </View>
-      <ChatbotWidget role={usuario.role} />
+      <ChatbotWidget
+        role={usuario.role}
+        open={isMobile ? chatAberto : undefined}
+        onOpenChange={isMobile ? setChatAberto : undefined}
+      />
     </View>
   );
 }

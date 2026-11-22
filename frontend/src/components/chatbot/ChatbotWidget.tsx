@@ -71,11 +71,18 @@ const markdownStyles: NonNullable<MarkdownProps["style"]> = {
   hr: { backgroundColor: "#e4e4e7", height: 1, marginVertical: 8 },
 };
 
-export function ChatbotWidget({ role }: { role: Role }) {
+interface ChatbotWidgetProps {
+  role: Role;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function ChatbotWidget({ role, open, onOpenChange }: ChatbotWidgetProps) {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const mobile = width < 768;
-  const [aberto, setAberto] = useState(false);
+  const [abertoInterno, setAbertoInterno] = useState(false);
+  const aberto = open ?? abertoInterno;
   const [mensagem, setMensagem] = useState("");
   const [mensagens, setMensagens] = useState<ChatbotMensagem[]>([]);
   const [conversaId, setConversaId] = useState<string>();
@@ -84,6 +91,14 @@ export function ChatbotWidget({ role }: { role: Role }) {
   const [erro, setErro] = useState("");
   const listaRef = useRef<ScrollViewInstance | null>(null);
   const historicoCarregado = useRef(false);
+
+  function atualizarAberto(novoEstado: boolean) {
+    if (onOpenChange) {
+      onOpenChange(novoEstado);
+    } else {
+      setAbertoInterno(novoEstado);
+    }
+  }
 
   useEffect(() => {
     if (!aberto || historicoCarregado.current) return;
@@ -158,7 +173,7 @@ export function ChatbotWidget({ role }: { role: Role }) {
               accessibilityRole="button"
               accessibilityLabel="Fechar chatbot"
               hitSlop={10}
-              onPress={() => setAberto(false)}
+              onPress={() => atualizarAberto(false)}
               style={styles.closeButton}
             >
               <Ionicons name="close" size={23} color="#fff" />
@@ -216,7 +231,7 @@ export function ChatbotWidget({ role }: { role: Role }) {
                             key={`${atalho.tipo}-${atalho.id}`}
                             accessibilityRole="link"
                             onPress={() => {
-                              setAberto(false);
+                              atualizarAberto(false);
                               router.push(rotaDoAtalho(atalho) as never);
                             }}
                             style={styles.shortcut}
@@ -270,15 +285,17 @@ export function ChatbotWidget({ role }: { role: Role }) {
           </View>
         </KeyboardAvoidingView>
       )}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={aberto ? "Fechar assistente" : "Abrir assistente Stentio"}
-        accessibilityState={{ expanded: aberto }}
-        onPress={() => setAberto((atual) => !atual)}
-        style={[styles.launcher, mobile && styles.launcherMobile]}
-      >
-        <Ionicons name={aberto ? "close" : "chatbubbles-outline"} size={25} color="#fff" />
-      </Pressable>
+      {!onOpenChange ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={aberto ? "Fechar assistente" : "Abrir assistente Stentio"}
+          accessibilityState={{ expanded: aberto }}
+          onPress={() => atualizarAberto(!aberto)}
+          style={[styles.launcher, mobile && styles.launcherMobile]}
+        >
+          <Ionicons name={aberto ? "close" : "chatbubbles-outline"} size={25} color="#fff" />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
