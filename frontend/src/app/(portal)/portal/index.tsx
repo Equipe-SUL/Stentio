@@ -56,6 +56,13 @@ function resumirResultadoAvanco(resultado: EntregaEtapaResponse): {
     };
   }
 
+  if (!avanco.convite_automatico && avanco.recursos_notificados === 0) {
+    return {
+      titulo: "Entrega registrada · Próxima etapa pendente",
+      descricao: `O arquivo "${resultado.arquivo_nome}" foi enviado. A próxima etapa foi liberada, mas ficou pendente porque nenhum recurso elegível foi encontrado para disparo automático.`,
+    };
+  }
+
   if (avanco.convite_automatico) {
     const qtd = avanco.recursos_notificados;
     return {
@@ -490,6 +497,21 @@ export default function MinhasDemandasScreen() {
                       </Text>
                     </View>
                   </View>
+
+                  {/* Alerta de reabertura / motivo da reprovação (US-015 Task 3 · CA.11/CA.13) */}
+                  {demanda.situacao === "ACEITA" && demanda.motivo_revisao ? (
+                    <View className="flex-row items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3.5">
+                      <Ionicons name="alert-circle" size={18} color="#b45309" />
+                      <View className="flex-1 gap-0.5">
+                        <Text className="text-xs font-bold text-amber-950">
+                          Entrega devolvida para correção pelo Gestor
+                        </Text>
+                        <Text className="text-xs leading-5 text-amber-900">
+                          Motivo: “{demanda.motivo_revisao}”
+                        </Text>
+                      </View>
+                    </View>
+                  ) : null}
 
                   {/* Barra de ações por situação da etapa */}
                   <View className="flex-row flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-3">

@@ -50,9 +50,15 @@ public class EntregaFinalEmailDispatcher {
 
     @Transactional
     public boolean processarProximo() {
-        EntregaFinalEmailOutbox envio = repository.buscarPendenteComLock(clock.instant()).orElse(null);
+        Instant agora = clock.instant();
+        EntregaFinalEmailOutbox envio = repository.buscarPendenteComLock(agora).orElse(null);
         if (envio == null) {
-            return false;
+            return repository.buscarPublicadaSemEncerramentoComLock(agora)
+                    .map(publicada -> {
+                        encerrar(publicada, agora);
+                        return true;
+                    })
+                    .orElse(false);
         }
 
         envio.setTentativas(envio.getTentativas() + 1);
@@ -69,30 +75,31 @@ public class EntregaFinalEmailDispatcher {
             return true;
         }
 
-        Instant agora = clock.instant();
-        envio.setEnviadoEm(agora);
+        Instant enviadoEm = clock.instant();
+        envio.setEnviadoEm(enviadoEm);
         envio.setPayload(null);
+        encerrar(envio, enviadoEm);
+        return true;
+    }
 
-        // CA.8: o encerramento é consequência do ACK.
-        //
-        // A marcação do envio vem antes e não é desfeita se o encerramento falhar. Depois
-        // do ACK a mensagem está no broker de verdade; deixar a transação inteira cair
-        // aqui faria a próxima rodada republicar e o cliente receberia o pacote duas
-        // vezes. Entre uma OS que ficou sem fechar e um e-mail duplicado, a primeira é
-        // visível no painel e corrigível, o segundo não volta atrás.
+    private void encerrar(EntregaFinalEmailOutbox envio, Instant agora) {
+        OrdemServico ordem = envio.getOrdemServico();
+        if (ordem.getStatus() == StatusOrdemServico.ENCERRADA) {
+            envio.setEncerradoEm(agora);
+            return;
+        }
+
         try {
-            OrdemServico ordem = envio.getOrdemServico();
             StatusOrdemServico anterior = ordem.getStatus();
             ordem.encerrar(agora, envio.getAprovadoPor());
-            // US-019: quem encerra é o ACK, fora de requisição; o aprovador vai na observação.
             eventos.publishEvent(EventosAuditoria.ordemServico(ordem, anterior,
                     "Entrega final aprovada por " + envio.getAprovadoPor()
                             + " e enviada ao cliente.", AtorAuditoria.sistema()));
+            envio.setEncerradoEm(agora);
         } catch (RuntimeException ex) {
+            envio.setProximaTentativaEm(agora.plusSeconds(retrySegundos));
             log.error("Entrega final da OS {} publicada, mas a OS não pôde ser encerrada: {}",
-                    envio.getOrdemServico().getId(), ex.getMessage());
+                    ordem.getId(), ex.getMessage());
         }
-
-        return true;
     }
 }

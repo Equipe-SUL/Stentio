@@ -94,8 +94,11 @@ class ReprovacaoEntregaFinalServiceTest {
         ultima.entregar("contrato-final.docx", "2026/11/contrato-final.docx", ENTREGUE_EM, true);
 
         when(revisao.buscarParaRevisao(osId)).thenReturn(ordem);
+        when(revisao.buscarParaAtualizacao(osId)).thenReturn(ordem);
         when(revisao.entreguesEmOrdem(osId)).thenReturn(List.of(ultima));
         when(outbox.existsByOrdemServicoIdAndEnviadoEmIsNull(osId)).thenReturn(false);
+        when(outbox.existsByOrdemServicoIdAndEnviadoEmIsNotNullAndEncerradoEmIsNull(osId))
+                .thenReturn(false);
     }
 
     @Test
@@ -155,6 +158,20 @@ class ReprovacaoEntregaFinalServiceTest {
     @DisplayName("CA.12: com envio aguardando confirmação, reprovar é conflito")
     void naoReprovaComEnvioPendente() {
         when(outbox.existsByOrdemServicoIdAndEnviadoEmIsNull(osId)).thenReturn(true);
+
+        assertThrows(TransicaoOrdemServicoInvalidaException.class,
+                () -> service.reprovar(osId, MOTIVO, gestor));
+
+        assertEquals(StatusEtapaOrdemServico.ENTREGUE, ultima.getStatus());
+        assertEquals(StatusOrdemServico.AGUARDANDO_VERIFICACAO, ordem.getStatus());
+        verify(avisos, never()).avisarReabertura(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("CA.12: com e-mail publicado e OS ainda não encerrada, reprovar é conflito")
+    void naoReprovaComEnvioPublicadoSemEncerramento() {
+        when(outbox.existsByOrdemServicoIdAndEnviadoEmIsNotNullAndEncerradoEmIsNull(osId))
+                .thenReturn(true);
 
         assertThrows(TransicaoOrdemServicoInvalidaException.class,
                 () -> service.reprovar(osId, MOTIVO, gestor));

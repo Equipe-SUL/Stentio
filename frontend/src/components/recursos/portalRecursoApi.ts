@@ -27,6 +27,7 @@ export interface DemandaRecurso {
   liberada?: boolean;
   entregue_em?: string | null;
   arquivo_nome?: string | null;
+  motivo_revisao?: string | null;
   /** Só nas etapas ENTREGUE: rota do Core para o profissional baixar o próprio arquivo. */
   arquivo_entrega_url?: string | null;
 }

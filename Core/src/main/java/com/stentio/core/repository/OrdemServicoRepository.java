@@ -2,7 +2,9 @@ package com.stentio.core.repository;
 
 import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.StatusOrdemServico;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -31,4 +33,13 @@ public interface OrdemServicoRepository extends JpaRepository<OrdemServico, UUID
              where os.id = :id
             """)
     Optional<OrdemServico> buscarComCliente(@Param("id") UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select os from OrdemServico os
+              join fetch os.orcamento o
+              join fetch o.cliente
+             where os.id = :id
+            """)
+    Optional<OrdemServico> buscarComClienteParaAtualizar(@Param("id") UUID id);
 }

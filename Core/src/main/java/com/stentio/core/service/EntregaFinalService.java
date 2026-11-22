@@ -84,6 +84,11 @@ public class EntregaFinalService {
                 .orElseThrow(() -> new OrdemServicoNaoEncontradaException(ordemServicoId));
     }
 
+    public OrdemServico buscarParaAtualizacao(UUID ordemServicoId) {
+        return ordens.buscarComClienteParaAtualizar(ordemServicoId)
+                .orElseThrow(() -> new OrdemServicoNaoEncontradaException(ordemServicoId));
+    }
+
     /** CA.3: todas as entregues, da primeira para a última. */
     public List<EtapaOrdemServico> entreguesEmOrdem(UUID ordemServicoId) {
         return etapas.listarPorOrdemServico(ordemServicoId).stream()

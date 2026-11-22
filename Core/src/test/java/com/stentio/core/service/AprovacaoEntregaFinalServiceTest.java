@@ -70,6 +70,7 @@ class AprovacaoEntregaFinalServiceTest {
         ultima = etapaEntregue("Revisão", 2, "contrato-final.docx");
 
         when(revisao.buscarParaRevisao(osId)).thenReturn(ordem);
+        when(revisao.buscarParaAtualizacao(osId)).thenReturn(ordem);
         when(revisao.entreguesEmOrdem(osId)).thenReturn(List.of(ultima));
         when(outbox.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
         when(outbox.save(any())).thenAnswer(inv -> inv.getArgument(0));

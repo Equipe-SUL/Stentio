@@ -33,6 +33,12 @@ const STATUS_MAP: Record<string, StatusConfig> = {
     text: "text-purple-800",
     dotColor: "bg-purple-500",
   },
+  ENCERRADA: {
+    label: "Encerrada",
+    bg: "bg-emerald-50 border border-emerald-200",
+    text: "text-emerald-800",
+    dotColor: "bg-emerald-600",
+  },
   EM_ANDAMENTO: {
     label: "Em Andamento",
     bg: "bg-blue-50 border border-blue-200",

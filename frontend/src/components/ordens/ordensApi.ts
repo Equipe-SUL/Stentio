@@ -1,11 +1,16 @@
 import { Platform } from "react-native";
 import { coreApi } from "../../lib/api";
 import type {
+  AprovarEntregaFinalRequest,
+  AprovarEntregaFinalResponse,
   ClienteOpcao,
+  EntregaFinalRevisaoResponse,
   FiltrosOrdemServico,
   OrdemServicoDetalhe,
   OrdemServicoEtapaResumo,
   OrdemServicoPagina,
+  ReprovarEntregaFinalRequest,
+  ReprovarEntregaFinalResponse,
 } from "./types";
 
 const ENDPOINTS = {
@@ -41,13 +46,23 @@ export async function buscarOrdemServicoPorId(id: string): Promise<OrdemServicoD
 export async function listarEtapasOrdemServico(
   ordemId: string,
 ): Promise<OrdemServicoEtapaResumo[]> {
-  const { data } = await coreApi.get<{ etapas: OrdemServicoEtapaResumo[] }>(
-    `${ENDPOINTS.ordens}/${ordemId}/etapas`,
-  );
-  if (!Array.isArray(data?.etapas)) {
-    throw new Error("A resposta do servidor para as etapas da OS é inválida.");
+  try {
+    const { data } = await coreApi.get<OrdemServicoEtapaResumo[]>(
+      `${ENDPOINTS.ordens}/${ordemId}/etapas`,
+    );
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
   }
-  return data.etapas;
+}
+
+export async function buscarRevisaoEntregaFinal(
+  ordemId: string,
+): Promise<EntregaFinalRevisaoResponse> {
+  const { data } = await coreApi.get<EntregaFinalRevisaoResponse>(
+    `${ENDPOINTS.ordens}/${ordemId}/entrega-final`,
+  );
+  return data;
 }
 
 export async function baixarArquivoOrdemServico(
@@ -91,4 +106,29 @@ export async function listarClientesOpcoes(): Promise<ClienteOpcao[]> {
   } catch {
     return [];
   }
+}
+
+export async function aprovarEntregaFinal(
+  ordemId: string,
+  payload?: AprovarEntregaFinalRequest,
+): Promise<AprovarEntregaFinalResponse> {
+  const mensagemLimpa = payload?.mensagem?.trim();
+  const body = mensagemLimpa ? { mensagem: mensagemLimpa } : {};
+
+  const { data } = await coreApi.post<AprovarEntregaFinalResponse>(
+    `${ENDPOINTS.ordens}/${ordemId}/entrega-final/aprovar`,
+    body,
+  );
+  return data;
+}
+
+export async function reprovarEntregaFinal(
+  ordemId: string,
+  payload: ReprovarEntregaFinalRequest,
+): Promise<ReprovarEntregaFinalResponse> {
+  const { data } = await coreApi.post<ReprovarEntregaFinalResponse>(
+    `${ENDPOINTS.ordens}/${ordemId}/entrega-final/reprovar`,
+    { motivo: payload.motivo.trim() },
+  );
+  return data;
 }

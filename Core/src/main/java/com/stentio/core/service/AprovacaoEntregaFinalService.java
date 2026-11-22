@@ -63,7 +63,7 @@ public class AprovacaoEntregaFinalService {
     @Transactional
     public AprovacaoEntregaFinalResponse aprovar(UUID ordemServicoId, String mensagem,
                                                  UsuarioAutenticado ator) {
-        OrdemServico ordem = revisao.buscarParaRevisao(ordemServicoId);
+        OrdemServico ordem = revisao.buscarParaAtualizacao(ordemServicoId);
         revisao.exigirAguardandoVerificacao(ordem);
 
         EtapaOrdemServico ultima = ultimaEntregue(ordemServicoId);

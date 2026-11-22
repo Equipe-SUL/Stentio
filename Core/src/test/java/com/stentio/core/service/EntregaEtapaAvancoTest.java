@@ -27,9 +27,12 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -83,18 +86,21 @@ class EntregaEtapaAvancoTest {
         when(etapa.getId()).thenReturn(etapaId);
         when(etapa.getEntregueEm()).thenReturn(AGORA);
         when(etapa.getArquivoEntregueNome()).thenReturn("entrega.docx");
-        when(etapa.getStatus()).thenReturn(StatusEtapaOrdemServico.ACEITA, StatusEtapaOrdemServico.ENTREGUE,
+        when(etapa.getStatus()).thenReturn(StatusEtapaOrdemServico.ACEITA, StatusEtapaOrdemServico.ACEITA,
                 StatusEtapaOrdemServico.ENTREGUE);
         when(liberacao.estaLiberada(etapa)).thenReturn(true);
         when(storage.salvarTodos(anyList())).thenReturn(List.of(new ArquivoArmazenado(
                 "entrega.docx", "2026/11/entrega.docx", "application/octet-stream", 1)));
+        when(etapas.entregar(any(), any(), any(), any(), any(), any(), any())).thenReturn(1);
 
         EntregaEtapaResponse resposta = service.entregar(etapaId, arquivo, ator);
 
-        var ordem = inOrder(etapa, roteamento);
-        ordem.verify(etapa).entregar("entrega.docx", "2026/11/entrega.docx", AGORA, true);
+        var ordem = inOrder(etapas, roteamento);
+        ordem.verify(etapas).entregar(eq(etapaId), eq(recurso), eq("entrega.docx"),
+                eq("2026/11/entrega.docx"), eq(AGORA), eq(StatusEtapaOrdemServico.ACEITA),
+                eq(StatusEtapaOrdemServico.ENTREGUE));
         ordem.verify(roteamento).rotear(etapa);
-        verify(etapas).save(etapa);
+        verify(etapas, never()).save(any());
         ArgumentCaptor<HistoricoEtapa> historicos = ArgumentCaptor.forClass(HistoricoEtapa.class);
         verify(historico, times(2)).save(historicos.capture());
         assertEquals(EventoEtapa.ENTREGA, historicos.getAllValues().getFirst().getEvento());
@@ -134,11 +140,12 @@ class EntregaEtapaAvancoTest {
         when(etapa.getNome()).thenReturn("Entrega");
         when(etapa.getEntregueEm()).thenReturn(AGORA);
         when(etapa.getArquivoEntregueNome()).thenReturn("entrega.docx");
-        when(etapa.getStatus()).thenReturn(StatusEtapaOrdemServico.ACEITA, StatusEtapaOrdemServico.ENTREGUE,
+        when(etapa.getStatus()).thenReturn(StatusEtapaOrdemServico.ACEITA, StatusEtapaOrdemServico.ACEITA,
                 StatusEtapaOrdemServico.ENTREGUE);
         when(liberacao.estaLiberada(etapa)).thenReturn(true);
         when(storage.salvarTodos(anyList())).thenReturn(List.of(new ArquivoArmazenado(
                 "entrega.docx", "2026/11/entrega.docx", "application/octet-stream", 1)));
+        when(etapas.entregar(any(), any(), any(), any(), any(), any(), any())).thenReturn(1);
         when(roteamento.rotear(etapa)).thenReturn(
                 new RoteamentoEtapaService.Resultado(Optional.empty(), false, 0));
 

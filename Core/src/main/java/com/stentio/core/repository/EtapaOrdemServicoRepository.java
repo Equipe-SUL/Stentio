@@ -77,6 +77,25 @@ public interface EtapaOrdemServicoRepository extends JpaRepository<EtapaOrdemSer
                               @Param("aceita") StatusEtapaOrdemServico aceita,
                               @Param("alocado") StatusEtapaOrdemServico alocado);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update EtapaOrdemServico e
+               set e.status = :entregue,
+                   e.arquivoEntregueNome = :nomeArquivo,
+                   e.arquivoEntregueCaminho = :caminho,
+                   e.entregueEm = :agora
+             where e.id = :etapaId
+               and e.status = :aceita
+               and e.recurso = :recurso
+            """)
+    int entregar(@Param("etapaId") UUID etapaId,
+                 @Param("recurso") Recurso recurso,
+                 @Param("nomeArquivo") String nomeArquivo,
+                 @Param("caminho") String caminho,
+                 @Param("agora") Instant agora,
+                 @Param("aceita") StatusEtapaOrdemServico aceita,
+                 @Param("entregue") StatusEtapaOrdemServico entregue);
+
     /**
      * US-013: a etapa com o que o aceite precisa conferir — par de idiomas e tipo de
      * serviço. Sem o id da OS de propósito: o profissional chega pelo convite, que tem o
