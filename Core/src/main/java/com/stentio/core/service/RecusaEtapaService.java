@@ -1,6 +1,7 @@
 package com.stentio.core.service;
 
 import com.stentio.core.dto.EtapaStatusResponse;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.model.EtapaOrdemServico;
@@ -10,6 +11,7 @@ import com.stentio.core.model.Recurso;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
 import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.support.UsuarioAutenticado;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class RecusaEtapaService {
     private final RecursoAutenticadoService recursoAutenticado;
     private final RecusaEtapaEmailService avisos;
     private final HistoricoEtapaRepository historico;
+    private final ApplicationEventPublisher eventos;
     private final Clock clock;
 
     public RecusaEtapaService(EtapaOrdemServicoRepository etapas,
@@ -38,12 +41,14 @@ public class RecusaEtapaService {
                               RecursoAutenticadoService recursoAutenticado,
                               RecusaEtapaEmailService avisos,
                               HistoricoEtapaRepository historico,
+                              ApplicationEventPublisher eventos,
                               Clock clock) {
         this.etapas = etapas;
         this.liberacao = liberacao;
         this.recursoAutenticado = recursoAutenticado;
         this.avisos = avisos;
         this.historico = historico;
+        this.eventos = eventos;
         this.clock = clock;
     }
 
@@ -64,10 +69,14 @@ public class RecusaEtapaService {
         HistoricoEtapa registro =
                 new HistoricoEtapa(etapa, EventoEtapa.RECUSA, recurso, ator.email(), agora);
 
+        String statusAnterior = EventosAuditoria.statusEtapa(etapa);
+
         // RN.1: recusada volta à fila apenas se a etapa já estiver liberada.
         etapa.recusar(estaLiberada);
         etapas.save(etapa);
         historico.save(registro);
+        eventos.publishEvent(EventosAuditoria.etapa(etapa, statusAnterior,
+                "Alocação recusada por " + recurso.getNome() + ".", null));
 
         // CA.6: na mesma transação. Equipe avisada só se a recusa valeu.
         avisos.avisarRecusa(etapa, recurso, agora);

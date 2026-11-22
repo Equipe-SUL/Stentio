@@ -26,7 +26,7 @@ public class CertificacaoRejeicaoEmailService {
 
     public CertificacaoRejeicaoEmailService(CertificacaoEmailOutboxRepository outbox,
                                             ObjectMapper objectMapper,
-                                            @Value("${app.portal-recurso.url:http://localhost/recurso/demandas}") String urlPortal) {
+                                            @Value("${app.portal-recurso.url:http://localhost/portal}") String urlPortal) {
         this.outbox = outbox;
         this.objectMapper = objectMapper;
         this.urlPortal = urlPortal;

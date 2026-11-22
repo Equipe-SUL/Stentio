@@ -17,6 +17,9 @@ import java.util.UUID;
 @Service
 
 public class IdiomaService {
+    static final String MENSAGEM_NOME_REPETIDO = "Já existe um idioma com esse nome. "
+            + "Diferencie as variantes no nome, por exemplo \"Inglês (EUA)\" e \"Inglês (Reino Unido)\"";
+
     private final IdiomaRepository idiomaRepository;
 
     public IdiomaService(IdiomaRepository idiomaRepository) {
@@ -24,14 +27,19 @@ public class IdiomaService {
     }
    @Transactional
     public IdiomaResponse criar(IdiomaRequest request){
-        if (idiomaRepository.existsByCodigoIso(request.codigoIso())) {
+        String nome = request.nome().trim();
+        String codigoIso = request.codigoIso().trim();
+        if (idiomaRepository.existsByCodigoIsoIgnoreCase(codigoIso)) {
             throw new RecursoInvalidoException("Já existe um idioma com esse código ISO");
+        }
+        if (idiomaRepository.existsByNomeIgnoreCase(nome)) {
+            throw new RecursoInvalidoException(MENSAGEM_NOME_REPETIDO);
         }
 
         //  DTO --> Entidade (Banco)
         Idioma idioma = new Idioma();
-        idioma.setNome(request.nome());
-        idioma.setCodigoIso(request.codigoIso());
+        idioma.setNome(nome);
+        idioma.setCodigoIso(codigoIso);
 
 
         // salva no banco de dados e guarda o resultado
@@ -69,14 +77,18 @@ public class IdiomaService {
             throw new RecursoNaoEncontradoException(id);
         }
         Idioma idioma = caixa.get();
+        String nome = request.nome().trim();
+        String codigoIso = request.codigoIso().trim();
         //evita duplicidade
-        if (idiomaRepository.existsByCodigoIsoAndIdNot(request.codigoIso(), id)) {
+        if (idiomaRepository.existsByCodigoIsoIgnoreCaseAndIdNot(codigoIso, id)) {
             throw new RecursoInvalidoException("Já existe um idioma com esse código ISO");
         }
+        if (idiomaRepository.existsByNomeIgnoreCaseAndIdNot(nome, id)) {
+            throw new RecursoInvalidoException(MENSAGEM_NOME_REPETIDO);
+        }
 
-
-        idioma.setNome(request.nome());
-        idioma.setCodigoIso(request.codigoIso());
+        idioma.setNome(nome);
+        idioma.setCodigoIso(codigoIso);
         Idioma idiomaSalvo = idiomaRepository.save(idioma);
         return new IdiomaResponse(idiomaSalvo);
 

@@ -36,7 +36,7 @@ class ConviteEtapaEmailServiceTest {
     private final NotificacaoEtapaOutboxRepository outbox = mock(NotificacaoEtapaOutboxRepository.class);
     private final ObjectMapper objectMapper = mock(ObjectMapper.class);
     private final ConviteEtapaEmailService service =
-            new ConviteEtapaEmailService(outbox, objectMapper, "https://portal.exemplo/recurso/demandas");
+            new ConviteEtapaEmailService(outbox, objectMapper, "https://portal.exemplo/portal");
 
     private EtapaOrdemServico etapa;
     private Recurso recurso;
@@ -80,7 +80,7 @@ class ConviteEtapaEmailServiceTest {
         assertEquals("ana@exemplo.com", mensagem.getValue().to());
         assertTrue(mensagem.getValue().subject().contains("Tradução principal"));
         assertTrue(mensagem.getValue().body().contains("liberada automaticamente"));
-        assertTrue(mensagem.getValue().body().contains("https://portal.exemplo/recurso/demandas"));
+        assertTrue(mensagem.getValue().body().contains("https://portal.exemplo/portal"));
         verificarUmaNotificacao();
     }
 

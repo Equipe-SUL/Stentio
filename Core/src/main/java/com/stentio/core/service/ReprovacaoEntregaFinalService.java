@@ -1,16 +1,19 @@
 package com.stentio.core.service;
 
 import com.stentio.core.dto.ReprovacaoEntregaFinalResponse;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.ArquivoEntregueIndisponivelException;
 import com.stentio.core.exception.TransicaoOrdemServicoInvalidaException;
 import com.stentio.core.model.EtapaOrdemServico;
 import com.stentio.core.model.EventoEtapa;
 import com.stentio.core.model.HistoricoEtapa;
 import com.stentio.core.model.OrdemServico;
+import com.stentio.core.model.StatusOrdemServico;
 import com.stentio.core.repository.EntregaFinalEmailOutboxRepository;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
 import com.stentio.core.repository.HistoricoEtapaRepository;
 import com.stentio.core.support.UsuarioAutenticado;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,7 @@ public class ReprovacaoEntregaFinalService {
     private final EntregaFinalEmailOutboxRepository outbox;
     private final HistoricoEtapaRepository historico;
     private final ReaberturaEtapaEmailService avisos;
+    private final ApplicationEventPublisher eventos;
     private final Clock clock;
 
     public ReprovacaoEntregaFinalService(EntregaFinalService revisao,
@@ -40,12 +44,14 @@ public class ReprovacaoEntregaFinalService {
                                          EntregaFinalEmailOutboxRepository outbox,
                                          HistoricoEtapaRepository historico,
                                          ReaberturaEtapaEmailService avisos,
+                                         ApplicationEventPublisher eventos,
                                          Clock clock) {
         this.revisao = revisao;
         this.etapas = etapas;
         this.outbox = outbox;
         this.historico = historico;
         this.avisos = avisos;
+        this.eventos = eventos;
         this.clock = clock;
     }
 
@@ -69,11 +75,20 @@ public class ReprovacaoEntregaFinalService {
         EtapaOrdemServico ultima = ultimaEntregue(ordemServicoId);
         Instant agora = clock.instant();
 
+        String statusEtapaAnterior = EventosAuditoria.statusEtapa(ultima);
+        StatusOrdemServico statusOrdemAnterior = ordem.getStatus();
+
         // CA.11: a etapa volta com recurso, alocação e prazo intactos (RN.9).
         ultima.reabrir();
         etapas.save(ultima);
 
         ordem.reprovarEntrega(motivo);
+
+        // US-019: a OS e a etapa mudam juntas, e o motivo é o que explica as duas.
+        eventos.publishEvent(EventosAuditoria.ordemServico(ordem, statusOrdemAnterior,
+                "Entrega final reprovada: " + motivo, null));
+        eventos.publishEvent(EventosAuditoria.etapa(ultima, statusEtapaAnterior,
+                "Reaberta pela reprovação da entrega final: " + motivo, null));
 
         historico.save(new HistoricoEtapa(
                 ultima, EventoEtapa.REABERTURA, ultima.getRecurso(), ator.email(), agora));

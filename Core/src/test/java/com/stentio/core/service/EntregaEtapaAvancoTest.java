@@ -1,5 +1,6 @@
 package com.stentio.core.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import com.stentio.core.dto.EntregaEtapaResponse;
 import com.stentio.core.model.ArquivoArmazenado;
 import com.stentio.core.model.EtapaOrdemServico;
@@ -43,6 +44,7 @@ class EntregaEtapaAvancoTest {
     private final ArquivoStorageService storage = mock(ArquivoStorageService.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
     private final RoteamentoEtapaService roteamento = mock(RoteamentoEtapaService.class);
+    private final ApplicationEventPublisher eventos = mock(ApplicationEventPublisher.class);
     private final EntregaEtapaService service = new EntregaEtapaService(
             etapas,
             liberacao,
@@ -50,6 +52,7 @@ class EntregaEtapaAvancoTest {
             storage,
             historico,
             roteamento,
+            eventos,
             Clock.fixed(AGORA, ZoneOffset.UTC));
 
     @Test

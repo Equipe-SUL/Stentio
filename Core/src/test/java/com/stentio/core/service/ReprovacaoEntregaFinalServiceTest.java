@@ -1,5 +1,7 @@
 package com.stentio.core.service;
 
+import org.springframework.context.ApplicationEventPublisher;
+import com.stentio.core.event.StatusAlteradoEvento;
 import com.stentio.core.dto.ReprovacaoEntregaFinalResponse;
 import com.stentio.core.exception.TransicaoOrdemServicoInvalidaException;
 import com.stentio.core.model.Cliente;
@@ -52,8 +54,9 @@ class ReprovacaoEntregaFinalServiceTest {
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
     private final ReaberturaEtapaEmailService avisos = mock(ReaberturaEtapaEmailService.class);
 
+    private final ApplicationEventPublisher eventos = mock(ApplicationEventPublisher.class);
     private final ReprovacaoEntregaFinalService service = new ReprovacaoEntregaFinalService(
-            revisao, etapas, outbox, historico, avisos, Clock.fixed(AGORA, ZoneOffset.UTC));
+            revisao, etapas, outbox, historico, avisos, eventos, Clock.fixed(AGORA, ZoneOffset.UTC));
 
     private final UUID osId = UUID.randomUUID();
     private final UsuarioAutenticado gestor =
@@ -103,6 +106,24 @@ class ReprovacaoEntregaFinalServiceTest {
         assertEquals(StatusEtapaOrdemServico.ACEITA, resposta.etapaStatus());
         assertEquals(StatusOrdemServico.EM_EXECUCAO, resposta.ordemServicoStatus());
         assertEquals(MOTIVO, ordem.getMotivoRevisao());
+    }
+
+    @Test
+    @DisplayName("US-019: a reprovação audita a OS e a etapa reaberta, com o motivo")
+    void reprovacaoAuditaOrdemEEtapa() {
+        service.reprovar(osId, MOTIVO, gestor);
+
+        org.mockito.ArgumentCaptor<StatusAlteradoEvento> captor =
+                org.mockito.ArgumentCaptor.forClass(StatusAlteradoEvento.class);
+        verify(eventos, org.mockito.Mockito.times(2)).publishEvent(captor.capture());
+        StatusAlteradoEvento daOrdem = captor.getAllValues().get(0);
+        StatusAlteradoEvento daEtapa = captor.getAllValues().get(1);
+
+        assertEquals("AGUARDANDO_VERIFICACAO", daOrdem.statusAnterior());
+        assertEquals("EM_EXECUCAO", daOrdem.statusNovo());
+        assertEquals("ENTREGUE", daEtapa.statusAnterior());
+        assertEquals("ACEITA", daEtapa.statusNovo());
+        org.junit.jupiter.api.Assertions.assertTrue(daOrdem.observacao().contains(MOTIVO));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.stentio.core.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import com.stentio.core.dto.DisparoEtapaResponse;
 import com.stentio.core.exception.AlocacaoInvalidaException;
 import com.stentio.core.exception.TransicaoEtapaInvalidaException;
@@ -52,8 +53,9 @@ class DisparoEtapaServiceTest {
     private final ConviteEtapaEmailService convites = mock(ConviteEtapaEmailService.class);
     private final HistoricoEtapaRepository historico = mock(HistoricoEtapaRepository.class);
 
+    private final ApplicationEventPublisher eventos = mock(ApplicationEventPublisher.class);
     private final DisparoEtapaService service = new DisparoEtapaService(
-            etapas, liberacao, recursos, convites, historico, Clock.fixed(AGORA, ZoneOffset.UTC));
+            etapas, liberacao, recursos, convites, historico, eventos, Clock.fixed(AGORA, ZoneOffset.UTC));
 
     private final UUID osId = UUID.randomUUID();
     private final UUID etapaId = UUID.randomUUID();
@@ -81,8 +83,11 @@ class DisparoEtapaServiceTest {
 
         OrdemServico ordem = mock(OrdemServico.class);
         when(ordem.getSolicitacao()).thenReturn(solicitacao);
+        when(ordem.getId()).thenReturn(UUID.randomUUID());
 
         etapa = new EtapaOrdemServico(ordem, 1, "Tradução Principal", traducao, 24);
+        // US-019: o evento de auditoria identifica a etapa pelo id, que normalmente vem do banco.
+        org.springframework.test.util.ReflectionTestUtils.setField(etapa, "id", etapaId);
 
         when(etapas.buscarParaAlocacao(osId, etapaId)).thenReturn(Optional.of(etapa));
         when(etapas.save(any())).thenAnswer(inv -> inv.getArgument(0));

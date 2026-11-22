@@ -1,5 +1,8 @@
 package com.stentio.core.service;
 
+import org.springframework.context.ApplicationEventPublisher;
+import com.stentio.core.support.AtorAuditoria;
+import com.stentio.core.event.StatusAlteradoEvento;
 import com.stentio.core.model.EntregaFinalEmailOutbox;
 import com.stentio.core.model.Orcamento;
 import com.stentio.core.model.OrdemServico;
@@ -41,8 +44,9 @@ class EntregaFinalEmailDispatcherTest {
             mock(EntregaFinalEmailOutboxRepository.class);
     private final EntregaFinalEmailPublisher publisher = mock(EntregaFinalEmailPublisher.class);
 
+    private final ApplicationEventPublisher eventos = mock(ApplicationEventPublisher.class);
     private final EntregaFinalEmailDispatcher dispatcher = new EntregaFinalEmailDispatcher(
-            repository, publisher, Clock.fixed(AGORA, ZoneOffset.UTC), 30);
+            repository, publisher, eventos, Clock.fixed(AGORA, ZoneOffset.UTC), 30);
 
     private OrdemServico ordem;
     private EntregaFinalEmailOutbox envio;
@@ -75,6 +79,32 @@ class EntregaFinalEmailDispatcherTest {
         assertEquals(StatusOrdemServico.ENCERRADA, ordem.getStatus());
         assertEquals(AGORA, ordem.getEntregueEm());
         assertEquals("gestor@aliancatraducoes.com", ordem.getEntreguePor());
+    }
+
+    @Test
+    @DisplayName("US-019: o encerramento entra no log como Sistema, com o aprovador na observação")
+    void encerramentoAuditadoComoSistema() {
+        dispatcher.processarProximo();
+
+        org.mockito.ArgumentCaptor<StatusAlteradoEvento> captor =
+                org.mockito.ArgumentCaptor.forClass(StatusAlteradoEvento.class);
+        org.mockito.Mockito.verify(eventos).publishEvent(captor.capture());
+        StatusAlteradoEvento evento = captor.getValue();
+
+        assertEquals("AGUARDANDO_VERIFICACAO", evento.statusAnterior());
+        assertEquals("ENCERRADA", evento.statusNovo());
+        assertEquals(AtorAuditoria.PERFIL_SISTEMA, evento.ator().perfil());
+        assertTrue(evento.observacao().contains("gestor@aliancatraducoes.com"));
+    }
+
+    @Test
+    @DisplayName("US-019: sem ACK não há encerramento, e nada vai para o log")
+    void falhaNaoAudita() throws Exception {
+        doThrow(new RuntimeException("broker fora")).when(publisher).publicar(any());
+
+        dispatcher.processarProximo();
+
+        org.mockito.Mockito.verify(eventos, org.mockito.Mockito.never()).publishEvent(any(Object.class));
     }
 
     @Test
