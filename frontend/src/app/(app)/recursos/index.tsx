@@ -6,6 +6,7 @@ import { RowActions } from "../../../components/usuarios/RowActions";
 import { StatusBadge } from "../../../components/usuarios/Badge";
 import { RecursoFormModal, RecursoFormValues, UnidadeCobranca } from "../../../components/usuarios/RecursoFormModal";
 import { CabecalhoTela } from "../../../components/navegacao/CabecalhoTela";
+import { FilaCertificacoes } from "../../../components/recursos/FilaCertificacoes";
 import { coreApi, getApiErrorMessage } from "../../../lib/api";
 import { useSession } from "../../../lib/session";
 import type { ColumnDef, FiltroStatus } from "../../../components/usuarios/types";
@@ -284,11 +285,11 @@ export default function RecursosPage() {
     },
     {
       key: "verificado",
-      header: "Verificação",
+      header: "Cadastro",
       render: (recurso) => (
         <View className={`self-start rounded-md px-2.5 py-1 ${recurso.verificado ? "bg-emerald-50" : "bg-amber-50"}`}>
           <Text className={`text-xs font-medium ${recurso.verificado ? "text-emerald-700" : "text-amber-700"}`}>
-            {recurso.verificado ? "Verificado" : "Pendente"}
+            {recurso.verificado ? "Cadastro revisado" : "Pendente"}
           </Text>
         </View>
       ),
@@ -296,20 +297,20 @@ export default function RecursosPage() {
     {
       key: "id",
       header: "",
-      width: podeVerificar ? 170 : 92,
+      width: podeVerificar ? 180 : 92,
       align: "right",
       render: (recurso) => (
         <View className="flex-row items-center justify-end gap-1">
           {podeVerificar && !recurso.verificado ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Verificar recurso ${recurso.nome}`}
+              accessibilityLabel={`Revisar cadastro do recurso ${recurso.nome}`}
               disabled={verificandoId === recurso.id}
               onPress={() => void handleVerificar(recurso)}
               className="flex-row items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-2"
             >
               {verificandoId === recurso.id ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="checkmark-circle-outline" size={15} color="#fff" />}
-              <Text className="text-xs font-semibold text-white">Verificar</Text>
+              <Text className="text-xs font-semibold text-white">Revisar cadastro</Text>
             </Pressable>
           ) : null}
           <RowActions
@@ -351,6 +352,8 @@ export default function RecursosPage() {
             </Pressable>
           }
         />
+
+        <FilaCertificacoes onCertificacaoAnalisada={recarregar} />
 
         <View className="gap-2">
           <View className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2">
@@ -402,7 +405,7 @@ export default function RecursosPage() {
                 >
                   {opcao === "pendentes" ? <Ionicons name="time-outline" size={14} color={selecionado ? "#b45309" : "#737373"} /> : null}
                   <Text className={`text-xs font-medium ${selecionado ? "text-neutral-900" : "text-neutral-500"}`}>
-                    {opcao === "todos" ? "Todas as verificações" : "Pendentes de verificação"}
+                    {opcao === "todos" ? "Todos os cadastros" : "Pendentes de revisão"}
                   </Text>
                 </Pressable>
               );
