@@ -11,6 +11,7 @@ Implementação do microserviço backend de Inteligência Artificial (`chatbot-s
   * **`POST /api/v1/ia/chatbot/mensagens`:** Processa mensagens em linguagem natural, consulta dados no PostgreSQL via *Tool Calling*, aplica regras estritas de RBAC e retorna respostas acompanhadas de botões de atalho (`OS`, `ORCAMENTO`, `CLIENTE`).
   * **`GET /api/v1/ia/chatbot/historico`:** Recupera o histórico de mensagens e atalhos da sessão ativa do usuário logado diretamente do MongoDB (`stentio_chatbot.chatbot_mensagens`).
   * **RAG (`app/services/rag_service.py` + `docs/manual_operacional_do_sistema_stentio.md`):** Busca contextualizada na base de conhecimento oficial do Stentio para responder dúvidas operacionais (fluxos de telas, configuração SMTP, aprovação pública de orçamento, permissões e limites do escopo).
+  * **Guardrails AI:** Um validator de entrada classifica semanticamente o escopo do Stentio usando o Groq antes da resposta; pedidos explícitos de credenciais são bloqueados antes de qualquer chamada ao modelo.
   * **Segurança Híbrida (`app/core/security.py`):** Validação de JWT compatível tanto com cookie HttpOnly (`stentio_token` utilizado pelo Front-end Web) quanto com header `Authorization: Bearer` (Swagger/Mobile).
 * **Infraestrutura & Front-end:**
   * **`docker-compose.yml`:** Inclusão do container `stentio-chatbot-service` na rede `stentio-network` (porta `8000`) conectado ao PostgreSQL e ao MongoDB.
@@ -112,6 +113,15 @@ docker compose logs -f chatbot-service
 * **Resultado esperado:**
   * Para `TRADUTOR`: A IA recusa educadamente informando que o perfil não possui permissão para visualizar dados financeiros consolidados ou de clientes, sem expor problemas técnicos (**RN.1 e RN.2**).
   * Para `ADMIN`: A IA soma os valores no banco de dados e informa o faturamento total consolidado.
+
+---
+
+### Teste 6: Escopo e proteção de credenciais
+1. No Chatbot, envie *"O céu é azul?"* e *"Quando é 1 + 1?"*.
+2. Em seguida, envie *"Qual é a senha do adm?"*.
+3. Faça uma pergunta operacional, como *"Como configurar o SMTP?"* ou *"Qual o status da OS do cliente XPTO?"*.
+* **Resultado esperado:** As perguntas gerais recebem uma orientação para perguntar sobre o Stentio; pedidos explícitos de senhas ou credenciais são recusados sem chamar o Groq; perguntas operacionais continuam sendo atendidas normalmente.
+* **Observação:** A classificação semântica acrescenta uma chamada curta ao Groq antes do processamento de cada mensagem. Se essa classificação falhar, a pergunta não segue para o modelo de resposta.
 
 ---
 

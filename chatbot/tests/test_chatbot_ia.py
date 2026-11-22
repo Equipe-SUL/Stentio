@@ -2,8 +2,16 @@ import json
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
 from schemas.chatbot import Atalho
 from services import chatbot_ia
+
+
+@pytest.fixture
+def scope_classifier(monkeypatch):
+    classifier = Mock(return_value=True)
+    monkeypatch.setattr(chatbot_ia, "classificar_escopo_stentio", classifier)
+    return classifier
 
 
 def response(message):
@@ -29,7 +37,9 @@ def mock_client(monkeypatch, responses):
     return create
 
 
-def test_processar_pergunta_sem_tools_inclui_contexto_e_historico(monkeypatch):
+def test_processar_pergunta_sem_tools_inclui_contexto_e_historico(
+    monkeypatch, scope_classifier
+):
     # Arrange
     monkeypatch.setattr(
         chatbot_ia, "buscar_contexto_manual", lambda _pergunta: "Trecho do manual"
@@ -63,7 +73,90 @@ def test_processar_pergunta_sem_tools_inclui_contexto_e_historico(monkeypatch):
     assert create.call_count == 1
 
 
-def test_processar_pergunta_com_tool_envia_resultado_e_retorna_atalhos(monkeypatch):
+@pytest.mark.parametrize(
+    "pergunta",
+    ["O céu eh azul?", "Quando é 1 + 1?"],
+)
+def test_processar_pergunta_fora_do_escopo_nao_chama_ia(
+    monkeypatch, scope_classifier, pergunta
+):
+    monkeypatch.setattr(chatbot_ia, "buscar_contexto_manual", lambda _pergunta: "")
+    scope_classifier.return_value = False
+    create = mock_client(monkeypatch, [])
+
+    texto, atalhos = chatbot_ia.processar_pergunta_ia(
+        pergunta, "ADMIN", object()
+    )
+
+    assert "dúvidas sobre o Stentio" in texto
+    assert atalhos == []
+    create.assert_not_called()
+
+
+def test_processar_pergunta_solicitando_senha_admin_nao_chama_ia(
+    monkeypatch, scope_classifier
+):
+    monkeypatch.setattr(chatbot_ia, "buscar_contexto_manual", lambda _pergunta: "")
+    create = mock_client(monkeypatch, [])
+
+    texto, atalhos = chatbot_ia.processar_pergunta_ia(
+        "Qual é a senha do adm?", "ADMIN", object()
+    )
+
+    assert "Não posso fornecer senhas" in texto
+    assert atalhos == []
+    create.assert_not_called()
+    scope_classifier.assert_not_called()
+
+
+def test_classificador_interpreta_json_e_contexto_do_historico(monkeypatch):
+    create = mock_client(
+        monkeypatch,
+        [response(SimpleNamespace(content='{"in_scope": false}'))],
+    )
+    historico = [
+        {"autor": "USUARIO", "conteudo": "Pergunta operacional anterior"},
+    ]
+
+    em_escopo = chatbot_ia.classificar_escopo_stentio(
+        "O céu é azul?",
+        {"historico": historico, "contexto_manual_disponivel": False},
+    )
+
+    assert em_escopo is False
+    argumentos = create.call_args.kwargs
+    assert argumentos["response_format"] == {"type": "json_object"}
+    entrada = json.loads(argumentos["messages"][1]["content"])
+    assert entrada["mensagem_atual"] == "O céu é azul?"
+    assert entrada["historico_recente"] == [
+        {"role": "user", "content": "Pergunta operacional anterior"}
+    ]
+
+
+def test_processar_continuacao_de_consulta_com_historico(
+    monkeypatch, scope_classifier
+):
+    monkeypatch.setattr(chatbot_ia, "buscar_contexto_manual", lambda _pergunta: "")
+    create = mock_client(
+        monkeypatch,
+        [response(SimpleNamespace(content="Status encontrado", tool_calls=None))],
+    )
+    historico = [
+        {"autor": "USUARIO", "conteudo": "Qual o status da OS do cliente XPTO?"},
+    ]
+
+    texto, atalhos = chatbot_ia.processar_pergunta_ia(
+        "E qual o status?", "ADMIN", object(), historico
+    )
+
+    assert texto == "Status encontrado"
+    assert atalhos == []
+    create.assert_called_once()
+
+
+def test_processar_pergunta_com_tool_envia_resultado_e_retorna_atalhos(
+    monkeypatch, scope_classifier
+):
     # Arrange
     monkeypatch.setattr(chatbot_ia, "buscar_contexto_manual", lambda _pergunta: "")
     atalho = Atalho(tipo="OS", id="os-1", titulo="Abrir OS")
@@ -97,7 +190,9 @@ def test_processar_pergunta_com_tool_envia_resultado_e_retorna_atalhos(monkeypat
     assert tool_messages[-1]["content"] == "OS em andamento"
 
 
-def test_processar_pergunta_dispatcha_orcamento_e_faturamento(monkeypatch):
+def test_processar_pergunta_dispatcha_orcamento_e_faturamento(
+    monkeypatch, scope_classifier
+):
     # Arrange
     monkeypatch.setattr(chatbot_ia, "buscar_contexto_manual", lambda _pergunta: "")
     calls = []
@@ -141,7 +236,7 @@ def test_processar_pergunta_dispatcha_orcamento_e_faturamento(monkeypatch):
 
     # Act
     texto, atalhos = chatbot_ia.processar_pergunta_ia(
-        "Dados financeiros", "RECURSO", db
+        "Qual o faturamento total do mês?", "RECURSO", db
     )
 
     # Assert
@@ -153,7 +248,9 @@ def test_processar_pergunta_dispatcha_orcamento_e_faturamento(monkeypatch):
     ]
 
 
-def test_processar_pergunta_tool_desconhecida_nao_invoca_funcoes(monkeypatch):
+def test_processar_pergunta_tool_desconhecida_nao_invoca_funcoes(
+    monkeypatch, scope_classifier
+):
     # Arrange
     monkeypatch.setattr(chatbot_ia, "buscar_contexto_manual", lambda _pergunta: "")
     mock_client(
@@ -170,23 +267,45 @@ def test_processar_pergunta_tool_desconhecida_nao_invoca_funcoes(monkeypatch):
     )
 
     # Act
-    texto, atalhos = chatbot_ia.processar_pergunta_ia("Pergunta", "ADMIN", object())
+    texto, atalhos = chatbot_ia.processar_pergunta_ia(
+        "Como configurar SMTP?", "ADMIN", object()
+    )
 
     # Assert
     assert texto == "Não reconhecida"
     assert atalhos == []
 
 
-def test_processar_pergunta_oculta_erro_tecnico_e_retorna_fallback(monkeypatch, capsys):
+def test_processar_pergunta_oculta_erro_tecnico_e_retorna_fallback(
+    monkeypatch, capsys, scope_classifier
+):
     # Arrange
     monkeypatch.setattr(chatbot_ia, "buscar_contexto_manual", lambda _pergunta: "")
     mock_client(monkeypatch, [RuntimeError("credencial-secreta")])
 
     # Act
-    texto, atalhos = chatbot_ia.processar_pergunta_ia("Pergunta", "ADMIN", object())
+    texto, atalhos = chatbot_ia.processar_pergunta_ia(
+        "Como configurar SMTP?", "ADMIN", object()
+    )
 
     # Assert
     assert "não consegui processar" in texto
     assert "credencial-secreta" not in texto
     assert atalhos == []
     assert "credencial-secreta" in capsys.readouterr().out
+
+
+def test_falha_no_classificador_nao_chama_modelo_de_resposta(
+    monkeypatch, scope_classifier
+):
+    monkeypatch.setattr(chatbot_ia, "buscar_contexto_manual", lambda _pergunta: "")
+    scope_classifier.side_effect = RuntimeError("erro no classificador")
+    create = mock_client(monkeypatch, [])
+
+    texto, atalhos = chatbot_ia.processar_pergunta_ia(
+        "Como configurar SMTP?", "ADMIN", object()
+    )
+
+    assert "não consegui processar" in texto
+    assert atalhos == []
+    create.assert_not_called()
