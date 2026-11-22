@@ -502,6 +502,7 @@ export function FilaCertificacoes({ onCertificacaoAnalisada }: FilaCertificacoes
               <TextInput
                 value={motivoRejeicao}
                 onChangeText={setMotivoRejeicao}
+                maxLength={1000}
                 placeholder="Ex.: Documento ilegível, certificado expirado ou par divergente..."
                 placeholderTextColor="#a3a3a3"
                 multiline

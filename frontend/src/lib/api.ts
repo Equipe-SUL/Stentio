@@ -49,12 +49,8 @@ api.interceptors.request.use(async (config) => {
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as
-      | { message?: string | string[]; mensagem?: string; error?: string }
+      | { message?: string | string[]; error?: string }
       | undefined;
-
-    if (data?.mensagem) {
-      return data.mensagem;
-    }
 
     if (data?.message) {
       return Array.isArray(data.message) ? data.message.join("\n") : data.message;
