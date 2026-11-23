@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { UsuarioLogado } from "../../lib/session";
 import { ChatbotWidget } from "../chatbot/ChatbotWidget";
+import { StIcon } from "./StIcon";
 
 export type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -27,7 +28,7 @@ export interface MenuItem {
 
 export interface MenuGroup {
   title: string;
-  icon: IconName;
+  icon: IconName | "sticon";
   items: MenuItem[];
 }
 
@@ -383,11 +384,18 @@ export function AppShell({
                         active && styles.dockButtonActive,
                       ]}
                     >
-                      <Ionicons
-                        name={group.icon}
-                        size={27}
-                        color={active ? "#ffffff" : "#d6c5ba"}
-                      />
+                      {group.icon === "sticon" ? (
+                        <StIcon
+                          size={27}
+                          color={active ? "#ffffff" : "#d6c5ba"}
+                        />
+                      ) : (
+                        <Ionicons
+                          name={group.icon}
+                          size={27}
+                          color={active ? "#ffffff" : "#d6c5ba"}
+                        />
+                      )}
                       <View
                         style={[styles.activeDot, { opacity: active ? 1 : 0 }]}
                       />
