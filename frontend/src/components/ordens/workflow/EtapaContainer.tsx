@@ -141,7 +141,7 @@ export function EtapaContainer({
               editable={!bloqueadoPorRN3}
               placeholder="Nome da etapa (ex: Tradução Principal)..."
               placeholderTextColor="#a3a3a3"
-              className={`flex-1 min-w-[200px] text-base font-bold text-neutral-900 border-b border-transparent hover:border-neutral-300 focus:border-[#8c5230] py-0.5 px-1 rounded ${
+              className={`flex-1 min-w-50 text-base font-bold text-neutral-900 border-b border-transparent hover:border-neutral-300 focus:border-[#8c5230] py-0.5 px-1 rounded ${
                 bloqueadoPorRN3 ? "text-neutral-500" : ""
               }`}
             />

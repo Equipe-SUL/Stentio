@@ -56,28 +56,44 @@ export function FilaCertificacoes({ onCertificacaoAnalisada }: FilaCertificacoes
   const [erroRejeicao, setErroRejeicao] = useState("");
   const [enviandoRejeicao, setEnviandoRejeicao] = useState(false);
 
+  const buscarFila = useCallback((p: number, f: FiltroStatusFila) => {
+    const statusParam = f === "TODAS" ? undefined : (f as StatusCertificacao);
+    return listarCertificacoesGestor({
+      status: statusParam,
+      pagina: p,
+      tamanho_pagina: 10,
+    });
+  }, []);
+
   const carregarFila = useCallback(async (p: number, f: FiltroStatusFila) => {
-    setCarregando(true);
-    setErro("");
     try {
-      const statusParam = f === "TODAS" ? undefined : (f as StatusCertificacao);
-      const res = await listarCertificacoesGestor({
-        status: statusParam,
-        pagina: p,
-        tamanho_pagina: 10,
-      });
+      const res = await buscarFila(p, f);
       setDados(res);
     } catch (e) {
       setErro(getApiErrorMessage(e));
     } finally {
       setCarregando(false);
     }
-  }, []);
+  }, [buscarFila]);
 
   useEffect(() => {
     if (!podeAnalisar) return;
-    void carregarFila(pagina, filtro);
-  }, [carregarFila, filtro, pagina, podeAnalisar]);
+    let ativo = true;
+    buscarFila(pagina, filtro)
+      .then((res) => {
+        if (ativo) setDados(res);
+      })
+      .catch((e) => {
+        if (ativo) setErro(getApiErrorMessage(e));
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [buscarFila, filtro, pagina, podeAnalisar]);
 
   if (!podeAnalisar) {
     return null;
@@ -92,6 +108,7 @@ export function FilaCertificacoes({ onCertificacaoAnalisada }: FilaCertificacoes
       setMensagemSucesso(
         `Certificação de ${cert.recurso_nome || "recurso"} (${cert.idioma_origem.nome} → ${cert.idioma_destino.nome}) aprovada com sucesso!`
       );
+      setCarregando(true);
       await carregarFila(pagina, filtro);
       onCertificacaoAnalisada?.();
     } catch (e) {
@@ -117,12 +134,14 @@ export function FilaCertificacoes({ onCertificacaoAnalisada }: FilaCertificacoes
 
     setEnviandoRejeicao(true);
     setErroRejeicao("");
+    setErro("");
     try {
       await rejeitarCertificacao(certificacaoParaRejeitar.id, motivoTrim);
       setMensagemSucesso(
         `Certificação de ${certificacaoParaRejeitar.recurso_nome || "recurso"} rejeitada. O profissional foi notificado.`
       );
       setCertificacaoParaRejeitar(null);
+      setCarregando(true);
       await carregarFila(pagina, filtro);
       onCertificacaoAnalisada?.();
     } catch (e) {
@@ -146,12 +165,17 @@ export function FilaCertificacoes({ onCertificacaoAnalisada }: FilaCertificacoes
   const certificacoes = dados?.certificacoes ?? [];
   const totalRegistros = dados?.total_registros ?? 0;
   const totalPaginas = dados?.total_paginas ?? 1;
+  const atualizarFila = () => {
+    setCarregando(true);
+    setErro("");
+    void carregarFila(pagina, filtro);
+  };
 
   return (
     <View className="w-full gap-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm md:p-6">
       {/* Top Header */}
       <View className="flex-row flex-wrap items-start justify-between gap-3 border-b border-neutral-100 pb-4">
-        <View className="flex-1 gap-1 min-w-[240px]">
+        <View className="flex-1 gap-1 min-w-60">
           <View className="flex-row items-center gap-2">
             <View className="h-8 w-8 items-center justify-center rounded-lg bg-[#6f4f28]/10">
               <Ionicons name="ribbon-outline" size={18} color="#6f4f28" />
@@ -173,7 +197,7 @@ export function FilaCertificacoes({ onCertificacaoAnalisada }: FilaCertificacoes
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Recarregar fila de certificações"
-          onPress={() => void carregarFila(pagina, filtro)}
+          onPress={atualizarFila}
           disabled={carregando}
           className="flex-row items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 hover:bg-neutral-50"
         >
@@ -228,6 +252,9 @@ export function FilaCertificacoes({ onCertificacaoAnalisada }: FilaCertificacoes
               accessibilityRole="button"
               accessibilityState={{ selected: selecionado }}
               onPress={() => {
+                if (opcao.id === filtro && pagina === 1) return;
+                setCarregando(true);
+                setErro("");
                 setFiltro(opcao.id);
                 setPagina(1);
               }}
@@ -427,7 +454,11 @@ export function FilaCertificacoes({ onCertificacaoAnalisada }: FilaCertificacoes
               accessibilityRole="button"
               accessibilityLabel="Página anterior"
               disabled={pagina <= 1 || carregando}
-              onPress={() => setPagina((p) => Math.max(1, p - 1))}
+              onPress={() => {
+                setCarregando(true);
+                setErro("");
+                setPagina((p) => Math.max(1, p - 1));
+              }}
               className={`rounded-lg border px-3 py-1 ${
                 pagina <= 1 ? "border-neutral-200 opacity-50" : "border-neutral-300 hover:bg-neutral-50"
               }`}
@@ -438,7 +469,11 @@ export function FilaCertificacoes({ onCertificacaoAnalisada }: FilaCertificacoes
               accessibilityRole="button"
               accessibilityLabel="Próxima página"
               disabled={pagina >= totalPaginas || carregando}
-              onPress={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+              onPress={() => {
+                setCarregando(true);
+                setErro("");
+                setPagina((p) => Math.min(totalPaginas, p + 1));
+              }}
               className={`rounded-lg border px-3 py-1 ${
                 pagina >= totalPaginas
                   ? "border-neutral-200 opacity-50"
@@ -507,7 +542,7 @@ export function FilaCertificacoes({ onCertificacaoAnalisada }: FilaCertificacoes
                 placeholderTextColor="#a3a3a3"
                 multiline
                 numberOfLines={3}
-                className="min-h-[80px] rounded-xl border border-neutral-300 p-3 text-xs text-neutral-900 align-top"
+                className="min-h-20 rounded-xl border border-neutral-300 p-3 text-xs text-neutral-900 align-top"
               />
               <Text className="text-[11px] text-neutral-500">
                 O profissional receberá este motivo por e-mail e poderá reenviar a certificação pelo portal.

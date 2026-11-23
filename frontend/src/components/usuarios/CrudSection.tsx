@@ -257,7 +257,7 @@ export function CrudSection<T extends EntityBase>({
   ];
 
   return (
-    <View className="flex-1 min-w-[260px] gap-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+    <View className="flex-1 min-w-65 gap-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
       <View className="flex-row items-center justify-between gap-2">
         <Text className="text-lg font-bold text-neutral-900">{title}</Text>
 

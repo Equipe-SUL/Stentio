@@ -57,7 +57,7 @@ const AnimatedSpiralWord = ({ word, index, angleOffset, cycleLength }: { word: s
       delay,
       withRepeat(withTiming(1, { duration: currentTotalCycle, easing: Easing.linear }), -1, false)
     );
-  }, []);
+  }, [cycleLength, index, progress]);
 
   const animatedStyle = useAnimatedStyle(() => {
     if (progress.value === 0 || progress.value > VISIBLE_FRACTION) {
@@ -96,83 +96,130 @@ const AnimatedSpiralWord = ({ word, index, angleOffset, cycleLength }: { word: s
   );
 };
 
-const BrandingCarousel = ({ textColor = "text-white", dotActiveColor = "#ffffff", dotInactiveColor = "rgba(255,255,255,0.4)" }: { textColor?: string, dotActiveColor?: string, dotInactiveColor?: string }) => {
+const BRANDING_SLIDES = [
+  "Traduza com precisão,\ncontrole com clareza.",
+  "Cada palavra no\nlugar certo.",
+  "60 idiomas,\num único painel.",
+];
+
+function BrandingSlide({
+  slide,
+  active,
+  textColor,
+}: {
+  slide: string;
+  active: boolean;
+  textColor: string;
+}) {
+  const opacity = useSharedValue(active ? 1 : 0);
+  const translateY = useSharedValue(active ? 0 : 10);
+
+  useEffect(() => {
+    opacity.value = withTiming(active ? 1 : 0, { duration: 600 });
+    translateY.value = withTiming(active ? 0 : 10, { duration: 600 });
+  }, [active, opacity, translateY]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+  }));
+
+  return (
+    <Animated.Text
+      style={style}
+      className={`${textColor} text-3xl md:text-4xl font-serif font-bold leading-tight`}
+    >
+      {slide}
+    </Animated.Text>
+  );
+}
+
+function BrandingDot({
+  active,
+  activeColor,
+  inactiveColor,
+  onPress,
+}: {
+  active: boolean;
+  activeColor: string;
+  inactiveColor: string;
+  onPress: () => void;
+}) {
+  const width = useSharedValue(active ? 32 : 10);
+  const opacity = useSharedValue(active ? 1 : 0.4);
+
+  useEffect(() => {
+    width.value = withTiming(active ? 32 : 10, { duration: 400 });
+    opacity.value = withTiming(active ? 1 : 0.4, { duration: 400 });
+  }, [active, opacity, width]);
+
+  const dotStyle = useAnimatedStyle(() => ({
+    width: width.value,
+    opacity: opacity.value,
+    height: 10,
+    borderRadius: 9999,
+  }));
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      activeOpacity={0.8}
+    >
+      <Animated.View
+        style={[
+          dotStyle,
+          { backgroundColor: active ? activeColor : inactiveColor },
+        ]}
+      />
+    </TouchableOpacity>
+  );
+}
+
+const BrandingCarousel = ({
+  textColor = "text-white",
+  dotActiveColor = "#ffffff",
+  dotInactiveColor = "rgba(255,255,255,0.4)",
+}: {
+  textColor?: string;
+  dotActiveColor?: string;
+  dotInactiveColor?: string;
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const slides = [
-    "Traduza com precisão,\ncontrole com clareza.",
-    "Cada palavra no\nlugar certo.",
-    "60 idiomas,\num único painel."
-  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % slides.length);
+      setCurrentIndex((prev) => (prev + 1) % BRANDING_SLIDES.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [currentIndex]);
+  }, []);
 
   return (
     <View className="z-10 w-full">
-      <View className="h-[90px] justify-end mb-5 relative">
-        {slides.map((slide, index) => {
-          const isActive = index === currentIndex;
-          const opacity = useSharedValue(isActive ? 1 : 0);
-          const translateY = useSharedValue(isActive ? 0 : 10);
-
-          useEffect(() => {
-            opacity.value = withTiming(isActive ? 1 : 0, { duration: 600 });
-            translateY.value = withTiming(isActive ? 0 : 10, { duration: 600 });
-          }, [isActive]);
-
-          const style = useAnimatedStyle(() => ({
-            opacity: opacity.value,
-            transform: [{ translateY: translateY.value }],
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-          }));
-
-          return (
-            <Animated.Text 
-              key={index} 
-              style={style} 
-              className={`${textColor} text-3xl md:text-4xl font-serif font-bold leading-tight`}
-            >
-              {slide}
-            </Animated.Text>
-          );
-        })}
+      <View className="h-22.5 justify-end mb-5 relative">
+        {BRANDING_SLIDES.map((slide, index) => (
+          <BrandingSlide
+            key={slide}
+            slide={slide}
+            active={index === currentIndex}
+            textColor={textColor}
+          />
+        ))}
       </View>
 
       <View className="flex-row gap-3 items-center h-4">
-        {slides.map((_, index) => {
-          const isActive = index === currentIndex;
-          const width = useSharedValue(isActive ? 32 : 10);
-          const opacity = useSharedValue(isActive ? 1 : 0.4);
-
-          useEffect(() => {
-            width.value = withTiming(isActive ? 32 : 10, { duration: 400 });
-            opacity.value = withTiming(isActive ? 1 : 0.4, { duration: 400 });
-          }, [isActive]);
-
-          const dotStyle = useAnimatedStyle(() => ({
-            width: width.value,
-            opacity: opacity.value,
-            height: 10,
-            borderRadius: 9999,
-          }));
-
-          return (
-            <TouchableOpacity 
-              key={index}
-              onPress={() => setCurrentIndex(index)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.8}
-            >
-              <Animated.View style={[dotStyle, { backgroundColor: isActive ? dotActiveColor : dotInactiveColor }]} />
-            </TouchableOpacity>
-          );
-        })}
+        {BRANDING_SLIDES.map((_, index) => (
+          <BrandingDot
+            key={index}
+            active={index === currentIndex}
+            activeColor={dotActiveColor}
+            inactiveColor={dotInactiveColor}
+            onPress={() => setCurrentIndex(index)}
+          />
+        ))}
       </View>
     </View>
   );

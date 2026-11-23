@@ -66,10 +66,12 @@ function obterRoleUsuarioAtual(): string | null {
     if (partes.length < 2) return null;
 
     const base64 = partes[1].replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload =
-      typeof atob === "function"
-        ? atob(base64)
-        : Buffer.from(base64, "base64").toString("utf-8");
+    const base64ComPadding = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const jsonPayload = decodeURIComponent(
+      Array.from(atob(base64ComPadding), (caractere) =>
+        `%${caractere.charCodeAt(0).toString(16).padStart(2, "0")}`,
+      ).join(""),
+    );
 
     const payload = JSON.parse(jsonPayload) as { role?: string; roles?: string[] };
     if (typeof payload.role === "string") return payload.role.toUpperCase();
@@ -907,7 +909,7 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
                 numberOfLines={3}
                 placeholder="Ex.: Segue em anexo o documento final traduzido e revisado."
                 placeholderTextColor="#9ca3af"
-                className="min-h-[84px] rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900"
+                className="min-h-21 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900"
                 style={{ textAlignVertical: "top" }}
               />
             </View>
@@ -999,7 +1001,7 @@ export function EntregaFinalRevisaoScreen({ ordemId }: EntregaFinalRevisaoScreen
                 numberOfLines={4}
                 placeholder="Descreva o que precisa ser corrigido no arquivo final (ex.: Falta a assinatura na última página)."
                 placeholderTextColor="#9ca3af"
-                className="min-h-[100px] rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900"
+                className="min-h-25 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900"
                 style={{ textAlignVertical: "top" }}
               />
             </View>

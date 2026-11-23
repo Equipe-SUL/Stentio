@@ -105,7 +105,7 @@ export function DashboardScreen() {
                   className="flex-row items-center gap-2 rounded-xl border border-[#e5ded6] bg-white px-3 py-2.5"
                 >
                   <View
-                    className="h-[18px] w-8 justify-center rounded-full px-0.5"
+                    className="h-4.5 w-8 justify-center rounded-full px-0.5"
                     style={{ backgroundColor: autoAtualizar ? "#745331" : "#c8c4c0" }}
                   >
                     <View
@@ -244,7 +244,7 @@ export function DashboardScreen() {
               <Text className="text-4xl font-semibold text-[#6f4e2d]">
                 {taxaConversao === undefined ? "—" : formatarPercentual(taxaConversao)}
               </Text>
-              <View className="min-w-[130px] flex-1 gap-2">
+              <View className="min-w-32.5 flex-1 gap-2">
                 <View className="h-2.5 overflow-hidden rounded-full bg-[#ece8e2]">
                   <View className="h-full rounded-full bg-[#775633]" style={{ width: `${porcentagemBarra}%` }} />
                 </View>

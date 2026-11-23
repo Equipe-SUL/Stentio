@@ -1,5 +1,11 @@
 // NovaSolicitacaoScreen.tsx
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type ComponentRef,
+  type ReactNode,
+} from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -78,7 +84,7 @@ export function NovaSolicitacaoScreen() {
   const { width: larguraJanela } = useWindowDimensions();
   const { opcoes, carregando, erro: erroOpcoes, recarregar } = useOpcoesSolicitacao();
   const { toast, mostrar, fechar } = useToast();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const [arquivos, setArquivos] = useState<ArquivoSelecionado[]>([]);
   const [buscaCliente, setBuscaCliente] = useState("");
@@ -311,7 +317,7 @@ export function NovaSolicitacaoScreen() {
                   numberOfLines={5}
                   maxLength={DESCRICAO_MAX}
                   textAlignVertical="top"
-                  className="min-h-[120px] rounded-lg border border-neutral-300 bg-white px-4 py-3 text-neutral-900"
+                  className="min-h-30 rounded-lg border border-neutral-300 bg-white px-4 py-3 text-neutral-900"
                 />
                 <View className="flex-row items-center justify-between">
                   <Text className="flex-1 text-xs font-medium text-red-600">
@@ -338,7 +344,7 @@ export function NovaSolicitacaoScreen() {
 
         <View className="flex-row justify-end">
           <Pressable
-            onPress={registrar}
+            onPress={() => registrar()}
             disabled={!podeRegistrar}
             accessibilityRole="button"
             accessibilityState={{ disabled: !podeRegistrar, busy: isSubmitting }}

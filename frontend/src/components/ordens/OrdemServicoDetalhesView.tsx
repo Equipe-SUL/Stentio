@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
+import { isAxiosError } from "axios";
 import {
   baixarArquivoOrdemServico,
   buscarOrdemServicoPorId,
@@ -80,41 +80,83 @@ export function OrdemServicoDetalhesView({
   const [etapas, setEtapas] = useState<OrdemServicoEtapaResumo[]>(
     ordemInicial?.etapas ?? [],
   );
-  const [carregando, setCarregando] = useState(!ordemInicial);
+  const [carregando, setCarregando] = useState(
+    !ordemInicial || ordemInicial.id !== id,
+  );
   const [naoEncontrada, setNaoEncontrada] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
-  const carregarDetalhes = async () => {
+  const buscarDetalhes = useCallback(async () => {
+    const [dados, listaEtapas] = await Promise.all([
+      buscarOrdemServicoPorId(id),
+      listarEtapasOrdemServico(id),
+    ]);
+    return { dados, etapas: dados.etapas?.length ? dados.etapas : listaEtapas };
+  }, [id]);
+
+  const aplicarDetalhes = useCallback(
+    (resultado: Awaited<ReturnType<typeof buscarDetalhes>>) => {
+    setNaoEncontrada(false);
+    setErro(null);
+    setOrdem(resultado.dados);
+    setEtapas(resultado.etapas);
+    },
+    [],
+  );
+
+  const tratarErroDetalhes = useCallback((err: unknown) => {
+    if (isAxiosError(err) && err.response?.status === 404) {
+    setNaoEncontrada(true);
+    setErro(null);
+    } else {
+    setNaoEncontrada(false);
+    setErro(getApiErrorMessage(err));
+    }
+  }, []);
+
+  const recarregarDetalhes = () => {
     setCarregando(true);
     setNaoEncontrada(false);
     setErro(null);
-
-    try {
-      const [dados, listaEtapas] = await Promise.all([
-        buscarOrdemServicoPorId(id),
-        listarEtapasOrdemServico(id),
-      ]);
-      setOrdem(dados);
-      setEtapas(dados.etapas?.length ? dados.etapas : listaEtapas);
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.status === 404) {
-        setNaoEncontrada(true);
-      } else {
-        setErro(getApiErrorMessage(err));
-      }
-    } finally {
-      setCarregando(false);
-    }
+    buscarDetalhes()
+      .then(aplicarDetalhes)
+      .catch(tratarErroDetalhes)
+      .finally(() => setCarregando(false));
   };
 
+  const ordemInicialCorresponde = ordemInicial?.id === id;
+  const possuiEtapasIniciais = Boolean(ordemInicial?.etapas?.length);
+
   useEffect(() => {
-    if (!ordemInicial || ordemInicial.id !== id) {
-      carregarDetalhes();
-    } else if (!ordemInicial.etapas?.length) {
-      listarEtapasOrdemServico(id).then(setEtapas);
+    let ativo = true;
+    if (!ordemInicialCorresponde) {
+      buscarDetalhes()
+        .then((resultado) => {
+          if (ativo) aplicarDetalhes(resultado);
+        })
+        .catch((err: unknown) => {
+          if (ativo) tratarErroDetalhes(err);
+        })
+        .finally(() => {
+          if (ativo) setCarregando(false);
+        });
+    } else if (!possuiEtapasIniciais) {
+      listarEtapasOrdemServico(id).then((lista) => {
+        if (ativo) setEtapas(lista);
+      });
     }
-  }, [id]);
+    return () => {
+      ativo = false;
+    };
+  }, [
+    aplicarDetalhes,
+    buscarDetalhes,
+    id,
+    ordemInicialCorresponde,
+    possuiEtapasIniciais,
+    tratarErroDetalhes,
+  ]);
 
   const etapasOrdenadas = useMemo(
     () => [...etapas].sort((a, b) => a.ordem - b.ordem),
@@ -171,7 +213,7 @@ export function OrdemServicoDetalhesView({
             </Pressable>
           ) : null}
           <Pressable
-            onPress={carregarDetalhes}
+            onPress={recarregarDetalhes}
             className="rounded-lg border border-neutral-300 bg-white px-4 py-2.5 active:bg-neutral-50"
           >
             <Text className="font-medium text-neutral-700">Tentar novamente</Text>
@@ -199,7 +241,7 @@ export function OrdemServicoDetalhesView({
             </Pressable>
           ) : null}
           <Pressable
-            onPress={carregarDetalhes}
+            onPress={recarregarDetalhes}
             className="rounded-lg bg-[#6f4f28] px-5 py-2.5 active:bg-[#5b4020]"
           >
             <Text className="font-medium text-white">Tentar novamente</Text>
@@ -361,7 +403,7 @@ export function OrdemServicoDetalhesView({
 
             {ordem.entregue_por ? (
               <View className="flex-row items-center gap-1.5 rounded-lg bg-emerald-50/70 px-3 py-1.5 border border-emerald-200">
-                <Ionicons name="person-check-outline" size={14} color="#047857" />
+                <Ionicons name="person-outline" size={14} color="#047857" />
                 <Text className="text-xs text-emerald-700">Enviada por:</Text>
                 <Text className="text-xs font-semibold text-emerald-900">
                   {ordem.entregue_por}

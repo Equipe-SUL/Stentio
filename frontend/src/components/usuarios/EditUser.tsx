@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, Modal, View, Text, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -49,9 +49,10 @@ export function FormularioEdicaoUsuario({
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [usuarioAnterior, setUsuarioAnterior] = useState(usuario);
 
-  // Preenche os campos sempre que o usuário selecionado para edição mudar
-  useEffect(() => {
+  if (usuario !== usuarioAnterior) {
+    setUsuarioAnterior(usuario);
     if (usuario) {
       setNome(usuario.nome);
       setEmail(usuario.email);
@@ -60,7 +61,7 @@ export function FormularioEdicaoUsuario({
       setSenha(usuario.senha);
       setMostrarSenha(false);
     }
-  }, [usuario]);
+  }
 
   async function handleSubmit() {
     if (!nome.trim() || !email.trim()) {

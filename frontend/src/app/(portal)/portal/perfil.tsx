@@ -145,11 +145,11 @@ export default function MeuPerfilRecursoScreen() {
                 </View>
               </View>
               <View className="flex-row flex-wrap gap-x-10 gap-y-4 border-t border-neutral-100 pt-4">
-                <View className="min-w-[180px] flex-1 gap-1">
+                <View className="min-w-45 flex-1 gap-1">
                   <Text className="text-xs text-neutral-500">Telefone</Text>
                   <Text className="text-sm font-medium text-neutral-800">{perfil.telefone || "Não informado"}</Text>
                 </View>
-                <View className="min-w-[140px] flex-1 gap-1">
+                <View className="min-w-35 flex-1 gap-1">
                   <Text className="text-xs text-neutral-500">Situação da conta</Text>
                   <Text className="text-sm font-medium text-neutral-800">{perfil.ativo ? "Ativa" : "Inativa"}</Text>
                 </View>
@@ -243,7 +243,7 @@ export default function MeuPerfilRecursoScreen() {
 
                         <View className="flex-row flex-wrap gap-4 border-t border-neutral-100 pt-2.5">
                           {par.precos.map((p, pIdx) => (
-                            <View key={`${par.chave}-${p.unidade}-${pIdx}`} className="gap-0.5 min-w-[120px]">
+                            <View key={`${par.chave}-${p.unidade}-${pIdx}`} className="gap-0.5 min-w-30">
                               <Text className="text-xs text-neutral-500">
                                 {UNIDADE_LABEL[p.unidade] ?? p.unidade}
                               </Text>

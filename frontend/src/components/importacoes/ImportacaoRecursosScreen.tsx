@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentRef } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -19,7 +19,7 @@ import { formatarBytes } from "../../lib/importacaoService";
 
 export function ImportacaoRecursosScreen() {
   const fluxo = useImportacaoRecursos();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   useEffect(() => {
     if (fluxo.etapa === "importando" || fluxo.etapa === "resultado") {
       scrollRef.current?.scrollTo({ y: 0, animated: false });

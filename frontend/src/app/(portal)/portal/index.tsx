@@ -472,25 +472,25 @@ export default function MinhasDemandasScreen() {
                   </View>
 
                   <View className="flex-row flex-wrap gap-x-8 gap-y-3 border-t border-neutral-100 pt-4">
-                    <View className="min-w-[130px] flex-1 gap-1">
+                    <View className="min-w-32.5 flex-1 gap-1">
                       <Text className="text-xs text-neutral-500">Tipo de serviço</Text>
                       <Text className="text-sm font-medium text-neutral-800">
                         {demanda.tipo_servico}
                       </Text>
                     </View>
-                    <View className="min-w-[170px] flex-1 gap-1">
+                    <View className="min-w-42.5 flex-1 gap-1">
                       <Text className="text-xs text-neutral-500">Par de idiomas</Text>
                       <Text className="text-sm font-medium text-neutral-800">
                         {demanda.idioma_origem} → {demanda.idioma_destino}
                       </Text>
                     </View>
-                    <View className="min-w-[160px] flex-1 gap-1">
+                    <View className="min-w-40 flex-1 gap-1">
                       <Text className="text-xs text-neutral-500">Prazo</Text>
                       <Text className="text-sm font-medium text-neutral-800">
                         {formatarDataHora(demanda.data_limite_entrega)}
                       </Text>
                     </View>
-                    <View className="min-w-[130px] flex-1 gap-1">
+                    <View className="min-w-32.5 flex-1 gap-1">
                       <Text className="text-xs text-neutral-500">Estimativa</Text>
                       <Text className="text-sm font-medium text-neutral-800">
                         {demanda.prazo_estimado_horas} h

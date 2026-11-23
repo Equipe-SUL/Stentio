@@ -12,6 +12,9 @@ export interface OrcamentoPublico {
   valor_total: number;
   data_expiracao: string;
   itens: ItemOrcamento[];
+  numero_versao?: number | null;
+  criado_em?: string | null;
+  solicitacao?: SolicitacaoPublica | null;
 }
 export interface DecisaoOrcamento {
   id: string;
@@ -122,17 +125,6 @@ export interface SolicitacaoPublica {
   idioma_origem?: IdiomaPublico | null;
   idioma_destino?: IdiomaPublico | null;
   arquivos?: ArquivoPublico[];
-}
-
-export interface OrcamentoPublico {
-  id: string;
-  status: StatusOrcamento;
-  valor_total: number;
-  data_expiracao: string;
-  itens: ItemOrcamento[];
-  numero_versao?: number | null;
-  criado_em?: string | null;
-  solicitacao?: SolicitacaoPublica | null;
 }
 
 export function getLogoEmpresaPublicaUrl(token: string): string {
