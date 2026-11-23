@@ -18,10 +18,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -33,7 +33,11 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "recursos",
-        uniqueConstraints = @UniqueConstraint(name = "uk_recursos_email", columnNames = "email")
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_recursos_email", columnNames = "email"),
+                // US-023: uma conta de acesso corresponde a no máximo um perfil profissional.
+                @UniqueConstraint(name = "uk_recursos_usuario", columnNames = "usuario_id")
+        }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -55,6 +59,24 @@ public class Recurso {
     @Column(nullable = false)
     private boolean ativo = true;
 
+    /**
+     * US-023 RN.6: a conta de acesso no Auth, quando existe. Fica nulo para quem a equipe
+     * cadastrou pela US-004 — esses profissionais continuam sendo alocáveis sem nunca
+     * terem entrado no sistema, que é como a Aliança trabalha hoje.
+     *
+     * <p>Não é chave estrangeira: o usuário vive no banco do Auth, e a integridade entre
+     * os dois serviços é o JWT, não o Postgres.
+     */
+    @Column(name = "usuario_id")
+    private UUID usuarioId;
+
+    /**
+     * US-023 CA.6 e RN.5: só recurso verificado recebe etapa. Nasce falso para quem se
+     * auto-cadastra — é o pedido de entrada, não a aprovação.
+     */
+    @Column(nullable = false)
+    private boolean verificado = false;
+
     @ManyToMany
     @JoinTable(
             name = "recursos_tipos_servico",
@@ -63,8 +85,15 @@ public class Recurso {
     )
     private Set<TipoServico> tiposServico = new HashSet<>();
 
+    /**
+     * Set, e não List, de propósito. As consultas que trazem o perfil completo fazem
+     * {@code join fetch} em tiposServico e em precos ao mesmo tempo, e o SQL devolve uma
+     * linha por combinação serviço × preço. O {@code distinct} tira a repetição do recurso,
+     * mas uma List recebe o mesmo preço uma vez por serviço — com dois serviços o perfil
+     * mostrava cada par duas vezes. As cópias são a mesma instância, e o Set as descarta.
+     */
     @OneToMany(mappedBy = "recurso", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<RecursoPreco> precos = new ArrayList<>();
+    private Set<RecursoPreco> precos = new LinkedHashSet<>();
 
     public Recurso(String nome, String email, String telefone) {
         atualizarDados(nome, email, telefone);
@@ -73,6 +102,24 @@ public class Recurso {
     public static String normalizarEmail(String email) {
         return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }
+
+    /** US-023 CA.3: liga o perfil à conta que o criou. Vínculo de uma vez só. */
+    public void vincularUsuario(UUID usuarioId) {
+        this.usuarioId = usuarioId;
+    }
+
+    /** US-023 CA.6: o gestor confirma que o profissional pode receber trabalho. */
+    public void definirVerificacao(boolean verificado) {
+        this.verificado = verificado;
+    }
+
+    /*
+     * US-024 RN.5: elegivelParaAlocacao() saiu daqui. A elegibilidade deixou de caber num
+     * booleano do recurso — ela depende do par de idiomas da etapa, que o recurso não
+     * conhece. Quem decide agora é CertificacaoConsultaService, e a entidade só guarda
+     * 'ativo'. O campo 'verificado' continua existindo como "cadastro revisado" e não
+     * influencia mais alocação nem disparo.
+     */
 
     public void atualizarDados(String nome, String email, String telefone) {
         this.nome = nome.trim();
@@ -108,6 +155,22 @@ public class Recurso {
                 ));
     }
 
+    /**
+     * US-012 RN.1: competência no par de idiomas. O preço cadastrado para o par é a prova
+     * de competência que o sistema tem — quem não traduz aquele par não tem preço para ele.
+     * A unidade de cobrança não entra: qualquer uma serve para dizer que ele atende o par.
+     */
+    public boolean atendePar(UUID idiomaOrigemId, UUID idiomaDestinoId) {
+        return precos.stream().anyMatch(preco ->
+                preco.getIdiomaOrigem().getId().equals(idiomaOrigemId)
+                        && preco.getIdiomaDestino().getId().equals(idiomaDestinoId));
+    }
+
+    /** US-012 RN.2: especialidade compatível com o tipo de serviço da etapa. */
+    public boolean executa(UUID tipoServicoId) {
+        return tiposServico.stream().anyMatch(tipo -> tipo.getId().equals(tipoServicoId));
+    }
+
     public void ativar() {
         this.ativo = true;
     }
@@ -122,7 +185,7 @@ public class Recurso {
     }
 
     public List<RecursoPreco> getPrecos() {
-        return Collections.unmodifiableList(precos);
+        return List.copyOf(precos);
     }
 
     private static Map<ChavePreco, NovoPreco> indexarSemRepeticao(List<NovoPreco> novosPrecos) {

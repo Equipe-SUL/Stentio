@@ -2,13 +2,6 @@ spring:
   docker:
     compose:
       enabled: false
-  # desabilitar as configurações automáticas do MongoDB enquanto não é usado
-  # para silenciar o erro de conexão com o MongoDB no console
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration
 
   application:
     name: stentio-core
@@ -21,7 +14,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
@@ -29,13 +22,18 @@ spring:
         # Carrega coleções LAZY (tipos, preços, idiomas) em lotes, evitando uma consulta por recurso na listagem.
         default_batch_fetch_size: 50
 
+  flyway:
+    locations: classpath:db/migration/core
+    table: flyway_core_schema_history
+    # O schema public é compartilhado; baseline 0 permite aplicar V1/V2 após tabelas do Auth.
+    baseline-on-migrate: true
+    baseline-version: ${CORE_FLYWAY_BASELINE_VERSION:0}
+
   data:
     web:
       pageable:
         # Impede requisições como ?size=1000000, que carregariam a tabela inteira em memória.
         max-page-size: 100
-    mongodb:
-      uri: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/admin?authSource=admin
 
   servlet:
     multipart:
@@ -79,6 +77,12 @@ app:
     diretorio: ${APP_ARQUIVOS_DIRETORIO:uploads}
     extensoes-permitidas: ${APP_ARQUIVOS_EXTENSOES:pdf,doc,docx,odt,rtf,txt,xls,xlsx,ppt,pptx,jpg,jpeg,png}
     maximo-por-solicitacao: ${APP_ARQUIVOS_MAXIMO:10}
+
+  # US-015: o mesmo limite que o email-service aplica ao anexo. Lido da mesma variável
+  # para que os dois nunca divirjam (RN.5) — divergência aqui vira e-mail recusado depois
+  # de o Core já ter dado o envio como aceito.
+  anexos:
+    limite-total-bytes: ${APP_ANEXOS_LIMITE_TOTAL_BYTES:10485760}
   orcamentos:
     token-validade: ${ORCAMENTO_TOKEN_VALIDADE:PT120H}
     url-consulta-publica: ${ORCAMENTO_URL_CONSULTA_PUBLICA:http://localhost:8082/api/v1/public/orcamentos}

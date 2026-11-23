@@ -1,6 +1,6 @@
 // RowActions.tsx
 import { Platform, View, Pressable } from "react-native";
-import type { View as ViewRef } from "react-native";
+import type { ComponentRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 
 interface RowActionsProps {
@@ -9,13 +9,17 @@ interface RowActionsProps {
   toggleLabel?: "Ativar" | "Desativar";
 }
 
-type ElementoWeb = { setAttribute?: (nome: string, valor: string) => void };
-
 function legenda(texto: string) {
   if (Platform.OS !== "web") return {};
   return {
-    ref: (node: ViewRef | null) => {
-      (node as unknown as ElementoWeb | null)?.setAttribute?.("title", texto);
+    ref: (node: ComponentRef<typeof Pressable> | null) => {
+      if (
+        node &&
+        "setAttribute" in node &&
+        typeof node.setAttribute === "function"
+      ) {
+        node.setAttribute("title", texto);
+      }
     },
   };
 }

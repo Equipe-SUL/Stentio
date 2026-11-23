@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import Svg, { Defs, Pattern, Rect, Circle, G } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, router, type Href } from 'expo-router';
-import { getApiErrorMessage } from '../lib/api';
+import { router, type Href } from 'expo-router';
+import { coreApi, getApiErrorMessage } from '../lib/api';
 import { useSession } from '../lib/session';
 import { homeRouteForRole } from '../lib/routePermissions';
+import { perfilRecursoAusente } from '../components/recursos/cadastroRecursoApi';
 
 const languagesListA = [
   "Hallo, Willkommen", "مرحبا بك", "你好，歡迎", "안녕하세요, 환영합니다",
@@ -56,7 +57,7 @@ const AnimatedSpiralWord = ({ word, index, angleOffset, cycleLength }: { word: s
       delay,
       withRepeat(withTiming(1, { duration: currentTotalCycle, easing: Easing.linear }), -1, false)
     );
-  }, []);
+  }, [cycleLength, index, progress]);
 
   const animatedStyle = useAnimatedStyle(() => {
     if (progress.value === 0 || progress.value > VISIBLE_FRACTION) {
@@ -95,83 +96,130 @@ const AnimatedSpiralWord = ({ word, index, angleOffset, cycleLength }: { word: s
   );
 };
 
-const BrandingCarousel = ({ textColor = "text-white", dotActiveColor = "#ffffff", dotInactiveColor = "rgba(255,255,255,0.4)" }: { textColor?: string, dotActiveColor?: string, dotInactiveColor?: string }) => {
+const BRANDING_SLIDES = [
+  "Traduza com precisão,\ncontrole com clareza.",
+  "Cada palavra no\nlugar certo.",
+  "60 idiomas,\num único painel.",
+];
+
+function BrandingSlide({
+  slide,
+  active,
+  textColor,
+}: {
+  slide: string;
+  active: boolean;
+  textColor: string;
+}) {
+  const opacity = useSharedValue(active ? 1 : 0);
+  const translateY = useSharedValue(active ? 0 : 10);
+
+  useEffect(() => {
+    opacity.value = withTiming(active ? 1 : 0, { duration: 600 });
+    translateY.value = withTiming(active ? 0 : 10, { duration: 600 });
+  }, [active, opacity, translateY]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+  }));
+
+  return (
+    <Animated.Text
+      style={style}
+      className={`${textColor} text-3xl md:text-4xl font-serif font-bold leading-tight`}
+    >
+      {slide}
+    </Animated.Text>
+  );
+}
+
+function BrandingDot({
+  active,
+  activeColor,
+  inactiveColor,
+  onPress,
+}: {
+  active: boolean;
+  activeColor: string;
+  inactiveColor: string;
+  onPress: () => void;
+}) {
+  const width = useSharedValue(active ? 32 : 10);
+  const opacity = useSharedValue(active ? 1 : 0.4);
+
+  useEffect(() => {
+    width.value = withTiming(active ? 32 : 10, { duration: 400 });
+    opacity.value = withTiming(active ? 1 : 0.4, { duration: 400 });
+  }, [active, opacity, width]);
+
+  const dotStyle = useAnimatedStyle(() => ({
+    width: width.value,
+    opacity: opacity.value,
+    height: 10,
+    borderRadius: 9999,
+  }));
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      activeOpacity={0.8}
+    >
+      <Animated.View
+        style={[
+          dotStyle,
+          { backgroundColor: active ? activeColor : inactiveColor },
+        ]}
+      />
+    </TouchableOpacity>
+  );
+}
+
+const BrandingCarousel = ({
+  textColor = "text-white",
+  dotActiveColor = "#ffffff",
+  dotInactiveColor = "rgba(255,255,255,0.4)",
+}: {
+  textColor?: string;
+  dotActiveColor?: string;
+  dotInactiveColor?: string;
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const slides = [
-    "Traduza com precisão,\ncontrole com clareza.",
-    "Cada palavra no\nlugar certo.",
-    "60 idiomas,\num único painel."
-  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % slides.length);
+      setCurrentIndex((prev) => (prev + 1) % BRANDING_SLIDES.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [currentIndex]);
+  }, []);
 
   return (
     <View className="z-10 w-full">
-      <View className="h-[90px] justify-end mb-5 relative">
-        {slides.map((slide, index) => {
-          const isActive = index === currentIndex;
-          const opacity = useSharedValue(isActive ? 1 : 0);
-          const translateY = useSharedValue(isActive ? 0 : 10);
-
-          useEffect(() => {
-            opacity.value = withTiming(isActive ? 1 : 0, { duration: 600 });
-            translateY.value = withTiming(isActive ? 0 : 10, { duration: 600 });
-          }, [isActive]);
-
-          const style = useAnimatedStyle(() => ({
-            opacity: opacity.value,
-            transform: [{ translateY: translateY.value }],
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-          }));
-
-          return (
-            <Animated.Text 
-              key={index} 
-              style={style} 
-              className={`${textColor} text-3xl md:text-4xl font-serif font-bold leading-tight`}
-            >
-              {slide}
-            </Animated.Text>
-          );
-        })}
+      <View className="h-22.5 justify-end mb-5 relative">
+        {BRANDING_SLIDES.map((slide, index) => (
+          <BrandingSlide
+            key={slide}
+            slide={slide}
+            active={index === currentIndex}
+            textColor={textColor}
+          />
+        ))}
       </View>
 
       <View className="flex-row gap-3 items-center h-4">
-        {slides.map((_, index) => {
-          const isActive = index === currentIndex;
-          const width = useSharedValue(isActive ? 32 : 10);
-          const opacity = useSharedValue(isActive ? 1 : 0.4);
-
-          useEffect(() => {
-            width.value = withTiming(isActive ? 32 : 10, { duration: 400 });
-            opacity.value = withTiming(isActive ? 1 : 0.4, { duration: 400 });
-          }, [isActive]);
-
-          const dotStyle = useAnimatedStyle(() => ({
-            width: width.value,
-            opacity: opacity.value,
-            height: 10,
-            borderRadius: 9999,
-          }));
-
-          return (
-            <TouchableOpacity 
-              key={index}
-              onPress={() => setCurrentIndex(index)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.8}
-            >
-              <Animated.View style={[dotStyle, { backgroundColor: isActive ? dotActiveColor : dotInactiveColor }]} />
-            </TouchableOpacity>
-          );
-        })}
+        {BRANDING_SLIDES.map((_, index) => (
+          <BrandingDot
+            key={index}
+            active={index === currentIndex}
+            activeColor={dotActiveColor}
+            inactiveColor={dotInactiveColor}
+            onPress={() => setCurrentIndex(index)}
+          />
+        ))}
       </View>
     </View>
   );
@@ -234,6 +282,30 @@ export default function LoginScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    if (carregando || !usuario) return;
+    let ativo = true;
+    if (usuario.role !== "RECURSO") {
+      router.replace(homeRouteForRole(usuario.role) as Href);
+      return () => { ativo = false; };
+    }
+
+    coreApi
+      .get("/api/v1/recurso/perfil")
+      .then(() => {
+        if (ativo) router.replace("/portal");
+      })
+      .catch((error) => {
+        if (!ativo) return;
+        if (perfilRecursoAusente(error)) {
+          router.replace("/cadastro-recurso?completarPerfil=1" as Href);
+        } else {
+          setErrorMessage("Não foi possível validar seu perfil. Tente novamente.");
+        }
+      });
+    return () => { ativo = false; };
+  }, [carregando, usuario]);
+
   const handleLogin = async () => {
     setErrorMessage('');
     if (!email || !password) {
@@ -244,16 +316,28 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       const perfil = await entrar(email, password, rememberSession);
+      if (perfil.role === "RECURSO") {
+        await coreApi.get("/api/v1/recurso/perfil");
+      }
       router.replace(homeRouteForRole(perfil.role) as Href);
     } catch (error) {
+      if (perfilRecursoAusente(error)) {
+        router.replace("/cadastro-recurso?completarPerfil=1" as Href);
+        return;
+      }
       setErrorMessage(getApiErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!carregando && usuario) {
-    return <Redirect href={homeRouteForRole(usuario.role) as Href} />;
+  if (!carregando && usuario && !errorMessage) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#8c5230" />
+        <Text className="mt-3 text-sm text-neutral-500">Abrindo seu espaço...</Text>
+      </View>
+    );
   }
 
   return (
@@ -304,6 +388,8 @@ export default function LoginScreen() {
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
+                  returnKeyType="go"
+                  onSubmitEditing={handleLogin}
                   className="flex-1 py-4 text-zinc-900 text-base"
                 />
                 <TouchableOpacity 
@@ -340,16 +426,18 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
-            </View>
+              <TouchableOpacity
+                onPress={() => router.push('/solicitar' as Href)}
+                className="mt-6 items-center py-2 active:opacity-70"
+              >
+                <Text className="text-[#8c5230] font-semibold text-center text-sm md:text-base">
+                  Solicite um serviço de tradução.
+                </Text>
+              </TouchableOpacity>
+              <Pressable onPress={() => router.push("/cadastro-recurso")} className="mt-5 items-center py-2">
+                <Text className="text-sm text-neutral-600">Trabalha com tradução? <Text className="font-semibold text-[#8c5230]">Cadastre-se como recurso</Text></Text>
+              </Pressable>
 
-            <View className="md:hidden w-full bg-white px-6 pt-12 pb-8 mt-12 border-t border-zinc-100 items-center">
-              <View className="w-full max-w-md">
-                <BrandingCarousel 
-                  textColor="text-[#8c5230]" 
-                  dotActiveColor="#8c5230" 
-                  dotInactiveColor="#d1b2a3" 
-                />
-              </View>
             </View>
 
           </View>

@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { CabecalhoTela } from "../navegacao/CabecalhoTela";
@@ -23,12 +23,19 @@ import type {
   OrdemServicoResumo,
 } from "./types";
 
-type FiltroStatus = "TODOS" | "ATIVAS" | "PENDENTE_ALOCACAO";
+type FiltroStatus =
+  | "TODOS"
+  | "PENDENTE_ALOCACAO"
+  | "EM_PLANEJAMENTO"
+  | "EM_EXECUCAO"
+  | "AGUARDANDO_VERIFICACAO";
 
 const STATUS_OPCOES: { valor: FiltroStatus; rotulo: string }[] = [
   { valor: "TODOS", rotulo: "Todas" },
-  { valor: "ATIVAS", rotulo: "Apenas ativas" },
   { valor: "PENDENTE_ALOCACAO", rotulo: "Pendente de Alocação" },
+  { valor: "EM_PLANEJAMENTO", rotulo: "Em Planejamento" },
+  { valor: "EM_EXECUCAO", rotulo: "Em Execução" },
+  { valor: "AGUARDANDO_VERIFICACAO", rotulo: "Aguardando Verificação" },
 ];
 
 function formatarData(isoString?: string): string {
@@ -45,6 +52,7 @@ function formatarData(isoString?: string): string {
 }
 
 export function OrdensListScreen() {
+  const router = useRouter();
   const [paginaDados, setPaginaDados] = useState<OrdemServicoPagina>({
     pagina: 1,
     tamanho_pagina: 10,
@@ -54,55 +62,49 @@ export function OrdensListScreen() {
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [chaveAtualizacao, setChaveAtualizacao] = useState(0);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("TODOS");
   const [clienteSelecionadoId, setClienteSelecionadoId] = useState("");
   const [clientes, setClientes] = useState<ClienteOpcao[]>([]);
 
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const [tamanhoPagina, setTamanhoPagina] = useState(10);
+  const [tamanhoPagina] = useState(10);
 
   const [ordemSelecionadaId, setOrdemSelecionadaId] = useState<string | null>(null);
 
-  // Carrega opções de clientes para o filtro
   useEffect(() => {
     listarClientesOpcoes().then(setClientes);
   }, []);
 
-  // Carrega ordens com filtros aplicados no backend
-  const carregarOrdens = useCallback(async () => {
-    setCarregando(true);
-    setErro("");
+  useEffect(() => {
+    let ativo = true;
+    const statusParam = filtroStatus === "TODOS" ? undefined : filtroStatus;
 
-    try {
-      // "ATIVAS" filtra pelo status ativo no sistema (atualmente PENDENTE_ALOCACAO)
-      const statusParam =
-        filtroStatus === "ATIVAS"
-          ? "PENDENTE_ALOCACAO"
-          : filtroStatus === "TODOS"
-          ? undefined
-          : filtroStatus;
-
-      const dados = await listarOrdensServico({
-        status: statusParam,
-        clienteId: clienteSelecionadoId || undefined,
-        pagina: paginaAtual,
-        tamanhoPagina: tamanhoPagina,
+    listarOrdensServico({
+      status: statusParam,
+      clienteId: clienteSelecionadoId || undefined,
+      pagina: paginaAtual,
+      tamanhoPagina,
+    })
+      .then((dados) => {
+        if (ativo) {
+          setPaginaDados(dados);
+          setErro("");
+        }
+      })
+      .catch((err: unknown) => {
+        if (ativo) setErro(getApiErrorMessage(err));
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
       });
 
-      setPaginaDados(dados);
-    } catch (err) {
-      setErro(getApiErrorMessage(err));
-    } finally {
-      setCarregando(false);
-    }
-  }, [filtroStatus, clienteSelecionadoId, paginaAtual, tamanhoPagina]);
+    return () => {
+      ativo = false;
+    };
+  }, [filtroStatus, clienteSelecionadoId, paginaAtual, tamanhoPagina, chaveAtualizacao]);
 
-  useEffect(() => {
-    carregarOrdens();
-  }, [carregarOrdens]);
-
-  // Se o usuário digitou algo no campo de busca de nome/código, filtramos na lista atual
   const ordensFiltradas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     if (!termo) return paginaDados.conteudo;
@@ -120,13 +122,27 @@ export function OrdensListScreen() {
   );
 
   const handleMudarStatus = (novoStatus: FiltroStatus) => {
+    if (novoStatus === filtroStatus) return;
+    setCarregando(true);
     setFiltroStatus(novoStatus);
     setPaginaAtual(1);
   };
 
   const handleMudarCliente = (novoClienteId: string) => {
+    if (novoClienteId === clienteSelecionadoId) return;
+    setCarregando(true);
     setClienteSelecionadoId(novoClienteId);
     setPaginaAtual(1);
+  };
+
+  const handleMudarPagina = (novaPagina: number) => {
+    setCarregando(true);
+    setPaginaAtual(novaPagina);
+  };
+
+  const handleTentarNovamente = () => {
+    setCarregando(true);
+    setChaveAtualizacao((valor) => valor + 1);
   };
 
   const columns: ColumnDef<OrdemServicoResumo>[] = [
@@ -167,23 +183,47 @@ export function OrdensListScreen() {
     {
       key: "status",
       header: "Status",
-      width: 180,
+      width: 210,
       render: (item) => <OrdemServicoStatusBadge status={item.status} />,
     },
     {
       key: "id",
-      header: "",
-      width: 60,
+      header: "Ações",
+      width: 220,
       align: "right",
       render: (item) => (
-        <Pressable
-          onPress={() => setOrdemSelecionadaId(item.id)}
-          className="rounded-lg p-2 active:bg-neutral-200"
-          accessibilityRole="button"
-          accessibilityLabel={`Ver detalhes da OS ${item.codigo_visual}`}
-        >
-          <Ionicons name="eye-outline" size={20} color="#6f4f28" />
-        </Pressable>
+        <View className="flex-row items-center justify-end gap-2">
+          {item.status === "AGUARDANDO_VERIFICACAO" ? (
+            <Pressable
+              onPress={() => router.push(`/ordens/${item.id}/verificacao` as never)}
+              className="flex-row items-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-1.5 hover:bg-purple-100 active:bg-purple-200"
+              accessibilityRole="button"
+              accessibilityLabel={`Revisar pacote final da OS ${item.codigo_visual}`}
+            >
+              <Ionicons name="checkmark-done-outline" size={15} color="#6b21a8" />
+              <Text className="text-xs font-bold text-purple-800">Revisar</Text>
+            </Pressable>
+          ) : null}
+
+          <Pressable
+            onPress={() => router.push(`/ordens/${item.id}/workflow`)}
+            className="flex-row items-center gap-1.5 rounded-lg border border-[#8c5230]/40 bg-[#fbf8f5] px-2.5 py-1.5 hover:bg-[#f6efe9] active:bg-[#ede2d6]"
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir workflow da OS ${item.codigo_visual}`}
+          >
+            <Ionicons name="git-network-outline" size={15} color="#8c5230" />
+            <Text className="text-xs font-bold text-[#8c5230]">Workflow</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setOrdemSelecionadaId(item.id)}
+            className="rounded-lg p-1.5 border border-neutral-300 bg-white hover:bg-neutral-50 active:bg-neutral-100"
+            accessibilityRole="button"
+            accessibilityLabel={`Ver detalhes da OS ${item.codigo_visual}`}
+          >
+            <Ionicons name="eye-outline" size={17} color="#525252" />
+          </Pressable>
+        </View>
       ),
     },
   ];
@@ -205,7 +245,6 @@ export function OrdensListScreen() {
 
         {/* Barra de Filtros e Busca (CA1) */}
         <View className="gap-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-          {/* Busca textual por nome do cliente ou código visual */}
           <View className="flex-row items-center gap-2 rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2.5">
             <Ionicons name="search" size={18} color="#a3a3a3" />
             <TextInput
@@ -223,9 +262,7 @@ export function OrdensListScreen() {
             ) : null}
           </View>
 
-          {/* Filtros em linha: Status e Seleção de Cliente */}
           <View className="flex-col md:flex-row md:items-center justify-between gap-3">
-            {/* Abas de Status e Ativas */}
             <View className="flex-row flex-wrap gap-1.5 self-start rounded-lg bg-neutral-100 p-1">
               {STATUS_OPCOES.map((opcao) => {
                 const selecionado = filtroStatus === opcao.valor;
@@ -249,7 +286,6 @@ export function OrdensListScreen() {
               })}
             </View>
 
-            {/* Dropdown de Cliente */}
             <View className="w-full md:w-72">
               <View className="overflow-hidden rounded-lg border border-neutral-300 bg-white">
                 <Picker
@@ -285,7 +321,7 @@ export function OrdensListScreen() {
                 {erro}
               </Text>
               <Pressable
-                onPress={carregarOrdens}
+                onPress={handleTentarNovamente}
                 className="rounded-lg border border-neutral-300 px-5 py-2.5 active:bg-neutral-50"
               >
                 <Text className="font-medium text-neutral-700">Tentar de novo</Text>
@@ -306,7 +342,6 @@ export function OrdensListScreen() {
                 scrollEnabled={false}
               />
 
-              {/* Controles de Paginação (CA1) */}
               {paginaDados.total_elementos > 0 ? (
                 <View className="flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
                   <View className="flex-row items-center gap-2">
@@ -324,9 +359,8 @@ export function OrdensListScreen() {
                   </View>
 
                   <View className="flex-row items-center gap-2">
-                    {/* Botão Anterior */}
                     <Pressable
-                      onPress={() => setPaginaAtual((p) => Math.max(1, p - 1))}
+                      onPress={() => handleMudarPagina(Math.max(1, paginaAtual - 1))}
                       disabled={paginaAtual <= 1}
                       className={`flex-row items-center gap-1 rounded-lg border px-3 py-1.5 ${
                         paginaAtual <= 1
@@ -350,9 +384,8 @@ export function OrdensListScreen() {
                       </Text>
                     </Pressable>
 
-                    {/* Botão Próxima */}
                     <Pressable
-                      onPress={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
+                      onPress={() => handleMudarPagina(Math.min(totalPaginas, paginaAtual + 1))}
                       disabled={paginaAtual >= totalPaginas}
                       className={`flex-row items-center gap-1 rounded-lg border px-3 py-1.5 ${
                         paginaAtual >= totalPaginas
@@ -385,7 +418,6 @@ export function OrdensListScreen() {
         </View>
       </View>
 
-      {/* Modal de Detalhes da Ordem de Serviço (CA2) */}
       <OrdemServicoDetalhesModal
         ordemId={ordemSelecionadaId}
         onClose={() => setOrdemSelecionadaId(null)}

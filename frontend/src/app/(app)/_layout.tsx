@@ -23,18 +23,24 @@ function menuParaPerfil(role: Role): MenuGroup[] {
     );
   }
 
-  const grupos: MenuGroup[] = [{ title: "OPERACIONAL", icon: "construct-outline", items: operacional }];
+  const grupos: MenuGroup[] = [{ title: "OPERACIONAL", icon: "sticon", items: operacional }];
 
-  if (role === "ADMIN") {
+  if (["ADMIN", "GESTOR_PROJETO"].includes(role)) {
     grupos.unshift({
       title: "PAINEL",
       icon: "grid-outline",
-      items: [{ name: "Dashboard", icon: "grid-outline" }],
+      items: [{ name: "Dashboard", icon: "grid-outline", route: "/dashboard" }],
     });
+  }
+
+  if (role === "ADMIN") {
     grupos.push({
       title: "SISTEMA",
       icon: "shield-checkmark-outline",
-      items: [{ name: "Central do sistema", icon: "settings-outline", route: "/admin" }],
+      items: [
+        { name: "Central do sistema", icon: "settings-outline", route: "/admin" },
+        { name: "Logs de alterações", icon: "time-outline", route: "/auditoria" },
+      ],
     });
   } else if (role === "GESTOR_PROJETO" || role === "FINANCEIRO") {
     grupos.push({

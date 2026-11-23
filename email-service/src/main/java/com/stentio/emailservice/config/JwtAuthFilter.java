@@ -4,7 +4,6 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.stentio.emailservice.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
@@ -59,7 +58,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         return Optional.ofNullable(WebUtils.getCookie(request, COOKIE_TOKEN))
-                .map(Cookie::getValue)
+                .map(cookie -> cookie.getValue())
                 .flatMap(JwtAuthFilter::naoVazio);
     }
 

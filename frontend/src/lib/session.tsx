@@ -1,4 +1,4 @@
-import {
+import React, {
   createContext,
   useCallback,
   useContext,
@@ -11,7 +11,7 @@ import { usePathname } from "expo-router";
 import { api } from "./api";
 import { clearToken, setToken } from "./auth";
 
-export type Role = "ADMIN" | "ATENDENTE" | "GESTOR_PROJETO" | "FINANCEIRO";
+export type Role = "ADMIN" | "ATENDENTE" | "GESTOR_PROJETO" | "FINANCEIRO" | "RECURSO";
 
 export interface UsuarioLogado {
   id: string;

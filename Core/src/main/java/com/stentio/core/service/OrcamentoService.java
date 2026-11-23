@@ -4,6 +4,7 @@ import com.stentio.core.dto.OrcamentoCriacaoRequest;
 import com.stentio.core.dto.OrcamentoDetalheResponse;
 import com.stentio.core.dto.OrcamentoItensRequest;
 import com.stentio.core.dto.OrcamentoPaginaResponse;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.OrcamentoInvalidoException;
 import com.stentio.core.exception.OrcamentoNaoEditavelException;
 import com.stentio.core.exception.OrcamentoNaoEncontradoException;
@@ -22,6 +23,7 @@ import com.stentio.core.repository.OrcamentoRepository;
 import com.stentio.core.repository.OrcamentoSpecifications;
 import com.stentio.core.repository.SolicitacaoRepository;
 import jakarta.validation.Validator;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -60,6 +62,7 @@ public class OrcamentoService {
     private final CalculoOrcamentoService calculo;
     private final Clock clock;
     private final Validator validator;
+    private final ApplicationEventPublisher eventos;
 
     public OrcamentoService(OrcamentoRepository orcamentos,
                             SolicitacaoRepository solicitacoes,
@@ -67,7 +70,8 @@ public class OrcamentoService {
                             IdiomaRepository idiomas,
                             CalculoOrcamentoService calculo,
                             Clock clock,
-                            Validator validator) {
+                            Validator validator,
+                            ApplicationEventPublisher eventos) {
         this.orcamentos = orcamentos;
         this.solicitacoes = solicitacoes;
         this.clientes = clientes;
@@ -75,6 +79,7 @@ public class OrcamentoService {
         this.calculo = calculo;
         this.clock = clock;
         this.validator = validator;
+        this.eventos = eventos;
     }
 
     // CA.1: nasce EM_ELABORACAO, versão 1 e total zero.
@@ -107,7 +112,10 @@ public class OrcamentoService {
         orcamento.setValorTotal(BigDecimal.ZERO.setScale(2));
         orcamento.setDataExpiracao(request.dataExpiracao());
 
-        return OrcamentoDetalheResponse.de(orcamentos.save(orcamento));
+        Orcamento salvo = orcamentos.save(orcamento);
+        // US-019: o nascimento do orçamento abre a trilha de auditoria dele.
+        eventos.publishEvent(EventosAuditoria.orcamento(salvo, null, "Orçamento criado.", null));
+        return OrcamentoDetalheResponse.de(salvo);
     }
 
     // Substitui todos os itens do orçamento e recalcula os totais na mesma transação.

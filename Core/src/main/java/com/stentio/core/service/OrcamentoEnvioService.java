@@ -2,6 +2,7 @@ package com.stentio.core.service;
 
 import com.stentio.core.dto.OrcamentoAprovacaoResponse;
 import com.stentio.core.dto.OrcamentoEmailMensagem;
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.OrcamentoIncompletoException;
 import com.stentio.core.exception.OrcamentoNaoEncontradoException;
 import com.stentio.core.exception.OrcamentoStatusInvalidoException;
@@ -19,6 +20,7 @@ import com.stentio.core.support.CodigoVisual;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -45,6 +47,7 @@ public class OrcamentoEnvioService {
     private final Clock clock;
     private final Duration validadeToken;
     private final String urlConsultaPublica;
+    private final ApplicationEventPublisher eventos;
 
     public OrcamentoEnvioService(OrcamentoRepository orcamentos,
                                  OrcamentoHistoricoRepository historico,
@@ -53,7 +56,8 @@ public class OrcamentoEnvioService {
                                  Clock clock,
                                  @Value("${app.orcamentos.token-validade:PT120H}") Duration validadeToken,
                                  @Value("${app.orcamentos.url-consulta-publica:http://localhost:8082/api/v1/public/orcamentos}")
-                                 String urlConsultaPublica) {
+                                 String urlConsultaPublica,
+                                 ApplicationEventPublisher eventos) {
         this.orcamentos = orcamentos;
         this.historico = historico;
         this.outbox = outbox;
@@ -61,6 +65,7 @@ public class OrcamentoEnvioService {
         this.clock = clock;
         this.validadeToken = validadeToken;
         this.urlConsultaPublica = urlConsultaPublica;
+        this.eventos = eventos;
         avisarSeUrlNaoForAlcancavelPeloCliente(urlConsultaPublica);
     }
 
@@ -110,6 +115,13 @@ public class OrcamentoEnvioService {
         orcamento.setDataExpiracao(expiracao);
         orcamentos.save(orcamento);
         historico.save(registro);
+        // US-019: envio (EM_ELABORACAO) e reenvio após rejeição (REJEITADO). Reenviar quem já
+        // está aguardando só gera link novo; o listener descarta porque o status não mudou.
+        eventos.publishEvent(EventosAuditoria.orcamento(orcamento, registro.getStatusAnterior(),
+                registro.getStatusAnterior() == StatusOrcamento.REJEITADO
+                        ? "Orçamento reenviado ao cliente após rejeição."
+                        : "Orçamento enviado ao cliente para aprovação.",
+                null));
 
         UUID eventoId = UUID.randomUUID();
         OrcamentoEmailOutbox email = new OrcamentoEmailOutbox();

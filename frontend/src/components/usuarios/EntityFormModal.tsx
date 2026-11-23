@@ -1,5 +1,5 @@
 // EntityFormModal.tsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, Modal, View, Text, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
@@ -30,11 +30,18 @@ export function EntityFormModal<T extends Record<string, any>>({
 }: EntityFormModalProps<T>) {
   const [values, setValues] = useState<T>(initialValues);
   const [enviando, setEnviando] = useState(false);
+  const [propsAnteriores, setPropsAnteriores] = useState({
+    initialValues,
+    visible,
+  });
 
-  // Resincroniza sempre que o modal reabrir ou o registro alvo mudar
-  useEffect(() => {
+  if (
+    propsAnteriores.initialValues !== initialValues ||
+    propsAnteriores.visible !== visible
+  ) {
+    setPropsAnteriores({ initialValues, visible });
     setValues(initialValues);
-  }, [initialValues, visible]);
+  }
 
   function setField<K extends keyof T>(key: K, value: T[K]) {
     setValues((atual) => ({ ...atual, [key]: value }));

@@ -4,6 +4,7 @@ export interface ColumnDef<T> {
   header: string;
   render?: (item: T) => React.ReactNode;
   width?: number;
+  flex?: number;
   align?: "left" | "right";
   hideOnMobile?: boolean;
 }
@@ -37,6 +38,7 @@ export interface FieldDef<T> {
   // Por padrão todo campo é obrigatório. Use `false` para os que o
   // backend aceita vazios (ex.: telefone, opcional no cadastro de cliente).
   required?: boolean;
+  tableFlex?: number;
   // Obrigatório quando type = "select".
   options?: OpcaoSelect[];
   // Ajusta apenas o valor mostrado na listagem, sem alterar o valor do formulário.

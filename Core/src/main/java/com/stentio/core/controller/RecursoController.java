@@ -2,13 +2,18 @@ package com.stentio.core.controller;
 
 import com.stentio.core.dto.AlteracaoStatusRequest;
 import com.stentio.core.dto.RecursoCriadoResponse;
+import com.stentio.core.dto.RecursoDisponivelResponse;
 import com.stentio.core.dto.RecursoFiltro;
 import com.stentio.core.dto.RecursoRequest;
 import com.stentio.core.dto.RecursoResponse;
+import com.stentio.core.dto.VerificacaoRecursoRequest;
 import com.stentio.core.exception.RecursoInvalidoException;
 import com.stentio.core.service.RecursoService;
+import com.stentio.core.support.UsuarioAutenticado;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
@@ -20,9 +25,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -56,6 +63,52 @@ public class RecursoController {
             @PageableDefault(size = 20, sort = "nome") Pageable paginacao) {
         validarOrdenacao(paginacao.getSort());
         return new PagedModel<>(recursoService.listar(filtro, paginacao));
+    }
+
+    /**
+     * US-023 CA.6: o gestor confirma que o profissional pode receber trabalho.
+     *
+     * <p>Endpoint próprio, separado do PATCH de ativação: ativar e verificar são decisões
+     * diferentes, tomadas em momentos diferentes. A RN.4 ainda diz que a US-024 troca esta
+     * verificação por certificação por par de idiomas — isolada assim, ela sai inteira.
+     */
+    @PatchMapping("/{id}/verificacao")
+    @Operation(summary = "Marca o recurso como verificado, habilitando-o a receber etapas")
+    public RecursoResponse alterarVerificacao(
+            @PathVariable UUID id,
+            @RequestBody @Valid VerificacaoRecursoRequest request) {
+        return recursoService.alterarVerificacao(id, request.verificado());
+    }
+
+    /**
+     * US-023 CA.2 e CA.3: o profissional cria o próprio perfil, já autenticado pela conta
+     * que acabou de abrir no Auth.
+     *
+     * <p>Mapeado antes de /{id} pelo mesmo motivo de /disponiveis — e o SecurityConfig
+     * libera este caminho para o papel RECURSO antes da regra geral de /api/v1/recursos,
+     * que é de ADMIN e GESTOR_PROJETO.
+     */
+    @PostMapping("/auto-cadastro")
+    @Operation(summary = "Cria o perfil de competências do profissional autenticado")
+    public ResponseEntity<RecursoResponse> autoCadastrar(
+            @RequestBody @Valid RecursoRequest request,
+            Authentication autenticacao) {
+        RecursoResponse criado = recursoService.autoCadastrar(request, UsuarioAutenticado.de(autenticacao));
+        return ResponseEntity.created(URI.create(BASE_PATH + "/" + criado.id())).body(criado);
+    }
+
+    /**
+     * US-012 CA.2: quem pode executar uma etapa com este par de idiomas e tipo de serviço.
+     *
+     * <p>Mapeada antes de /{id} por clareza; o Spring já prefere o caminho literal ao
+     * template, então "disponiveis" nunca é lido como um id.
+     */
+    @GetMapping("/disponiveis")
+    public List<RecursoDisponivelResponse> listarDisponiveis(
+            @RequestParam(name = "idioma_origem_id") UUID idiomaOrigemId,
+            @RequestParam(name = "idioma_destino_id") UUID idiomaDestinoId,
+            @RequestParam(name = "tipo_servico_id") UUID tipoServicoId) {
+        return recursoService.listarDisponiveis(idiomaOrigemId, idiomaDestinoId, tipoServicoId);
     }
 
     @GetMapping("/{id}")

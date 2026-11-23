@@ -1,5 +1,6 @@
 package com.stentio.core.service;
 
+import com.stentio.core.event.EventosAuditoria;
 import com.stentio.core.exception.OrcamentoInvalidoException;
 import com.stentio.core.exception.OrcamentoNaoEncontradoException;
 import com.stentio.core.model.Orcamento;
@@ -7,6 +8,8 @@ import com.stentio.core.model.OrdemServico;
 import com.stentio.core.model.StatusOrcamento;
 import com.stentio.core.repository.OrcamentoRepository;
 import com.stentio.core.repository.OrdemServicoRepository;
+import com.stentio.core.support.AtorAuditoria;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +19,13 @@ import java.util.UUID;
 public class OrdemServicoService {
     private final OrcamentoRepository orcamentos;
     private final OrdemServicoRepository ordensServico;
+    private final ApplicationEventPublisher eventos;
 
-    public OrdemServicoService(OrcamentoRepository orcamentos, OrdemServicoRepository ordensServico) {
+    public OrdemServicoService(OrcamentoRepository orcamentos, OrdemServicoRepository ordensServico,
+                               ApplicationEventPublisher eventos) {
         this.orcamentos = orcamentos;
         this.ordensServico = ordensServico;
+        this.eventos = eventos;
     }
 
     @Transactional
@@ -39,7 +45,12 @@ public class OrdemServicoService {
             if (orcamento.getSolicitacao() == null) {
                 throw new OrcamentoInvalidoException("O orçamento deve estar vinculado a uma solicitação");
             }
-            return ordensServico.save(new OrdemServico(orcamento));
+            OrdemServico criada = ordensServico.save(new OrdemServico(orcamento));
+            // US-019: quem cria a OS é o consumidor da fila, não uma pessoa. Só a criação é
+            // auditada: a reentrega do evento cai no findByOrcamentoId acima e não loga de novo.
+            eventos.publishEvent(EventosAuditoria.ordemServico(criada, null,
+                    "OS criada automaticamente pela aprovação do orçamento.", AtorAuditoria.sistema()));
+            return criada;
         });
     }
 }

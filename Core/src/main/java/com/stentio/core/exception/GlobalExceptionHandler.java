@@ -99,8 +99,102 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // US-019: paginação ou intervalo de datas inválido na consulta de auditoria.
+    @ExceptionHandler(AuditoriaFiltroInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleAuditoriaFiltroInvalido(AuditoriaFiltroInvalidoException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @ExceptionHandler(OrdemServicoNaoEncontradaException.class)
     public ResponseEntity<ErroResponse> handleOrdemServicoNaoEncontrada(OrdemServicoNaoEncontradaException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    // US-011 RN.1 e RN.2: sequência de etapas malformada.
+    @ExceptionHandler(EtapasInvalidasException.class)
+    public ResponseEntity<ErroResponse> handleEtapasInvalidas(EtapasInvalidasException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // US-023: o pedido de auto-cadastro não fecha (Cenário 2 do card pede 400).
+    @ExceptionHandler(AutoCadastroInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleAutoCadastroInvalido(AutoCadastroInvalidoException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // US-012 RN.1 e RN.2: recurso incompatível com a etapa. Cenário 2 pede exatamente 400.
+    @ExceptionHandler(AlocacaoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleAlocacaoInvalida(AlocacaoInvalidaException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // US-012 RN.3: falta perfil para trocar o recurso de uma etapa já iniciada.
+    @ExceptionHandler(AlocacaoNaoPermitidaException.class)
+    public ResponseEntity<ErroResponse> handleAlocacaoNaoPermitida(AlocacaoNaoPermitidaException ex) {
+        return responder(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    // US-013: a etapa não está no estado que a operação exige. 409 porque o pedido está
+    // bem formado — quem mudou foi o mundo, e é o que a CA.3 pede no aceite concorrente.
+    @ExceptionHandler(TransicaoEtapaInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleTransicaoInvalida(TransicaoEtapaInvalidaException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    /** US-024 RN.8: documento de certificação de outro profissional. */
+    @ExceptionHandler(CertificacaoDeOutroRecursoException.class)
+    public ResponseEntity<ErroResponse> handleCertificacaoDeOutro(CertificacaoDeOutroRecursoException ex) {
+        return responder(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(CertificacaoNaoEncontradaException.class)
+    public ResponseEntity<ErroResponse> handleCertificacaoNaoEncontrada(CertificacaoNaoEncontradaException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    /** US-024 RN.3: par de idiomas fora do cadastro do profissional. */
+    @ExceptionHandler(ParNaoAtendidoException.class)
+    public ResponseEntity<ErroResponse> handleParNaoAtendido(ParNaoAtendidoException ex) {
+        return responder(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /** US-024 RN.2 e RN.4: estado da certificação incompatível com a operação. */
+    @ExceptionHandler(CertificacaoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleCertificacaoInvalida(CertificacaoInvalidaException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    /** US-015 CA.6: o banco aponta para um arquivo que o armazenamento não devolve. */
+    @ExceptionHandler(ArquivoEntregueIndisponivelException.class)
+    public ResponseEntity<ErroResponse> handleArquivoIndisponivel(ArquivoEntregueIndisponivelException ex) {
+        return responder(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /** US-015 CA.6 e RN.5: anexo acima do limite combinado com o email-service. */
+    @ExceptionHandler(AnexoAcimaDoLimiteException.class)
+    public ResponseEntity<ErroResponse> handleAnexoGrande(AnexoAcimaDoLimiteException ex) {
+        return responder(HttpStatus.CONTENT_TOO_LARGE, ex.getMessage());
+    }
+
+    /** US-015 CA.2, CA.12: estado da OS incompatível com a operação pedida. */
+    @ExceptionHandler(TransicaoOrdemServicoInvalidaException.class)
+    public ResponseEntity<ErroResponse> handleTransicaoOrdemServico(TransicaoOrdemServicoInvalidaException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(EtapaNaoEncontradaException.class)
+    public ResponseEntity<ErroResponse> handleEtapaNaoEncontrada(EtapaNaoEncontradaException ex) {
+        return responder(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    // US-011 RN.3: conflito com o estado atual da OS, não erro de entrada.
+    @ExceptionHandler(EtapasBloqueadasException.class)
+    public ResponseEntity<ErroResponse> handleEtapasBloqueadas(EtapasBloqueadasException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(ModeloWorkflowNaoEncontradoException.class)
+    public ResponseEntity<ErroResponse> handleModeloWorkflowNaoEncontrado(ModeloWorkflowNaoEncontradoException ex) {
         return responder(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
@@ -112,6 +206,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SolicitacaoInvalidaException.class)
     public ResponseEntity<ErroResponse> handleSolicitacaoInvalida(SolicitacaoInvalidaException ex) {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(SolicitacaoPublicaValidacaoException.class)
+    public ResponseEntity<ErroResponse> handleSolicitacaoPublicaValidacao(SolicitacaoPublicaValidacaoException ex) {
+        List<CampoErro> erros = ex.erros();
+        String mensagem = erros.size() == 1
+                ? erros.getFirst().mensagem()
+                : "Existem " + erros.size() + " campos inválidos";
+        return ResponseEntity.badRequest().body(ErroResponse.deValidacao(mensagem, erros));
     }
 
     // Id enviado no corpo que não existe: o erro está no dado enviado, por isso 400 e não 404.

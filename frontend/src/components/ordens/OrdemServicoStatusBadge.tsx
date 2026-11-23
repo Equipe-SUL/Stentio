@@ -15,6 +15,30 @@ const STATUS_MAP: Record<string, StatusConfig> = {
     text: "text-amber-800",
     dotColor: "bg-amber-500",
   },
+  EM_PLANEJAMENTO: {
+    label: "Em Planejamento",
+    bg: "bg-neutral-100 border border-neutral-300",
+    text: "text-neutral-800",
+    dotColor: "bg-neutral-500",
+  },
+  EM_EXECUCAO: {
+    label: "Em Execução",
+    bg: "bg-sky-50 border border-sky-200",
+    text: "text-sky-800",
+    dotColor: "bg-sky-500",
+  },
+  AGUARDANDO_VERIFICACAO: {
+    label: "Aguardando Verificação",
+    bg: "bg-purple-50 border border-purple-200",
+    text: "text-purple-800",
+    dotColor: "bg-purple-500",
+  },
+  ENCERRADA: {
+    label: "Encerrada",
+    bg: "bg-emerald-50 border border-emerald-200",
+    text: "text-emerald-800",
+    dotColor: "bg-emerald-600",
+  },
   EM_ANDAMENTO: {
     label: "Em Andamento",
     bg: "bg-blue-50 border border-blue-200",

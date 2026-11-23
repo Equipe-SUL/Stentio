@@ -22,24 +22,22 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
-    implementation 'org.springframework.boot:spring-boot-starter-mongodb'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.amqp:spring-rabbit-stream'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'com.auth0:java-jwt:4.4.0'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
     runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-amqp-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-data-mongodb-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-mongodb-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testCompileOnly 'org.projectlombok:lombok'
@@ -47,6 +45,88 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
+def dotenvFile = rootProject.file('../.env')
+def dotenvText = dotenvFile.isFile()
+        ? providers.fileContents(layout.projectDirectory.file('../.env')).asText.get()
+        : ''
+def dotenv = [:]
+def dotenvKeys = [
+        'POSTGRES_PORT',
+        'POSTGRES_USER',
+        'POSTGRES_PASSWORD',
+        'RABBITMQ_PORT',
+        'RABBITMQ_USER',
+        'RABBITMQ_PASS',
+        'RABBITMQ_DEFAULT_USER',
+        'RABBITMQ_DEFAULT_PASS'
+] as Set
+dotenvText.readLines().each { line ->
+    def entry = line.trim()
+    if (entry && !entry.startsWith('#')) {
+        if (entry.startsWith('export ')) {
+            entry = entry.substring('export '.length()).trim()
+        }
+        def separator = entry.indexOf('=')
+        if (separator > 0) {
+            def key = entry.substring(0, separator).trim()
+            if (dotenvKeys.contains(key)) {
+                def value = entry.substring(separator + 1).trim()
+                if (value.length() >= 2 && value[0] == value[-1] && value[0] in ['"', '\'']) {
+                    value = value.substring(1, value.length() - 1)
+                }
+                dotenv[key] = value
+            }
+        }
+    }
+}
+
+def environmentValue = { String key ->
+    providers.environmentVariable(key).orNull
+}
+def configuredValue = { String key ->
+    environmentValue(key) ?: dotenv[key]
+}
+def postgresHost = environmentValue('CORE_TEST_POSTGRES_HOST') ?: 'localhost'
+def postgresPort = environmentValue('CORE_TEST_POSTGRES_PORT') ?: configuredValue('POSTGRES_PORT') ?: '5432'
+def testDatabase = 'stentio_test'
+def postgresUser = configuredValue('POSTGRES_USER') ?: 'postgres'
+def postgresPassword = configuredValue('POSTGRES_PASSWORD') ?: 'postgres'
+def rabbitHost = environmentValue('CORE_TEST_RABBITMQ_HOST') ?: 'localhost'
+def rabbitPort = environmentValue('CORE_TEST_RABBITMQ_PORT') ?: configuredValue('RABBITMQ_PORT') ?: '5672'
+def rabbitUser = configuredValue('RABBITMQ_USER')
+        ?: configuredValue('RABBITMQ_DEFAULT_USER')
+        ?: 'myuser'
+def rabbitPassword = configuredValue('RABBITMQ_PASS')
+        ?: configuredValue('RABBITMQ_DEFAULT_PASS')
+        ?: 'changeme'
+def testJdbcUrl = "jdbc:postgresql://${postgresHost}:${postgresPort}/${testDatabase}"
+def testEnvironment = [
+        POSTGRES_HOST              : postgresHost,
+        POSTGRES_PORT              : postgresPort,
+        POSTGRES_DB                : testDatabase,
+        POSTGRES_USER              : postgresUser,
+        POSTGRES_PASSWORD          : postgresPassword,
+        ORCAMENTO_TEST_JDBC_URL    : testJdbcUrl,
+        ORCAMENTO_TEST_DB_USER     : postgresUser,
+        ORCAMENTO_TEST_DB_PASSWORD : postgresPassword,
+        ORCAMENTO_INTEGRATION_TESTS: environmentValue('ORCAMENTO_INTEGRATION_TESTS') ?: 'false',
+        RABBITMQ_HOST              : rabbitHost,
+        RABBITMQ_PORT              : rabbitPort,
+        RABBITMQ_USER              : rabbitUser,
+        RABBITMQ_PASS              : rabbitPassword
+]
+
+def provisionTestDatabase = tasks.register('provisionTestDatabase', JavaExec) {
+    group = 'verification'
+    description = 'Creates the isolated PostgreSQL database used by Core tests if it does not exist.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.stentio.core.testutil.TestDatabaseProvisioner'
+    environment(testEnvironment)
+}
+
 tasks.named('test') {
     useJUnitPlatform()
+    environment(testEnvironment)
+    dependsOn(provisionTestDatabase)
 }

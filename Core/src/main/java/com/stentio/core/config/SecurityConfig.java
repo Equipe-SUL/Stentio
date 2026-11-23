@@ -1,5 +1,6 @@
 package com.stentio.core.config;
 
+import jakarta.servlet.DispatcherType;
 import com.stentio.core.model.Role;
 import com.stentio.core.service.TokenService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,12 +35,30 @@ public class SecurityConfig {
 
     private static final String ROTAS_CLIENTES = "/api/v1/clientes/**";
     private static final String ROTAS_RECURSOS = "/api/v1/recursos/**";
+    private static final String ROTAS_CERTIFICACOES = "/api/v1/recursos/certificacoes/**";
+    private static final String ROTA_AUTO_CADASTRO_RECURSO = "/api/v1/recursos/auto-cadastro";
+    // US-023: o portal do profissional, no singular. Tudo o que o papel RECURSO alcança.
+    private static final String ROTAS_PORTAL_RECURSO = "/api/v1/recurso/**";
+
+    /**
+     * US-023 CA.7: os papéis que são equipe da Aliança.
+     *
+     * <p>Serve de padrão para tudo que não foi listado explicitamente. Antes desta US,
+     * "autenticado" e "da equipe" eram a mesma coisa e a distinção não fazia falta; com o
+     * RECURSO entrando no sistema, deixar de fora é o comportamento seguro.
+     */
+    private static final String[] PERFIS_STAFF = {
+            Role.ADMIN.name(), Role.ATENDENTE.name(), Role.GESTOR_PROJETO.name(), Role.FINANCEIRO.name()
+    };
     private static final String ROTAS_CATEGORIAS_PROJETO = "/api/v1/categorias-projeto/**";
     private static final String ROTAS_IDIOMAS = "/api/v1/idiomas/**";
     private static final String ROTAS_TIPOS_SERVICO = "/api/v1/tipos-servico/**";
     private static final String ROTAS_TABELAS_PRECO = "/api/v1/admin/tabelas-preco/**";
     private static final String ROTAS_SOLICITACOES = "/api/v1/solicitacoes/**";
     private static final String ROTAS_ORDENS_SERVICO = "/api/v1/ordens-servico/**";
+    private static final String ROTAS_MODELOS_WORKFLOW = "/api/v1/modelos-workflow/**";
+    private static final String ROTAS_DASHBOARD = "/api/v1/dashboard/**";
+    private static final String ROTAS_AUDITORIA = "/api/v1/auditoria/**";
     private static final String ROTA_ENVIAR_ORCAMENTO = "/api/v1/orcamentos/*/enviar-aprovacao";
     private static final String ROTAS_ORCAMENTOS = "/api/v1/orcamentos/**";
 
@@ -59,6 +78,11 @@ public class SecurityConfig {
                                 escreverErro(response, HttpStatus.FORBIDDEN, "Perfil sem permissão para esta operação"))
                 )
                 .authorizeHttpRequests(rotas -> rotas
+                        // Um 500 vira um encaminhamento interno para /error, que volta a
+                        // passar por aqui. Sem esta linha ele cai na regra final de perfis e
+                        // o erro real é respondido como 401 ou 403 — o problema de verdade
+                        // fica invisível para quem está depurando.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         // Liberação das rotas do Swagger / OpenAPI
                         .requestMatchers(
                                 "/v3/api-docs/**",
@@ -66,6 +90,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        // US22-T1: somente leitura das opções e criação da solicitação são públicas.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/solicitacoes/opcoes").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/public/solicitacoes").permitAll()
                         // Links de orçamento autorizam somente estas operações públicas.
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/orcamentos").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/orcamentos/arquivos/**").permitAll()
@@ -81,22 +108,61 @@ public class SecurityConfig {
                         .hasAnyRole(Role.ADMIN.name(), Role.ATENDENTE.name(), Role.GESTOR_PROJETO.name())
                         // Regra de clientes: somente a role mais alta (ADMIN) pode excluir clientes
                         .requestMatchers(HttpMethod.DELETE, ROTAS_CLIENTES).hasRole(Role.ADMIN.name())
-                        // Qualquer usuário autenticado pode cadastrar, listar, consultar ou modificar clientes
-                        .requestMatchers(ROTAS_CLIENTES).authenticated()
-                        .requestMatchers(HttpMethod.GET, ROTAS_RECURSOS).authenticated()
+                        // Qualquer pessoa da equipe pode cadastrar, listar, consultar ou modificar
+                        // clientes. US-023 CA.7: o profissional não é equipe e fica de fora.
+                        .requestMatchers(ROTAS_CLIENTES).hasAnyRole(PERFIS_STAFF)
+                        // US-023 CA.2: o próprio profissional cria o seu perfil. Precisa vir
+                        // antes das regras gerais de /api/v1/recursos, senão cai no
+                        // ADMIN/GESTOR_PROJETO abaixo e o recurso leva 403 no próprio cadastro.
+                        .requestMatchers(HttpMethod.POST, ROTA_AUTO_CADASTRO_RECURSO)
+                        .hasRole(Role.RECURSO.name())
+                        // US-023 CA.5: o portal, e só ele, é do profissional.
+                        .requestMatchers(ROTAS_PORTAL_RECURSO).hasRole(Role.RECURSO.name())
+                        // US-024 CA.6: antes da regra geral de /api/v1/recursos, que libera
+                        // GET para toda a equipe. A fila de certificações expõe documentos
+                        // pessoais enviados pelos profissionais, e quem decide alocação é
+                        // quem precisa deles — ATENDENTE e FINANCEIRO ficam de fora.
+                        .requestMatchers(ROTAS_CERTIFICACOES)
+                        .hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
+                        // US-023 CA.7: era "authenticated"; com o RECURSO existindo, isso
+                        // passaria a lista de todos os profissionais, com e-mail e preço de
+                        // cada um, para qualquer profissional cadastrado.
+                        .requestMatchers(HttpMethod.GET, ROTAS_RECURSOS).hasAnyRole(PERFIS_STAFF)
                         .requestMatchers(ROTAS_RECURSOS).hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
                         .requestMatchers(ROTAS_CATEGORIAS_PROJETO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
-                        .requestMatchers(ROTAS_IDIOMAS).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
-                        .requestMatchers(ROTAS_TIPOS_SERVICO).hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
+                        // US-023 T9: o recurso precisa consultar os catálogos ativos no auto-cadastro;
+                        // qualquer escrita ou alteração nos catálogos continua restrita à equipe.
+                        .requestMatchers(HttpMethod.GET, ROTAS_IDIOMAS)
+                        .hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name(), Role.RECURSO.name())
+                        .requestMatchers(ROTAS_IDIOMAS)
+                        .hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
+                        .requestMatchers(HttpMethod.GET, ROTAS_TIPOS_SERVICO)
+                        .hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name(), Role.RECURSO.name())
+                        .requestMatchers(ROTAS_TIPOS_SERVICO)
+                        .hasAnyRole(Role.ADMIN.name(), Role.FINANCEIRO.name(), Role.GESTOR_PROJETO.name())
                         // CA.5 da US-05: só ADMIN e GESTOR_PROJETO gerenciam a tabela de preços.
                         .requestMatchers(ROTAS_TABELAS_PRECO).hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
                         // US-09: a solicitação é registrada pelo Atendente; gestor e admin acompanham.
                         .requestMatchers(ROTAS_SOLICITACOES)
                         .hasAnyRole(Role.ADMIN.name(), Role.ATENDENTE.name(), Role.GESTOR_PROJETO.name())
                         // US-17: consulta das ordens de serviço é do Gestor de Projeto, com o admin acompanhando.
+                        // US-011: as etapas moram sob a mesma rota, então herdam esses perfis.
                         .requestMatchers(ROTAS_ORDENS_SERVICO)
                         .hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
-                        .anyRequest().authenticated()
+                        // US-011: modelos de workflow são cadastro de produção, do Gestor de Projeto.
+                        .requestMatchers(ROTAS_MODELOS_WORKFLOW)
+                        .hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
+                        // US-20: o panorama consolidado, inclusive taxa de conversão,
+                        // é restrito ao Admin e ao Gestor de Projeto.
+                        .requestMatchers(ROTAS_DASHBOARD)
+                        .hasAnyRole(Role.ADMIN.name(), Role.GESTOR_PROJETO.name())
+                        // US-019 RN.2: o log de auditoria é exclusivo do Administrador (403 para os demais).
+                        .requestMatchers(ROTAS_AUDITORIA).hasRole(Role.ADMIN.name())
+                        // US-023 CA.7: o padrão deixa de ser "qualquer autenticado" e passa a
+                        // ser "qualquer um da equipe". Assim uma rota nova criada amanhã não
+                        // nasce aberta ao profissional por esquecimento — para liberá-la a ele
+                        // é preciso dizer isso de propósito, aqui em cima.
+                        .anyRequest().hasAnyRole(PERFIS_STAFF)
                 )
 
                 .addFilterBefore(new JwtAuthFilter(tokenService), UsernamePasswordAuthenticationFilter.class)

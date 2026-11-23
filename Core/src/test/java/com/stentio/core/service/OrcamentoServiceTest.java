@@ -47,7 +47,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,6 +63,8 @@ class OrcamentoServiceTest {
     private ClienteRepository clientes;
     @Mock
     private IdiomaRepository idiomas;
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventos;
 
     private final CalculoOrcamentoService calculo = new CalculoOrcamentoService();
     private final Clock clock = Clock.fixed(AGORA, ZoneOffset.UTC);
@@ -83,7 +84,7 @@ class OrcamentoServiceTest {
     void setup() {
         validatorFactory = Validation.buildDefaultValidatorFactory();
         service = new OrcamentoService(orcamentos, solicitacoes, clientes, idiomas, calculo, clock,
-                validatorFactory.getValidator());
+                validatorFactory.getValidator(), eventos);
 
         cliente = mock(Cliente.class);
         when(cliente.getId()).thenReturn(clienteId);

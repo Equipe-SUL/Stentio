@@ -26,11 +26,16 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -169,6 +174,29 @@ class SolicitacaoControllerTest {
     void deveRetornarUnauthorizedSemToken() throws Exception {
         mockMvc.perform(multipart(BASE_PATH)
                         .param("clienteId", clienteId.toString()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("RN.6: somente GET de opções e POST de solicitação pública dispensam autenticação")
+    void deveLiberarApenasRotasPublicasDeSolicitacao() throws Exception {
+        mockMvc.perform(get("/api/v1/public/solicitacoes/opcoes"))
+                .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()));
+
+        mockMvc.perform(post("/api/v1/public/solicitacoes")
+                        .contentType("multipart/form-data"))
+                .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()));
+
+        mockMvc.perform(get("/api/v1/public/solicitacoes"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/v1/public/solicitacoes/opcoes"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(put("/api/v1/public/solicitacoes/opcoes"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(delete("/api/v1/public/solicitacoes"))
                 .andExpect(status().isUnauthorized());
     }
 }

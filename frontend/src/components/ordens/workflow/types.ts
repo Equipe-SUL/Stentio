@@ -1,0 +1,91 @@
+export type StatusEtapaWorkflow =
+  | "PENDENTE"
+  | "AGUARDANDO_ETAPA_ANTERIOR"
+  | "ALOCADO"
+  | "DISPARADA"
+  | "ACEITA"
+  | "ENTREGUE";
+
+export interface EtapaWorkflow {
+  id?: string;
+  ordem: number;
+  nome: string;
+  tipo_servico_id: string;
+  tipo_servico_nome?: string;
+  prazo_estimado_horas: number;
+  status: StatusEtapaWorkflow;
+  recurso_id?: string | null;
+  recurso_nome?: string | null;
+  data_limite_entrega?: string | null;
+  aceito_em?: string | null;
+  recurso_aceite_nome?: string | null;
+  aceito_por_nome?: string | null;
+  arquivo_entrega_url?: string | null;
+  arquivo_entrega_nome?: string | null;
+  entregue_em?: string | null;
+}
+
+export interface DisparoEtapaResponse {
+  etapa_id: string;
+  status: "DISPARADA";
+  recursos_notificados: number;
+}
+
+export interface OrdemServicoWorkflowResponse {
+  ordem_servico_id: string;
+  status_os: string;
+  etapas: EtapaWorkflow[];
+}
+
+export interface ModeloWorkflowEtapaItem {
+  id?: string;
+  ordem: number;
+  nome: string;
+  tipo_servico_id: string;
+  tipo_servico_nome?: string;
+  prazo_estimado_horas: number;
+}
+
+export interface ModeloWorkflow {
+  id: string;
+  nome: string;
+  descricao?: string;
+  ativo?: boolean;
+  etapas: ModeloWorkflowEtapaItem[];
+}
+
+export interface SalvarEtapaPayload {
+  ordem: number;
+  nome: string;
+  tipo_servico_id: string;
+  prazo_estimado_horas: number;
+}
+
+export interface SalvarWorkflowPayload {
+  etapas: SalvarEtapaPayload[];
+}
+
+export interface CriarModeloWorkflowPayload {
+  nome: string;
+  descricao?: string;
+  etapas: SalvarEtapaPayload[];
+}
+
+export interface AlocarRecursoPayload {
+  recurso_id: string;
+  data_limite_entrega: string;
+}
+
+export interface TipoServicoOption {
+  id: string;
+  nome: string;
+}
+
+export interface RecursoOption {
+  id: string;
+  nome: string;
+  email?: string;
+  telefone?: string;
+  ativo?: boolean;
+  tiposServico?: { id: string; nome: string }[];
+}

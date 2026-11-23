@@ -4,7 +4,6 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.stentio.core.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
@@ -44,6 +43,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             TokenService.TokenDados dados = tokenService.validarToken(token);
             var perfil = new SimpleGrantedAuthority(PREFIXO_ROLE + dados.role().name());
             var autenticacao = new UsernamePasswordAuthenticationToken(dados.email(), null, List.of(perfil));
+            // US-023 / US-019: id e nome viajam em details, e não como principal, para
+            // getName() continuar devolvendo o e-mail — é dele que dependem o histórico
+            // da US-012 e todo @WithMockUser dos testes existentes.
+            autenticacao.setDetails(new DadosUsuarioToken(dados.usuarioId(), dados.nome()));
             SecurityContextHolder.getContext().setAuthentication(autenticacao);
         } catch (JWTVerificationException | IllegalArgumentException ex) {
             // Token inválido segue sem autenticação; o SecurityConfig responde 401.
@@ -59,7 +62,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         return Optional.ofNullable(WebUtils.getCookie(request, COOKIE_TOKEN))
-                .map(Cookie::getValue)
+                .map(cookie -> cookie.getValue())
                 .flatMap(JwtAuthFilter::naoVazio);
     }
 

@@ -32,7 +32,7 @@ export function OrdemServicoDetalhesModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 items-center justify-center bg-black/60 p-4">
-        <View className="w-full max-w-3xl max-h-[92%] rounded-2xl bg-[#fbfaf8] shadow-2xl overflow-hidden flex-col border border-neutral-200">
+        <View className="w-full max-w-3xl h-[92%] max-h-[92%] rounded-2xl bg-[#fbfaf8] shadow-2xl overflow-hidden flex-col border border-neutral-200">
           {/* Cabeçalho do modal */}
           <View className="flex-row items-center justify-between border-b border-neutral-200 px-6 py-4 bg-white">
             <View className="flex-1 mr-4">
@@ -49,15 +49,26 @@ export function OrdemServicoDetalhesModal({
 
             <View className="flex-row items-center gap-2">
               <Pressable
+                onPress={() => {
+                  onClose();
+                  router.push(`/ordens/${ordemId}/workflow`);
+                }}
+                className="flex-row items-center gap-1.5 rounded-lg border border-[#8c5230]/40 bg-[#fbf8f5] px-3 py-1.5 active:bg-[#f6efe9]"
+                accessibilityRole="button"
+                accessibilityLabel="Abrir Workflow da Ordem de Serviço"
+              >
+                <Ionicons name="git-network-outline" size={16} color="#8c5230" />
+                <Text className="text-xs font-bold text-[#8c5230]">Workflow</Text>
+              </Pressable>
+
+              <Pressable
                 onPress={handleAbrirTelaCheia}
-                className="flex-row items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 active:bg-neutral-100 mr-2"
+                className="flex-row items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 active:bg-neutral-100"
                 accessibilityRole="button"
                 accessibilityLabel="Abrir em página cheia"
               >
-                <Ionicons name="open-outline" size={16} color="#6f4f28" />
-                <Text className="text-xs font-medium text-neutral-700">
-                  Tela cheia
-                </Text>
+                <Ionicons name="open-outline" size={16} color="#525252" />
+                <Text className="text-xs font-medium text-neutral-700">Tela cheia</Text>
               </Pressable>
 
               <Pressable
@@ -75,6 +86,7 @@ export function OrdemServicoDetalhesModal({
           {/* Conteúdo principal com OrdemServicoDetalhesView */}
           <View className="flex-1 p-6">
             <OrdemServicoDetalhesView
+              key={ordemId}
               id={ordemId}
               ordemInicial={ordemInicial}
               onVoltar={onClose}

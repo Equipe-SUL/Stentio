@@ -32,16 +32,6 @@ const ITENS: HubItem[] = [
     icon: "folder-outline",
     route: "/configs/sistema/catalogo/categorias",
   },
-  {
-    nome: "Tabela de Preços",
-    descricao: "Valores por tipo de serviço e par de idiomas, para sugerir o orçamento.",
-    icon: "pricetag-outline",
-  },
-  {
-    nome: "Templates de E-mail",
-    descricao: "Modelos de comunicação com placeholders dinâmicos.",
-    icon: "mail-open-outline",
-  },
 ];
 
 export default function ConfiguracoesScreen() {

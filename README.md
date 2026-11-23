@@ -37,8 +37,6 @@ O **Stentio** é uma aplicação web que centraliza a operação de uma agência
 <h4 align="center">
       <img title="Java" alt="Java" src="https://skillicons.dev/icons?i=java" />
       <img title="Spring Boot" alt="Spring Boot" src="https://skillicons.dev/icons?i=spring" />
-      <img title="Spring" alt="Spring" src="https://skillicons.dev/icons?i=spring" />
-      <img title="Gradle" alt="Gradle" src="https://skillicons.dev/icons?i=gradle" />
       <img title="PostgreSQL" alt="PostgreSQL" src="https://skillicons.dev/icons?i=postgresql" />
       <img title="MongoDB" alt="MongoDB" src="https://skillicons.dev/icons?i=mongodb" />
       <img title="RabbitMQ" alt="RabbitMQ" src="https://skillicons.dev/icons?i=rabbitmq" />
@@ -68,6 +66,8 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 | **auth** | Autenticação, usuários, sessão e controle de acesso por perfil (JWT) | 8081 |
 | **core** | Domínio de negócio: clientes, recursos, catálogos, tabelas de preço e solicitações | 8082 |
 | **email-service** | Envio de e-mails, configuração SMTP e dados da empresa | 8083 |
+| **import-service** | Validação e importação de recursos e serviços via CSV | 8123 |
+| **chatbot-service** | Assistente com consulta ao PostgreSQL e histórico no MongoDB | 8000 |
 
 | Infraestrutura | Finalidade | Porta |
 | :-------------- | :---------- | :----: |
@@ -87,22 +87,22 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 | 2 | US-002 | 🔴 ALTA | Como Administrador, quero cadastrar os dados da empresa e configurar o servidor SMTP de envio de e-mails, para que as informações apareçam nos documentos gerados e os disparos de e-mail funcionem desde o início do fluxo. | 5 | E6 | 1 | ✔️ |
 | 3 | US-003 | 🔴 ALTA | Como Administrador, quero cadastrar tipos de serviço, categorias de projeto e idiomas disponíveis, para que sirvam de base nos orçamentos, ordens de serviço e cadastros de recursos em todo o sistema. | 5 | E6 | 1 | ✔️ |
 | 4 | US-004 | 🔴 ALTA | Como Administrador, quero cadastrar recursos associando seus pares de idiomas e valores individuais, para viabilizar a alocação e o cálculo de custo nas ordens de serviço. | 5 | E6 | 1 | ✔️ |
-| 5 | US-005 | 🟠 MÉDIA | Como Administrador, quero cadastrar tabelas de preço associando tipo de serviço, par de idiomas e valor unitário, para que o sistema sugira automaticamente os valores ao montar um orçamento. | 8 | E6 | 1 | 🛠️ |
-| 6 | US-006 | 🟠 MÉDIA | Como Administrador, quero cadastrar e gerenciar templates de e-mail com placeholders dinâmicos, para padronizar e automatizar as comunicações com clientes e recursos sem depender de alterações de código. | 3 | E6 | 1 | 🔲 Não iniciada |
+| 5 | US-005 | 🟠 MÉDIA | Como Administrador, quero cadastrar tabelas de preço associando tipo de serviço, par de idiomas e valor unitário, para que o sistema sugira automaticamente os valores ao montar um orçamento. | 8 | E6 | 1 | ✔️ |
 | 7 | US-007 | 🔴 ALTA | Como Atendente, quero cadastrar manualmente uma solicitação de tradução vinculando um cliente (novo ou existente), para registrar demandas que chegam por e-mail, telefone ou outros canais de forma estruturada no sistema. | 8 | E2 · E6 | 1 | ✔️ |
 | 8 | US-008 | 🔴 ALTA | Como Atendente, quero elaborar um orçamento com os itens de serviço necessários e enviá-lo por e-mail ao cliente com um link de aprovação, para que o cliente possa aprovar ou recusar de forma autônoma. | 8 | E2 | 1 | ✔️ |
 | 9 | US-009 | 🟠 MÉDIA | Como Atendente, quero editar um orçamento recusado pelo cliente e reenviar para aprovação, para viabilizar negociações sem precisar criar um novo orçamento do zero. | 0 | E2 | 2 | ✔️ |
-| 10 | US-010 | 🔴 ALTA | Como Gestor de Projetos, quero criar, editar e reutilizar modelos de workflow, para agilizar a definição de etapas ao abrir novas ordens de serviço. | 0 | E6 | 2 | 🔲 Não iniciada |
-| 11 | US-011 | 🔴 ALTA | Como Gestor de Projetos, quero que ao aprovar um orçamento e uma Ordem de Serviço seja criada automaticamente, e que eu possa definir suas etapas aplicando um modelo de workflow ou montando manualmente, para iniciar o planejamento da produção. | 0 | E3 | 2 | 🛠️ |
-| 12 | US-012 | 🔴 ALTA | Como Gestor de Projetos, quero selecionar e alocar um recurso a cada etapa da OS verificando compatibilidade de idiomas e tipo de serviço, para garantir que cada etapa seja atribuída ao profissional adequado antes de iniciar a execução. | 0 | E3 | 3 | 🔲 Não iniciada |
-| 13 | US-013 | 🔴 ALTA | Como Recurso, quero receber um e-mail com link exclusivo para aceitar ou rejeitar um serviço alocado e, após conclusão, fazer o upload do arquivo entregue, sem precisar criar conta ou senha no sistema. | 0 | E4 | 3 | 🔲 Não iniciada |
-| 14 | US-014 | 🟠 MÉDIA | Como Gestor de Projetos, quero que ao registrar a entrega de uma etapa o sistema avance automaticamente para a próxima etapa do workflow notificando o recurso alocado, para reduzir a intervenção manual no roteamento entre etapas. | 0 | E4 | 3 | 🔲 Não iniciada |
-| 15 | US-015 | 🔴 ALTA | Como Gestor de Projetos, quero revisar todos os arquivos entregues nas etapas concluídas, validar o pacote final e enviar os documentos traduzidos ao cliente por e-mail, para encerrar formalmente a Ordem de Serviço. | 0 | E4 | 3 | 🔲 Não iniciada |
-| 16 | US-016 | 🟠 MÉDIA | Como Assistente Financeiro, quero gerar a fatura de venda de uma OS entregue, para formalizar a cobrança ao cliente com os dados corretos do serviço prestado. | 0 | E5 | 3 | 🔲 Não iniciada |
-| 17 | US-017 | 🟠 MÉDIA | Como Assistente Financeiro, quero calcular e gerar a fatura de compra do trabalho executado por cada recurso nas etapas da OS, para organizar o repasse e registrar o pagamento aos profissionais envolvidos. | 0 | E5 | 3 | 🔲 Não iniciada |
-| 18 | US-018 | 🟡 BAIXA | Como Assistente Financeiro, quero visualizar um relatório de lucro por Ordem de Serviço, para acompanhar a rentabilidade de cada projeto. | 0 | E5 | 3 | 🔲 Não iniciada |
-| 19 | US-019 | 🟡 BAIXA | Como Administrador, quero visualizar um log de auditoria com todas as alterações de status realizadas em orçamentos, OS e etapas, para fins de rastreabilidade interna. | 0 | E6 | 3 | 🔲 Não iniciada |
-| 20 | US-020 | 🟠 MÉDIA | Como Gestor de Projetos, quero visualizar um dashboard com contadores e listas dinâmicas das principais pendências operacionais, para gerir a operação a partir de uma única tela. | 0 | E1 | 3 | 🔲 Não iniciada |
+| 10 | US-010 | 🔴 ALTA | Como Gestor de Projetos, quero criar, editar e reutilizar modelos de workflow, para agilizar a definição de etapas ao abrir novas ordens de serviço. | 0 | E6 | 2 | ✔️ |
+| 11 | US-011 | 🔴 ALTA | Como Gestor de Projetos, quero que ao aprovar um orçamento e uma Ordem de Serviço seja criada automaticamente, e que eu possa definir suas etapas aplicando um modelo de workflow ou montando manualmente, para iniciar o planejamento da produção. | 0 | E3 | 2 | ✔️ |
+| 12 | US-012 | 🔴 ALTA | Como Gestor de Projetos, quero selecionar e alocar um recurso a cada etapa da OS verificando compatibilidade de idiomas e tipo de serviço, para garantir que cada etapa seja atribuída ao profissional adequado antes de iniciar a execução. | 0 | E3 | 3 | ✔️ |
+| 13 | US-013 | 🔴 ALTA | Como Recurso, quero receber um e-mail com link exclusivo para aceitar ou rejeitar um serviço alocado e, após conclusão, fazer o upload do arquivo entregue, sem precisar criar conta ou senha no sistema. | 0 | E4 | 3 | ✔️ |
+| 14 | US-014 | 🟠 MÉDIA | Como Gestor de Projetos, quero que ao registrar a entrega de uma etapa o sistema avance automaticamente para a próxima etapa do workflow notificando o recurso alocado, para reduzir a intervenção manual no roteamento entre etapas. | 0 | E4 | 3 | ✔️ |
+| 15 | US-015 | 🔴 ALTA | Como Gestor de Projetos, quero revisar todos os arquivos entregues nas etapas concluídas, validar o pacote final e enviar os documentos traduzidos ao cliente por e-mail, para encerrar formalmente a Ordem de Serviço. | 0 | E4 | 3 | ✔️ |
+| 16 | US-016 | 🟠 MÉDIA | Como Assistente Financeiro, quero gerar a fatura de venda de uma OS entregue, para formalizar a cobrança ao cliente com os dados corretos do serviço prestado. | 0 | E5 | 3 | ❌ Cancelada |
+| 17 | US-017 | 🟠 MÉDIA | Como Assistente Financeiro, quero calcular e gerar a fatura de compra do trabalho executado por cada recurso nas etapas da OS, para organizar o repasse e registrar o pagamento aos profissionais envolvidos. | 0 | E5 | 3 | ❌ Cancelada |
+| 18 | US-018 | 🟡 BAIXA | Como Assistente Financeiro, quero visualizar um relatório de lucro por Ordem de Serviço, para acompanhar a rentabilidade de cada projeto. | 0 | E5 | 3 | ❌ Cancelada |
+| 19 | US-019 | 🟡 BAIXA | Como Administrador, quero visualizar um log de auditoria com todas as alterações de status realizadas em orçamentos, OS e etapas, para fins de rastreabilidade interna. | 0 | E6 | 3 | ✔️ |
+| 20 | US-020 | 🟠 MÉDIA | Como Gestor de Projetos, quero visualizar um dashboard com contadores e listas dinâmicas das principais pendências operacionais, para gerir a operação a partir de uma única tela. | 0 | E1 | 3 | ✔️ |
+| 24 | US-024 | 🟠 MÉDIA | Como Gestor de Projetos, quero analisar as certificações enviadas por recursos para cada par de idiomas e aprová-las ou rejeitá-las, garantindo que apenas profissionais comprovadamente capazes recebam etapas daquele par. | 0 | E6 | 3 | ✔️ |
 
 ---
 
@@ -136,8 +136,8 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 | Sprint | Período | Documentação |
 | :--- | :-----------: | :--- |
 | 🔖 **SPRINT 1** | 07/09 - 27/09 | [Sprint 1 Docs](./docs/processo/sprint-1/) |
-| 🔖 **SPRINT 2** | 05/10 - 25/10 | a documentar |
-| 🔖 **SPRINT 3** | 02/11 - 22/11 | a documentar |
+| 🔖 **SPRINT 2** | 05/10 - 25/10 | [Sprint 2 Docs](./docs/processo/sprint-2/) |
+| 🔖 **SPRINT 3** | 02/11 - 22/11 | [Sprint 3 Docs](./docs/processo/sprint-3/) |
 
 ---
 
@@ -151,7 +151,7 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 Para desenvolver um serviço fora do Docker, instale também:
 
 - **JDK 25** — microsserviços Java (Spring Boot 4.1.1); use o Gradle embutido (`./gradlew`)
-- **Node.js 20+** — frontend (Expo SDK 57; o Dockerfile usa Node 24)
+- **Node.js 20+** — frontend (Expo; o Dockerfile usa Node 24)
 
 ### 1. Clonar o projeto
 
@@ -166,7 +166,7 @@ cd Stentio
 cp .env.example .env
 ```
 
-Os valores padrão já funcionam para desenvolvimento local. Para mais detalhes de cada variável, veja o [`.env.example`](./.env.example).
+Substitua os valores `CHANGE_ME` e gere `CHATBOT_DB_PASSWORD` com `openssl rand -hex 32` antes de iniciar. Para mais detalhes, consulte os comentários do [`.env.example`](./.env.example).
 
 ### 3. Subir a aplicação (Docker)
 
@@ -182,12 +182,28 @@ docker compose --profile dev up -d --build
 
 Acompanhe a subida com `docker compose ps` e os logs com `docker compose logs -f core`.
 
+Auth e Core aplicam suas migrations Flyway ao iniciar e usam o Hibernate apenas para
+validar o schema. Em um banco vazio, as tabelas e constraints — incluindo os estados
+da US-013 — são criados sem comandos SQL manuais. Cada serviço registra suas versões
+em uma tabela de histórico própria, pois ambos compartilham o schema `public`. Os
+baselines padrão são versão `0`, para que cada serviço execute suas migrations mesmo
+quando o outro já criou tabelas. Para um banco legado sem histórico Flyway, configure
+`AUTH_FLYWAY_BASELINE_VERSION` e `CORE_FLYWAY_BASELINE_VERSION` com a versão que
+corresponda exatamente ao schema existente; não use versões maiores que `0` em um
+banco vazio. As migrations estão em
+[Core](./Core/src/main/resources/db/migration/core/V1__core_schema.sql) e
+[Auth](./Auth/src/main/resources/db/migration/auth/V1__auth_schema.sql). Depois do
+primeiro deploy, novas alterações devem ser adicionadas em novas versões, sem editar
+as migrations já aplicadas.
+
 | Serviço | URL |
 | :------ | :-- |
 | Frontend | http://localhost |
 | Auth (API) | http://localhost:8081 |
 | Core (API) | http://localhost:8082 |
 | email-service (API) | http://localhost:8083 |
+| Import Service (API) | http://localhost:8123 |
+| Chatbot (API) | http://localhost:8000 |
 | RabbitMQ (painel) | http://localhost:15672 |
 
 Para ter um seed de teste, use no PowerShell:
@@ -221,12 +237,20 @@ cd email-service && ./gradlew bootRun
 cd frontend && npm install && npx expo start --web
 ```
 
-O Expo serve o frontend em `http://localhost:19006`. Aponte o frontend para as APIs em `frontend/.env`:
+O Expo normalmente inicia o frontend na porta `8081`, mas essa porta pode já ser usada pelo Auth. Para evitar conflito, execute o frontend em uma porta fixa, como `8085`:
+
+```bash
+cd frontend
+npx expo start --web --port 8085
+```
+
+Aponte o frontend para as APIs em `frontend/.env`:
 
 ```env
 EXPO_PUBLIC_API_URL=http://localhost:8081
 EXPO_PUBLIC_CORE_API_URL=http://localhost:8082
 EXPO_PUBLIC_EMAIL_API_URL=http://localhost:8083
+EXPO_PUBLIC_IMPORT_API_URL=http://localhost:8123
 ```
 
 > Para testar no Expo Go ou emulador, troque `localhost` pelo IP da máquina (ex.: `http://192.168.0.10:8081`) e libere a origem em `APP_CORS_ALLOWED_ORIGINS`.
@@ -271,6 +295,8 @@ docker compose down -v
 
 - [`Auth/README.md`](./Auth/README.md) — autenticação, JWT, seed de admin e testes de API
 - [`email-service/README.md`](./email-service/README.md) — arquitetura do serviço de e-mail
+- [`import-service/README.md`](./import-service/README.md) — contrato da importação CSV
+- [`chatbot/README.md`](./chatbot/README.md) — integração e testes do chatbot
 - [`docs/usuario/configuracao-smtp.md`](./docs/usuario/configuracao-smtp.md) — manual de configuração do SMTP
 - [`docs/processo/product-backlog.md`](./docs/processo/product-backlog.md) — épicos, histórias e resumo por sprint
 

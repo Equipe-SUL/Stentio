@@ -15,6 +15,8 @@ import { useRouter, usePathname, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { UsuarioLogado } from "../../lib/session";
+import { ChatbotWidget } from "../chatbot/ChatbotWidget";
+import { StIcon } from "./StIcon";
 
 export type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -26,7 +28,7 @@ export interface MenuItem {
 
 export interface MenuGroup {
   title: string;
-  icon: IconName;
+  icon: IconName | "sticon";
   items: MenuItem[];
 }
 
@@ -65,6 +67,7 @@ export function AppShell({
   const isMobile = width < 768;
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [grupoAberto, setGrupoAberto] = useState<GrupoAberto | null>(null);
+  const [chatAberto, setChatAberto] = useState(false);
   const iniciais = iniciaisDoNome(usuario.nome);
 
   const isRouteActive = (route?: Href) => {
@@ -381,22 +384,53 @@ export function AppShell({
                         active && styles.dockButtonActive,
                       ]}
                     >
-                      <Ionicons
-                        name={group.icon}
-                        size={27}
-                        color={active ? "#ffffff" : "#d6c5ba"}
-                      />
+                      {group.icon === "sticon" ? (
+                        <StIcon
+                          size={27}
+                          color={active ? "#ffffff" : "#d6c5ba"}
+                        />
+                      ) : (
+                        <Ionicons
+                          name={group.icon}
+                          size={27}
+                          color={active ? "#ffffff" : "#d6c5ba"}
+                        />
+                      )}
                       <View
                         style={[styles.activeDot, { opacity: active ? 1 : 0 }]}
                       />
                     </TouchableOpacity>
                   );
                 })}
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={chatAberto ? "Fechar assistente Stentio" : "Abrir assistente Stentio"}
+                  accessibilityState={{ expanded: chatAberto, selected: chatAberto }}
+                  onPress={() => setChatAberto((aberto) => !aberto)}
+                  style={[
+                    styles.dockButton,
+                    chatAberto && styles.dockButtonActive,
+                  ]}
+                >
+                  <Ionicons
+                    name={chatAberto ? "close" : "chatbubbles-outline"}
+                    size={27}
+                    color={chatAberto ? "#ffffff" : "#d6c5ba"}
+                  />
+                  <View
+                    style={[styles.activeDot, { opacity: chatAberto ? 1 : 0 }]}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
           )}
         </View>
       </View>
+      <ChatbotWidget
+        role={usuario.role}
+        open={isMobile ? chatAberto : undefined}
+        onOpenChange={isMobile ? setChatAberto : undefined}
+      />
     </View>
   );
 }

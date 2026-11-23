@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -299,7 +299,7 @@ export default function SmtpConfigScreen() {
             {/* Host e Porta: lado a lado só no web. No celular empilham, senão
                 os dois campos disputam a mesma faixa de largura. */}
             <View className={duasColunas ? 'flex-row gap-4 mb-5' : 'flex-col gap-4 mb-5'}>
-              <View className={duasColunas ? 'flex-[3]' : 'w-full'}>
+              <View className={duasColunas ? 'flex-3' : 'w-full'}>
                 <Text className="text-zinc-700 font-semibold text-sm mb-2">Servidor SMTP (Host) *</Text>
                 <TextInput
                   placeholder="ex: smtp.gmail.com"
@@ -316,7 +316,7 @@ export default function SmtpConfigScreen() {
                 )}
               </View>
 
-              <View className={duasColunas ? 'flex-[1] min-w-[120px]' : 'w-full'}>
+              <View className={duasColunas ? 'flex-1 min-w-30' : 'w-full'}>
                 <Text className="text-zinc-700 font-semibold text-sm mb-2">Porta *</Text>
                 <TextInput
                   placeholder="587"
@@ -497,7 +497,7 @@ export default function SmtpConfigScreen() {
               <TouchableOpacity
                 onPress={handleSave}
                 disabled={isSaving}
-                className="flex-1 min-w-[160px] flex-row items-center justify-center gap-2 bg-[#8c5230] px-6 py-3.5 rounded-2xl shadow-md shadow-orange-900/20 active:opacity-90"
+                className="flex-1 min-w-40 flex-row items-center justify-center gap-2 bg-[#8c5230] px-6 py-3.5 rounded-2xl shadow-md shadow-orange-900/20 active:opacity-90"
               >
                 {isSaving ? (
                   <ActivityIndicator color="#fff" size="small" />

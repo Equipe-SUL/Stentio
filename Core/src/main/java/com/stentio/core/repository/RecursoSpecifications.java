@@ -27,6 +27,9 @@ public final class RecursoSpecifications {
         if (filtro.ativo() != null) {
             filtros.add(comStatusAtivo(filtro.ativo()));
         }
+        if (filtro.verificado() != null) {
+            filtros.add(comVerificacao(filtro.verificado()));
+        }
         if (filtro.tipoServicoId() != null) {
             filtros.add(ofereceTipoServico(filtro.tipoServicoId()));
         }
@@ -39,6 +42,11 @@ public final class RecursoSpecifications {
 
     private static Specification<Recurso> comStatusAtivo(boolean ativo) {
         return (recurso, query, cb) -> cb.equal(recurso.get("ativo"), ativo);
+    }
+
+    // US-023 CA.6: a fila de verificação é ?verificado=false.
+    private static Specification<Recurso> comVerificacao(boolean verificado) {
+        return (recurso, query, cb) -> cb.equal(recurso.get("verificado"), verificado);
     }
 
     private static Specification<Recurso> ofereceTipoServico(UUID tipoServicoId) {

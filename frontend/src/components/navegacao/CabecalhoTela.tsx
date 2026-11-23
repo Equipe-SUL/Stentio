@@ -15,7 +15,7 @@ interface CabecalhoTelaProps {
   secao: string;
   titulo: string;
   descricao?: string;
-  rotaFallback?: string;
+  rotaFallback?: Href;
   acoes?: ReactNode;
   compacto?: boolean;
 }
@@ -53,7 +53,7 @@ export function CabecalhoTela({
         <View className="flex-1 min-w-0 flex-row items-center gap-3">
           <TouchableOpacity
             onPress={() =>
-              router.canGoBack() ? router.back() : router.push(rotaDeVolta as Href)
+              router.canGoBack() ? router.back() : router.push(rotaDeVolta)
             }
             className="p-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm active:bg-zinc-100"
             style={{ flexShrink: 0 }}
