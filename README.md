@@ -236,13 +236,20 @@ cd email-service && ./gradlew bootRun
 cd frontend && npm install && npx expo start --web
 ```
 
-O Expo serve o frontend em `http://localhost:19006`. Aponte o frontend para as APIs em `frontend/.env`:
+O Expo normalmente inicia o frontend na porta `8081`, mas essa porta pode já ser usada pelo Auth. Para evitar conflito, execute o frontend em uma porta fixa, como `8085`:
+
+```bash
+cd frontend
+npx expo start --web --port 8085
+```
+
+Aponte o frontend para as APIs em `frontend/.env`:
 
 ```env
 EXPO_PUBLIC_API_URL=http://localhost:8081
 EXPO_PUBLIC_CORE_API_URL=http://localhost:8082
 EXPO_PUBLIC_EMAIL_API_URL=http://localhost:8083
-EXPO_PUBLIC_IMPORT_API_URL=http://localhost:8000
+EXPO_PUBLIC_IMPORT_API_URL=http://localhost:8123
 ```
 
 > Para testar no Expo Go ou emulador, troque `localhost` pelo IP da máquina (ex.: `http://192.168.0.10:8081`) e libere a origem em `APP_CORS_ALLOWED_ORIGINS`.
