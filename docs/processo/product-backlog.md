@@ -20,7 +20,7 @@
 | US-017 | 🟠 MÉDIA | Como Assistente Financeiro, quero calcular e gerar a fatura de compra do trabalho executado por cada recurso nas etapas da OS, para organizar o repasse e registrar o pagamento aos profissionais envolvidos. | 0 | 3 | E5 | 🔲 Não iniciada |
 | US-018 | 🟡 BAIXA | Como Assistente Financeiro, quero visualizar um relatório de lucro por Ordem de Serviço, para acompanhar a rentabilidade de cada projeto. | 0 | 3 | E5 | 🔲 Não iniciada |
 | US-019 | 🟡 BAIXA | Como Administrador, quero visualizar um log de auditoria com todas as alterações de status realizadas em orçamentos, OS e etapas, para fins de rastreabilidade interna. | 0 | 3 | E6 | 🔲 Não iniciada |
-| US-020 | 🟠 MÉDIA | Como Gestor de Projetos, quero visualizar um dashboard com contadores e listas dinâmicas das principais pendências operacionais, para gerir a operação a partir de uma única tela. | 0 | 3 | E1 | 🔲 Não iniciada |
+| US-020 | 🟠 MÉDIA | Como Gestor de Projetos, quero visualizar um dashboard com contadores e listas dinâmicas das principais pendências operacionais, para gerir a operação a partir de uma única tela. | 0 | 3 | E1 | ✔️ |
 
 ---
 

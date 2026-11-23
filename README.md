@@ -101,7 +101,7 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 | 17 | US-017 | 🟠 MÉDIA | Como Assistente Financeiro, quero calcular e gerar a fatura de compra do trabalho executado por cada recurso nas etapas da OS, para organizar o repasse e registrar o pagamento aos profissionais envolvidos. | 0 | E5 | 3 | 🔲 Não iniciada |
 | 18 | US-018 | 🟡 BAIXA | Como Assistente Financeiro, quero visualizar um relatório de lucro por Ordem de Serviço, para acompanhar a rentabilidade de cada projeto. | 0 | E5 | 3 | 🔲 Não iniciada |
 | 19 | US-019 | 🟡 BAIXA | Como Administrador, quero visualizar um log de auditoria com todas as alterações de status realizadas em orçamentos, OS e etapas, para fins de rastreabilidade interna. | 0 | E6 | 3 | 🔲 Não iniciada |
-| 20 | US-020 | 🟠 MÉDIA | Como Gestor de Projetos, quero visualizar um dashboard com contadores e listas dinâmicas das principais pendências operacionais, para gerir a operação a partir de uma única tela. | 0 | E1 | 3 | 🔲 Não iniciada |
+| 20 | US-020 | 🟠 MÉDIA | Como Gestor de Projetos, quero visualizar um dashboard com contadores e listas dinâmicas das principais pendências operacionais, para gerir a operação a partir de uma única tela. | 0 | E1 | 3 | ✔️ |
 
 ---
 
@@ -201,6 +201,8 @@ as migrations já aplicadas.
 | Auth (API) | http://localhost:8081 |
 | Core (API) | http://localhost:8082 |
 | email-service (API) | http://localhost:8083 |
+| Import Service (API) | http://localhost:8123 |
+| Chatbot (API) | http://localhost:8000 |
 | RabbitMQ (painel) | http://localhost:15672 |
 
 Para ter um seed de teste, use no PowerShell:
@@ -240,6 +242,7 @@ O Expo serve o frontend em `http://localhost:19006`. Aponte o frontend para as A
 EXPO_PUBLIC_API_URL=http://localhost:8081
 EXPO_PUBLIC_CORE_API_URL=http://localhost:8082
 EXPO_PUBLIC_EMAIL_API_URL=http://localhost:8083
+EXPO_PUBLIC_IMPORT_API_URL=http://localhost:8000
 ```
 
 > Para testar no Expo Go ou emulador, troque `localhost` pelo IP da máquina (ex.: `http://192.168.0.10:8081`) e libere a origem em `APP_CORS_ALLOWED_ORIGINS`.
