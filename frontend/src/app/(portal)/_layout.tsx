@@ -2,6 +2,7 @@ import React from "react";
 import { Redirect, Slot, usePathname, useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSession } from "../../lib/session";
 import { homeRouteForRole } from "../../lib/routePermissions";
 
@@ -9,6 +10,7 @@ export default function PortalRecursoLayout() {
   const { usuario, carregando, sair } = useSession();
   const pathname = usePathname();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   if (carregando) {
     return (
@@ -24,7 +26,7 @@ export default function PortalRecursoLayout() {
   }
 
   return (
-    <View className="flex-1 bg-neutral-50">
+    <View className="flex-1 bg-neutral-50" style={{ paddingTop: insets.top }}>
       <View className="border-b border-neutral-200 bg-white px-4 py-3 md:px-5 md:py-4">
         <View className="mx-auto w-full max-w-5xl flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
           <View className="flex-row items-center justify-between gap-3">
