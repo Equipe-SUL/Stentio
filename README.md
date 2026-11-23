@@ -137,7 +137,7 @@ A solução é dividida em microsserviços independentes, deployados com Docker 
 | :--- | :-----------: | :--- |
 | 🔖 **SPRINT 1** | 07/09 - 27/09 | [Sprint 1 Docs](./docs/processo/sprint-1/) |
 | 🔖 **SPRINT 2** | 05/10 - 25/10 | [Sprint 2 Docs](./docs/processo/sprint-2/) |
-| 🔖 **SPRINT 3** | 02/11 - 22/11 | a documentar |
+| 🔖 **SPRINT 3** | 02/11 - 22/11 | [Sprint 3 Docs](./docs/processo/sprint-3/) |
 
 ---
 
