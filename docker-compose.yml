@@ -22,13 +22,13 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       POSTGRES_DB: ${POSTGRES_DB:-stentio}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_PORT: "5432"
       AUTH_FLYWAY_BASELINE_VERSION: ${AUTH_FLYWAY_BASELINE_VERSION:-0}
 
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-changeme}
       MONGO_HOST: ${MONGO_HOST:-mongodb}
-      MONGO_PORT: ${MONGO_PORT:-27017}
+      MONGO_PORT: "27017"
 
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
@@ -39,9 +39,19 @@ services:
       APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
       APP_COOKIE_SAME_SITE: ${APP_COOKIE_SAME_SITE:-Lax}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:8081,http://localhost:8082,http://localhost:19006}
+      APP_CORS_ALLOWED_ORIGIN_PATTERNS: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*,http://127.0.0.1:*,http://[::1]:*}
+      APP_SECURITY_USER: ${APP_SECURITY_USER:-admin}
+      APP_SECURITY_PASSWORD: ${APP_SECURITY_PASSWORD:-admin123}
       SEED_ADMIN_ENABLED: ${SEED_ADMIN_ENABLED:-false}
       ADMIN_INITIAL_EMAIL: ${ADMIN_INITIAL_EMAIL:-}
       ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-mailhog}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-1025}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:-false}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-false}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED:-false}
     ports:
       - "${SERVER_PORT:-8081}:8080"
     depends_on:
@@ -61,13 +71,13 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       POSTGRES_DB: ${CORE_POSTGRES_DB:-${POSTGRES_DB:-stentio}}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_PORT: "5432"
       CORE_FLYWAY_BASELINE_VERSION: ${CORE_FLYWAY_BASELINE_VERSION:-0}
 
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-changeme}
       MONGO_HOST: ${MONGO_HOST:-mongodb}
-      MONGO_PORT: ${MONGO_PORT:-27017}
+      MONGO_PORT: "27017"
 
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
@@ -84,15 +94,23 @@ services:
       ORCAMENTO_URL_CONSULTA_PUBLICA: ${ORCAMENTO_URL_CONSULTA_PUBLICA:-http://localhost/orcamento}
       APP_PORTAL_RECURSO_URL: ${PORTAL_RECURSO_URL:-http://localhost/portal}
       APP_EQUIPE_EMAIL: ${EQUIPE_EMAIL:-operacoes@stentio.local}
-      APP_ARQUIVOS_DIRETORIO: /app/uploads
-      # US-015 RN.5: o mesmo limite no Core e no email-service, de uma variável só.
+      APP_ARQUIVOS_DIRETORIO: ${APP_ARQUIVOS_DIRETORIO:-/app/uploads}
+      APP_ARQUIVOS_EXTENSOES: ${APP_ARQUIVOS_EXTENSOES:-pdf,doc,docx,odt,rtf,txt,xls,xlsx,ppt,pptx,jpg,jpeg,png}
+      APP_ARQUIVOS_MAXIMO: ${APP_ARQUIVOS_MAXIMO:-10}
+      APP_ARQUIVO_TAMANHO_MAXIMO: ${APP_ARQUIVO_TAMANHO_MAXIMO:-10MB}
+      APP_REQUISICAO_TAMANHO_MAXIMO: ${APP_REQUISICAO_TAMANHO_MAXIMO:-50MB}
+      ORCAMENTO_TOKEN_VALIDADE: ${ORCAMENTO_TOKEN_VALIDADE:-PT120H}
+      ORCAMENTO_OUTBOX_ENABLED: ${ORCAMENTO_OUTBOX_ENABLED:-true}
+      ORCAMENTO_OUTBOX_INTERVALO_MS: ${ORCAMENTO_OUTBOX_INTERVALO_MS:-5000}
+      ORCAMENTO_OUTBOX_RETRY_SEGUNDOS: ${ORCAMENTO_OUTBOX_RETRY_SEGUNDOS:-30}
+      ORCAMENTO_OUTBOX_CONFIRM_TIMEOUT_SEGUNDOS: ${ORCAMENTO_OUTBOX_CONFIRM_TIMEOUT_SEGUNDOS:-5}
       APP_ANEXOS_LIMITE_TOTAL_BYTES: ${APP_ANEXOS_LIMITE_TOTAL_BYTES:-10485760}
 
     ports:
       - "${CORE_SERVER_PORT:-8082}:8080"
     volumes:
       # Sem este volume os anexos das solicitações somem a cada rebuild do container.
-      - core_uploads:/app/uploads
+      - core_uploads:${APP_ARQUIVOS_DIRETORIO:-/app/uploads}
     depends_on:
       - postgres
       - mongodb
@@ -105,7 +123,7 @@ services:
     container_name: stentio-email-service
     environment:
       SERVER_PORT: 8083
-      SPRING_MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-changeme}@mongodb:27017/admin?authSource=admin
+      SPRING_MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-changeme}@${MONGO_HOST:-mongodb}:${MONGO_PORT:-27017}/admin?authSource=admin
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: ${RABBITMQ_DEFAULT_USER:-myuser}
@@ -114,14 +132,14 @@ services:
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:8081,http://localhost:8082,http://localhost:19006}
       JWT_SECRET: ${JWT_SECRET:-minha-chave-secreta-super-longa-para-jwt-stentio-2026}
 
-      APP_ANEXOS_DIRETORIO: /app/uploads
+      APP_ANEXOS_DIRETORIO: ${APP_ARQUIVOS_DIRETORIO:-/app/uploads}
       APP_ANEXOS_LIMITE_TOTAL_BYTES: ${APP_ANEXOS_LIMITE_TOTAL_BYTES:-10485760}
     ports:
       - "${EMAIL_SERVICE_PORT:-8083}:8083"
     volumes:
       # US-13: mesmo volume do Core, somente leitura — o email-service lê os anexos da
       # solicitação para enviá-los no e-mail e nunca escreve nem apaga nada aqui.
-      - core_uploads:/app/uploads:ro
+      - core_uploads:${APP_ARQUIVOS_DIRETORIO:-/app/uploads}:ro
     depends_on:
       - mongodb
       - rabbitmq
@@ -133,6 +151,9 @@ services:
     container_name: stentio-import-service
     env_file:
       - .env
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: "5432"
     ports:
       - "8123:8000"
     depends_on:
@@ -149,8 +170,8 @@ services:
     environment:
       CHATBOT_DB_USER: ${CHATBOT_DB_USER:-agent}
       CHATBOT_DB_PASSWORD: ${CHATBOT_DB_PASSWORD:?Defina CHATBOT_DB_PASSWORD no .env}
-      DATABASE_URL: postgresql+psycopg://${CHATBOT_DB_USER:-agent}:${CHATBOT_DB_PASSWORD:?Defina CHATBOT_DB_PASSWORD no .env}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${CORE_POSTGRES_DB:-${POSTGRES_DB:-stentio}}
-      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-changeme}@mongodb:${MONGO_PORT:-27017}/${MONGO_DB_NAME:-stentio_chatbot}?authSource=admin
+      DATABASE_URL: postgresql+psycopg://${CHATBOT_DB_USER:-agent}:${CHATBOT_DB_PASSWORD:?Defina CHATBOT_DB_PASSWORD no .env}@${POSTGRES_HOST:-postgres}:5432/${CORE_POSTGRES_DB:-${POSTGRES_DB:-stentio}}
+      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-changeme}@${MONGO_HOST:-mongodb}:${MONGO_PORT:-27017}/${MONGO_DB_NAME:-stentio_chatbot}?authSource=admin
       MONGO_DB_NAME: ${MONGO_DB_NAME:-stentio_chatbot}
       GROQ_API_KEY: ${GROQ_API_KEY}
       JWT_SECRET: ${JWT_SECRET:-minha-chave-secreta-super-longa-para-jwt-stentio-2026}
@@ -175,7 +196,7 @@ services:
       - postgres_data:/data/postgres
       - ./init-chatbot-role.sh:/docker-entrypoint-initdb.d/10-chatbot-role.sh:ro
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     networks:
       - stentio-network
     restart: unless-stopped
@@ -189,7 +210,7 @@ services:
     volumes:
       - mongo_data:/data/db
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "127.0.0.1:${MONGO_PUBLISHED_PORT:-27017}:27017"
     networks:
       - stentio-network
     restart: unless-stopped

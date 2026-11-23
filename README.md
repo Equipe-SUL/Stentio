@@ -165,7 +165,7 @@ cd Stentio
 cp .env.example .env
 ```
 
-Os valores padrão já funcionam para desenvolvimento local. Para mais detalhes de cada variável, veja o [`.env.example`](./.env.example).
+Substitua os valores `CHANGE_ME` e gere `CHATBOT_DB_PASSWORD` com `openssl rand -hex 32` antes de iniciar. Para mais detalhes, consulte os comentários do [`.env.example`](./.env.example).
 
 ### 3. Subir a aplicação (Docker)
 
