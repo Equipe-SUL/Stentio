@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.stentio.core.model.StatusEtapaOrdemServico;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -14,6 +15,10 @@ import java.util.UUID;
  * fazer, em que par de idiomas e até quando — e nada além disso. Cliente, valores e
  * demais etapas da mesma ordem não entram: são dados do negócio da Aliança, e quem executa
  * uma etapa não precisa deles para executá-la.
+ *
+ * <p>O documento do cliente é a exceção: sem ele não há o que traduzir. {@code arquivos}
+ * traz os anexos da solicitação só quando a etapa é deste profissional (alocada, aceita ou
+ * entregue); no convite aberto vem vazio, porque o documento vai para quem assumiu.
  */
 public record DemandaRecursoResponse(
         @JsonProperty("etapa_id") UUID etapaId,
@@ -27,6 +32,16 @@ public record DemandaRecursoResponse(
         StatusEtapaOrdemServico status,
         boolean liberada,
         @JsonProperty("prazo_estimado_horas") Integer prazoEstimadoHoras,
-        @JsonProperty("data_limite_entrega") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant dataLimiteEntrega
+        @JsonProperty("data_limite_entrega") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant dataLimiteEntrega,
+        List<ArquivoDaSolicitacao> arquivos
 ) {
+
+    /** Um anexo do cliente. A {@code url} é a rota autenticada do portal, nunca o disco. */
+    public record ArquivoDaSolicitacao(
+            UUID id,
+            String nome,
+            @JsonProperty("tamanho_bytes") long tamanhoBytes,
+            String url
+    ) {
+    }
 }

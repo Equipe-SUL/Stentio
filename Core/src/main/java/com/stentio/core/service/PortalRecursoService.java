@@ -2,8 +2,11 @@ package com.stentio.core.service;
 
 import com.stentio.core.dto.DemandaRecursoResponse;
 import com.stentio.core.dto.RecursoResponse;
+import com.stentio.core.exception.EtapaNaoEncontradaException;
 import com.stentio.core.mapper.RecursoMapper;
+import com.stentio.core.model.ArquivoSolicitacao;
 import com.stentio.core.model.EtapaOrdemServico;
+import com.stentio.core.model.Recurso;
 import com.stentio.core.model.Solicitacao;
 import com.stentio.core.model.StatusEtapaOrdemServico;
 import com.stentio.core.repository.EtapaOrdemServicoRepository;
@@ -59,17 +62,48 @@ public class PortalRecursoService {
      */
     @Transactional(readOnly = true)
     public List<DemandaRecursoResponse> minhasDemandas(UsuarioAutenticado ator) {
-        UUID recursoId = recursoAutenticado.resolver(ator).getId();
+        Recurso recurso = recursoAutenticado.resolver(ator);
+        UUID recursoId = recurso.getId();
 
         return Stream.concat(
                         etapas.listarPorRecurso(recursoId).stream(),
                         etapas.listarDisponiveisPara(recursoId, StatusEtapaOrdemServico.DISPARADA).stream())
-                .map(this::paraDemanda)
+                .map(etapa -> paraDemanda(etapa, recurso))
                 .toList();
     }
 
-    private DemandaRecursoResponse paraDemanda(EtapaOrdemServico etapa) {
+    /**
+     * O anexo do cliente para o profissional baixar. Mesmas três conferências da lista: a
+     * etapa existe, é deste profissional, e o arquivo é da solicitação desta etapa. Qualquer
+     * uma que falhe vira 404 — dizer "existe, mas não é seu" já revelaria o arquivo.
+     */
+    @Transactional(readOnly = true)
+    public AnexoParaDownload localizarAnexo(UUID etapaId, UUID arquivoId, UsuarioAutenticado ator) {
+        Recurso recurso = recursoAutenticado.resolver(ator);
+        EtapaOrdemServico etapa = etapas.buscarParaAceite(etapaId)
+                .filter(candidata -> candidata.pertenceA(recurso))
+                .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
+
+        ArquivoSolicitacao arquivo = etapa.getOrdemServico().getSolicitacao().getArquivos().stream()
+                .filter(candidato -> candidato.getId().equals(arquivoId))
+                .findFirst()
+                .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
+
+        return new AnexoParaDownload(arquivo.getNomeOriginal(), arquivo.getCaminho());
+    }
+
+    private DemandaRecursoResponse paraDemanda(EtapaOrdemServico etapa, Recurso recurso) {
         Solicitacao solicitacao = etapa.getOrdemServico().getSolicitacao();
+        // Convite aberto não tem dono: o documento só vai para quem assumiu a etapa.
+        List<DemandaRecursoResponse.ArquivoDaSolicitacao> arquivos = etapa.pertenceA(recurso)
+                ? solicitacao.getArquivos().stream()
+                        .map(arquivo -> new DemandaRecursoResponse.ArquivoDaSolicitacao(
+                                arquivo.getId(),
+                                arquivo.getNomeOriginal(),
+                                arquivo.getTamanhoBytes(),
+                                "/api/v1/recurso/etapas/" + etapa.getId() + "/arquivos/" + arquivo.getId()))
+                        .toList()
+                : List.of();
 
         return new DemandaRecursoResponse(
                 etapa.getId(),
@@ -83,6 +117,10 @@ public class PortalRecursoService {
                 etapa.getStatus(),
                 etapaLiberacao.estaLiberada(etapa),
                 etapa.getPrazoEstimadoHoras(),
-                etapa.getDataLimiteEntrega());
+                etapa.getDataLimiteEntrega(),
+                arquivos);
+    }
+
+    public record AnexoParaDownload(String nomeOriginal, String caminho) {
     }
 }
