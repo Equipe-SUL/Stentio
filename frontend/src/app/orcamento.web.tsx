@@ -16,7 +16,9 @@ const rotuloStatus = (status: string) => ({
 
 export default function OrcamentoRoute() {
   const { token } = useLocalSearchParams<{ token?: string | string[] }>();
-  const valor = typeof token === 'string' ? token.trim() : '';
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
+  const valor = montado && typeof token === 'string' ? token.trim() : '';
   return <PaginaOrcamento key={valor} token={valor} />;
 }
 function PaginaOrcamento({ token }: { token: string }) {
