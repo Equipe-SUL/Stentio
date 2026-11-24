@@ -10,6 +10,7 @@ import {
   entregarEtapaRecurso,
   listarMinhasDemandas,
   recusarEtapaRecurso,
+  type ArquivoDaSolicitacao,
   type DemandaRecurso,
   type EntregaEtapaResponse,
 } from "../../../components/recursos/portalRecursoApi";
@@ -30,6 +31,12 @@ const STATUS: Record<string, { label: string; cor: string }> = {
   ACEITA: { label: "Em execução", cor: "bg-indigo-50 text-indigo-800 border-indigo-200" },
   ENTREGUE: { label: "Entregue", cor: "bg-neutral-100 text-neutral-700 border-neutral-300" },
 };
+
+function formatarTamanho(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+}
 
 function formatarDataHora(valor?: string | null): string {
   if (!valor) return "Prazo não definido";
@@ -95,6 +102,7 @@ export default function MinhasDemandasScreen() {
   const [resultadoEntrega, setResultadoEntrega] = useState<EntregaEtapaResponse | null>(null);
   const [avisoAceite, setAvisoAceite] = useState("");
   const [progresso, setProgresso] = useState<number | null>(null);
+  const [anexoBaixandoId, setAnexoBaixandoId] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -181,6 +189,18 @@ export default function MinhasDemandasScreen() {
       }
     } finally {
       setEtapaProcessandoId(null);
+    }
+  }
+
+  async function handleBaixarAnexo(arquivo: ArquivoDaSolicitacao) {
+    setErroAcao("");
+    setAnexoBaixandoId(arquivo.id);
+    try {
+      await baixarEntrega(arquivo.url, arquivo.nome);
+    } catch (error) {
+      setErroAcao(getApiErrorMessage(error));
+    } finally {
+      setAnexoBaixandoId(null);
     }
   }
 
@@ -497,6 +517,39 @@ export default function MinhasDemandasScreen() {
                       </Text>
                     </View>
                   </View>
+
+                  {/* Documentos originais do cliente: o Core só os envia para quem está com a etapa */}
+                  {demanda.arquivos && demanda.arquivos.length > 0 ? (
+                    <View className="gap-2 border-t border-neutral-100 pt-3">
+                      <Text className="text-xs font-semibold text-neutral-500">
+                        Documentos do cliente
+                      </Text>
+                      <View className="flex-row flex-wrap gap-2">
+                        {demanda.arquivos.map((arquivo) => (
+                          <Pressable
+                            key={arquivo.id}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Baixar ${arquivo.nome}`}
+                            disabled={Platform.OS !== "web" || anexoBaixandoId === arquivo.id}
+                            onPress={() => void handleBaixarAnexo(arquivo)}
+                            className="flex-row items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 py-2"
+                          >
+                            {anexoBaixandoId === arquivo.id ? (
+                              <ActivityIndicator size="small" color="#8c5230" />
+                            ) : (
+                              <Ionicons name="document-attach-outline" size={16} color="#8c5230" />
+                            )}
+                            <Text className="text-xs font-medium text-neutral-800" numberOfLines={1}>
+                              {arquivo.nome}
+                            </Text>
+                            <Text className="text-[11px] text-neutral-500">
+                              {formatarTamanho(arquivo.tamanho_bytes)}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
 
                   {/* Alerta de reabertura / motivo da reprovação (US-015 Task 3 · CA.11/CA.13) */}
                   {demanda.situacao === "ACEITA" && demanda.motivo_revisao ? (
