@@ -30,6 +30,25 @@ export interface DemandaRecurso {
   motivo_revisao?: string | null;
   /** Só nas etapas ENTREGUE: rota do Core para o profissional baixar o próprio arquivo. */
   arquivo_entrega_url?: string | null;
+  arquivo_entrada?: ArquivoEtapaAnterior | null;
+  /**
+   * Documentos que o cliente anexou na solicitação. O Core só os envia quando a etapa é
+   * deste profissional (alocada, aceita ou entregue); em convite aberto vem vazio.
+   */
+  arquivos?: ArquivoDaSolicitacao[];
+}
+
+export interface ArquivoDaSolicitacao {
+  id: string;
+  nome: string;
+  tamanho_bytes: number;
+  /** Rota autenticada do portal: GET /api/v1/recurso/etapas/{etapaId}/arquivos/{id} */
+  url: string;
+}
+
+export interface ArquivoEtapaAnterior {
+  nome: string;
+  url: string;
 }
 
 export interface AvancoEtapaResponse {

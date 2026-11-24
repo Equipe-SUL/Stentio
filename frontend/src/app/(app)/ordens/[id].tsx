@@ -25,6 +25,7 @@ export default function OrdemDetalheRoute() {
         />
 
         <OrdemServicoDetalhesView
+          key={idString}
           id={idString}
           onVoltar={() => router.push("/ordens")}
         />

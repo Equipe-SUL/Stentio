@@ -1,4 +1,5 @@
 import { coreApi } from "../../lib/api";
+import { Platform } from "react-native";
 import type {
   EnviarMensagemChatbotRequest,
   EnviarMensagemChatbotResponse,
@@ -6,6 +7,10 @@ import type {
 } from "./types";
 
 const ENDPOINT = "/api/v1/ia/chatbot";
+const CHATBOT_API_BASE_URL =
+  Platform.OS === "android"
+    ? process.env.EXPO_PUBLIC_CHATBOT_API_URL ?? "http://10.0.2.2:8000"
+    : "";
 
 export async function enviarMensagemChatbot(
   request: EnviarMensagemChatbotRequest,
@@ -13,7 +18,7 @@ export async function enviarMensagemChatbot(
   const { data } = await coreApi.post<EnviarMensagemChatbotResponse>(
     `${ENDPOINT}/mensagens`,
     request,
-    { baseURL: "" }, // Força usar a mesma origem (Nginx -> chatbot-service:8000)
+    { baseURL: CHATBOT_API_BASE_URL },
   );
   return data;
 }
@@ -21,7 +26,7 @@ export async function enviarMensagemChatbot(
 export async function buscarHistoricoChatbot(): Promise<HistoricoChatbotResponse> {
   const { data } = await coreApi.get<HistoricoChatbotResponse>(
     `${ENDPOINT}/historico`,
-    { baseURL: "" }, // Força usar a mesma origem (Nginx -> chatbot-service:8000)
+    { baseURL: CHATBOT_API_BASE_URL },
   );
   return data;
 }

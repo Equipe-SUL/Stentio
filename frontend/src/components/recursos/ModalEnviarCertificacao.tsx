@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -49,7 +49,9 @@ export function ModalEnviarCertificacao({
   pares,
   parInicial,
 }: ModalEnviarCertificacaoProps) {
-  const [parSelecionadoChave, setParSelecionadoChave] = useState<string>("");
+  const [parSelecionadoChave, setParSelecionadoChave] = useState<string | null>(
+    null,
+  );
   const [arquivo, setArquivo] = useState<ArquivoCertificacao | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
@@ -67,25 +69,27 @@ export function ModalEnviarCertificacao({
     return Array.from(mapa.values());
   }, [pares]);
 
-  useEffect(() => {
-    if (!visible) return;
+  const primeiroNaoAprovado = paresUnicos.find(
+    (par) => par.statusCertificacao !== "APROVADA",
+  );
+  const chaveParInicial = parInicial
+    ? `${parInicial.idiomaOrigemId}:::${parInicial.idiomaDestinoId}`
+    : null;
+  const chaveParSelecionado =
+    parSelecionadoChave ??
+    chaveParInicial ??
+    (primeiroNaoAprovado
+      ? `${primeiroNaoAprovado.idiomaOrigem.id}:::${primeiroNaoAprovado.idiomaDestino.id}`
+      : paresUnicos[0]
+        ? `${paresUnicos[0].idiomaOrigem.id}:::${paresUnicos[0].idiomaDestino.id}`
+        : "");
+
+  function fechar() {
     setErro("");
     setArquivo(null);
-
-    if (parInicial) {
-      setParSelecionadoChave(`${parInicial.idiomaOrigemId}:::${parInicial.idiomaDestinoId}`);
-    } else {
-      // Pré-seleciona o primeiro par que não esteja aprovado
-      const primeiroNaoAprovado = paresUnicos.find((p) => p.statusCertificacao !== "APROVADA");
-      if (primeiroNaoAprovado) {
-        setParSelecionadoChave(`${primeiroNaoAprovado.idiomaOrigem.id}:::${primeiroNaoAprovado.idiomaDestino.id}`);
-      } else if (paresUnicos.length > 0) {
-        setParSelecionadoChave(`${paresUnicos[0].idiomaOrigem.id}:::${paresUnicos[0].idiomaDestino.id}`);
-      } else {
-        setParSelecionadoChave("");
-      }
-    }
-  }, [visible, parInicial, paresUnicos]);
+    setParSelecionadoChave(null);
+    onClose();
+  }
 
   async function handleSelecionarArquivo() {
     if (selecionandoArquivo || enviando) return;
@@ -121,7 +125,7 @@ export function ModalEnviarCertificacao({
   }
 
   async function handleEnviar() {
-    if (!parSelecionadoChave) {
+    if (!chaveParSelecionado) {
       setErro("Selecione o par de idiomas a certificar.");
       return;
     }
@@ -130,7 +134,7 @@ export function ModalEnviarCertificacao({
       return;
     }
 
-    const [idiomaOrigemId, idiomaDestinoId] = parSelecionadoChave.split(":::");
+    const [idiomaOrigemId, idiomaDestinoId] = chaveParSelecionado.split(":::");
     if (!idiomaOrigemId || !idiomaDestinoId) {
       setErro("Par de idiomas inválido.");
       return;
@@ -141,7 +145,7 @@ export function ModalEnviarCertificacao({
     try {
       const resultado = await enviarCertificacao(idiomaOrigemId, idiomaDestinoId, arquivo);
       onSuccess(resultado);
-      onClose();
+      fechar();
     } catch (e) {
       setErro(getApiErrorMessage(e));
     } finally {
@@ -150,12 +154,12 @@ export function ModalEnviarCertificacao({
   }
 
   const parAtual = paresUnicos.find(
-    (p) => `${p.idiomaOrigem.id}:::${p.idiomaDestino.id}` === parSelecionadoChave
+    (p) => `${p.idiomaOrigem.id}:::${p.idiomaDestino.id}` === chaveParSelecionado
   );
   const estaAprovado = parAtual?.statusCertificacao === "APROVADA";
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={fechar}>
       <View className="flex-1 items-center justify-center bg-black/40 px-4 py-8">
         <View className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
           <View className="flex-row items-center justify-between pb-3 border-b border-neutral-100">
@@ -171,7 +175,7 @@ export function ModalEnviarCertificacao({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Fechar modal"
-              onPress={onClose}
+              onPress={fechar}
               className="h-8 w-8 items-center justify-center rounded-lg border border-neutral-200"
             >
               <Ionicons name="close" size={18} color="#71717a" />
@@ -185,7 +189,7 @@ export function ModalEnviarCertificacao({
             </View>
           ) : null}
 
-          <ScrollView className="mt-4 max-h-[460px]" showsVerticalScrollIndicator={false}>
+          <ScrollView className="mt-4 max-h-115" showsVerticalScrollIndicator={false}>
             <View className="gap-4">
               <View className="gap-1.5">
                 <Text className="text-xs font-semibold text-neutral-700 uppercase tracking-wider">
@@ -198,7 +202,7 @@ export function ModalEnviarCertificacao({
                 ) : (
                   <View className="overflow-hidden rounded-xl border border-neutral-300 bg-white">
                     <Picker
-                      selectedValue={parSelecionadoChave}
+                      selectedValue={chaveParSelecionado}
                       onValueChange={(val) => setParSelecionadoChave(String(val))}
                     >
                       {paresUnicos.map((p) => {
@@ -286,7 +290,7 @@ export function ModalEnviarCertificacao({
           <View className="mt-6 flex-row justify-end gap-3 pt-4 border-t border-neutral-100">
             <Pressable
               accessibilityRole="button"
-              onPress={onClose}
+              onPress={fechar}
               disabled={enviando}
               className="rounded-xl border border-neutral-300 px-4 py-2.5"
             >
@@ -295,9 +299,9 @@ export function ModalEnviarCertificacao({
             <Pressable
               accessibilityRole="button"
               onPress={() => void handleEnviar()}
-              disabled={enviando || !arquivo || !parSelecionadoChave || estaAprovado}
+              disabled={enviando || !arquivo || !chaveParSelecionado || estaAprovado}
               className={`flex-row items-center justify-center gap-2 rounded-xl px-5 py-2.5 ${
-                enviando || !arquivo || !parSelecionadoChave || estaAprovado
+                enviando || !arquivo || !chaveParSelecionado || estaAprovado
                   ? "bg-neutral-300"
                   : "bg-[#8c5230]"
               }`}

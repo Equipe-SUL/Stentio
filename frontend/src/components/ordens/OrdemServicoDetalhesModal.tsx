@@ -86,6 +86,7 @@ export function OrdemServicoDetalhesModal({
           {/* Conteúdo principal com OrdemServicoDetalhesView */}
           <View className="flex-1 p-6">
             <OrdemServicoDetalhesView
+              key={ordemId}
               id={ordemId}
               ordemInicial={ordemInicial}
               onVoltar={onClose}

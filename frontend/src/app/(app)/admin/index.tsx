@@ -20,11 +20,6 @@ const ITENS: HubItem[] = [
     route: "/auditoria",
   },
   {
-    nome: "Notificações",
-    descricao: "Registros do sistema e pedidos de confirmação por usuário.",
-    icon: "notifications-outline",
-  },
-  {
     nome: "Configurações",
     descricao: "Base cadastral e estrutural do sistema.",
     icon: "settings-outline",

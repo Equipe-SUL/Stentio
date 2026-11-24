@@ -1,5 +1,5 @@
 // RecursoFormModal.tsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, Modal, View, Text, TextInput, Pressable, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -78,8 +78,16 @@ export function RecursoFormModal({
   const [precos, setPrecos] = useState<PrecoForm[]>([{ ...PRECO_VAZIO }]);
   const [enviando, setEnviando] = useState(false);
   const [erroValidacao, setErroValidacao] = useState("");
+  const [propsAnteriores, setPropsAnteriores] = useState({
+    visible,
+    initialValues,
+  });
 
-  useEffect(() => {
+  if (
+    propsAnteriores.visible !== visible ||
+    propsAnteriores.initialValues !== initialValues
+  ) {
+    setPropsAnteriores({ visible, initialValues });
     if (visible) {
       setNome(initialValues.nome);
       setEmail(initialValues.email);
@@ -88,7 +96,7 @@ export function RecursoFormModal({
       setPrecos(initialValues.precos.length > 0 ? initialValues.precos : [{ ...PRECO_VAZIO }]);
       setErroValidacao("");
     }
-  }, [visible, initialValues]);
+  }
 
   function toggleTipoServico(id: string) {
     setTiposServicoIds((atual) =>

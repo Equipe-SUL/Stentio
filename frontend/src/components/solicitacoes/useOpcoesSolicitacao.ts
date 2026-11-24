@@ -16,8 +16,6 @@ export function useOpcoesSolicitacao() {
 
   useEffect(() => {
     let ativo = true;
-    setCarregando(true);
-    setErro("");
 
     carregarOpcoesSolicitacao()
       .then((resultado) => {
@@ -35,7 +33,11 @@ export function useOpcoesSolicitacao() {
     };
   }, [tentativa]);
 
-  const recarregar = useCallback(() => setTentativa((atual) => atual + 1), []);
+  const recarregar = useCallback(() => {
+    setCarregando(true);
+    setErro("");
+    setTentativa((atual) => atual + 1);
+  }, []);
 
   return { opcoes, carregando, erro, recarregar };
 }

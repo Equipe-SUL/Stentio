@@ -127,6 +127,47 @@ public class PortalRecursoController {
         return entregaEtapaService.entregar(etapaId, arquivo, UsuarioAutenticado.de(autenticacao));
     }
 
+    /** O documento original do cliente, para quem está com a etapa. */
+    @GetMapping("/etapas/{etapaId}/arquivos/{arquivoId}")
+    @Operation(summary = "Baixa um anexo da solicitação de uma etapa do profissional autenticado")
+    public ResponseEntity<Resource> baixarAnexo(@PathVariable UUID etapaId, @PathVariable UUID arquivoId,
+                                                Authentication autenticacao) {
+        PortalRecursoService.AnexoParaDownload arquivo =
+                portalRecursoService.localizarAnexo(etapaId, arquivoId, UsuarioAutenticado.de(autenticacao));
+        Resource conteudo = arquivoStorageService.carregar(arquivo.caminho());
+        ContentDisposition anexo = ContentDisposition.attachment()
+                .filename(arquivo.nomeOriginal(), StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "no-referrer")
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, anexo.toString())
+                .body(conteudo);
+    }
+
+    @GetMapping("/etapas/{etapaId}/entrada/arquivo")
+    @Operation(summary = "Baixa a entrega da etapa anterior para usar como entrada")
+    public ResponseEntity<Resource> baixarArquivoEntrada(@PathVariable UUID etapaId,
+                                                         Authentication autenticacao) {
+        PortalRecursoService.AnexoParaDownload arquivo =
+                portalRecursoService.localizarArquivoEntrada(etapaId, UsuarioAutenticado.de(autenticacao));
+        Resource conteudo = arquivoStorageService.carregar(arquivo.caminho());
+        ContentDisposition anexo = ContentDisposition.attachment()
+                .filename(arquivo.nomeOriginal(), StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "no-referrer")
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, anexo.toString())
+                .body(conteudo);
+    }
+
     @GetMapping("/etapas/{etapaId}/entrega/arquivo")
     @Operation(summary = "Baixa a entrega do profissional autenticado")
     public ResponseEntity<Resource> baixarEntrega(@PathVariable UUID etapaId, Authentication autenticacao) {

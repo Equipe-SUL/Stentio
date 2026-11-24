@@ -56,8 +56,17 @@ function SeletorData({ value, onChange }: { value: string; onChange: (data: stri
 }
 
 export function OrcamentoNovoScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams<{ solicitacaoId?: string; orcamentoId?: string }>();
+  const chave = `${params.solicitacaoId ?? ""}:${params.orcamentoId ?? ""}`;
+  return <OrcamentoNovoForm key={chave} params={params} />;
+}
+
+function OrcamentoNovoForm({
+  params,
+}: {
+  params: { solicitacaoId?: string; orcamentoId?: string };
+}) {
+  const router = useRouter();
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoResponse[]>([]);
   const [solicitacaoId, setSolicitacaoId] = useState(params.solicitacaoId ?? "");
   const solicitacao = solicitacoes.find((s) => s.id === solicitacaoId);
@@ -73,10 +82,6 @@ export function OrcamentoNovoScreen() {
 
   useEffect(() => {
     let ativo = true;
-    setCarregando(true);
-    setOrcamentoId("");
-    setEtapaItens(false);
-    setErro("");
     Promise.all([
       params.orcamentoId ? buscarOrcamento(params.orcamentoId) : Promise.resolve(null),
       params.orcamentoId ? Promise.resolve([]) : listarSolicitacoes(),
@@ -197,7 +202,7 @@ export function OrcamentoNovoScreen() {
             {item.origem && item.origem === item.destino ? <Text className="text-xs text-red-600">Origem e destino precisam ser diferentes.</Text> : null}
             {item.servicos.map((serv, si) => <View key={si} className="gap-2 rounded-lg border border-neutral-200 bg-white p-3"><View className="flex-row items-center justify-between"><Text className="text-sm font-medium text-neutral-700">Serviço {si + 1}</Text>{item.servicos.length > 1 ? <Pressable accessibilityRole="button" accessibilityLabel={`Remover serviço ${si + 1} do par ${idx + 1}`} onPress={() => mudarItem(idx, { servicos: item.servicos.filter((_, j) => j !== si) })} className="rounded-md border border-red-200 bg-white p-2 active:bg-red-50"><Ionicons name="trash-outline" size={18} color="#dc2626" /></Pressable> : null}</View>
               <SelectField label="Tipo de serviço" value={serv.tipo} onChange={(tipo) => mudarServico(idx, si, { tipo })} options={opcoesTipoServico} placeholder="Selecione o serviço..." />
-              <View className="flex-row flex-wrap gap-2"><Campo label="Quantidade" value={serv.quantidade} onChangeText={(v) => mudarServico(idx, si, { quantidade: v })} keyboardType="decimal-pad" placeholder="Ex.: 1500" error={serv.quantidade && !positivo(serv.quantidade) ? "Deve ser maior que zero" : undefined} /><View className="min-w-[105px] flex-1 gap-1"><Text className="text-xs font-medium text-neutral-600">Unidade</Text><View className="flex-row flex-wrap gap-1">{UNIDADES.map((u) => <Pressable key={u} onPress={() => mudarServico(idx, si, { unidade: u })} className={`rounded-md border px-2 py-2 ${serv.unidade === u ? "border-[#6f4f28] bg-[#f4e9df]" : "border-neutral-300 bg-white"}`}><Text className="text-[10px] text-neutral-700">{u}</Text></Pressable>)}</View></View><Campo label="Valor unitário (R$)" value={serv.valor} onChangeText={(v) => mudarServico(idx, si, { valor: v })} keyboardType="decimal-pad" placeholder="0,00" error={serv.valor && !positivo(serv.valor) ? "Deve ser maior que zero" : undefined} /></View>
+              <View className="flex-row flex-wrap gap-2"><Campo label="Quantidade" value={serv.quantidade} onChangeText={(v) => mudarServico(idx, si, { quantidade: v })} keyboardType="decimal-pad" placeholder="Ex.: 1500" error={serv.quantidade && !positivo(serv.quantidade) ? "Deve ser maior que zero" : undefined} /><View className="min-w-26.25 flex-1 gap-1"><Text className="text-xs font-medium text-neutral-600">Unidade</Text><View className="flex-row flex-wrap gap-1">{UNIDADES.map((u) => <Pressable key={u} onPress={() => mudarServico(idx, si, { unidade: u })} className={`rounded-md border px-2 py-2 ${serv.unidade === u ? "border-[#6f4f28] bg-[#f4e9df]" : "border-neutral-300 bg-white"}`}><Text className="text-[10px] text-neutral-700">{u}</Text></Pressable>)}</View></View><Campo label="Valor unitário (R$)" value={serv.valor} onChangeText={(v) => mudarServico(idx, si, { valor: v })} keyboardType="decimal-pad" placeholder="0,00" error={serv.valor && !positivo(serv.valor) ? "Deve ser maior que zero" : undefined} /></View>
               <Text className="text-right text-xs text-neutral-500">Subtotal: {dinheiro(numerico(serv.quantidade) * numerico(serv.valor))}</Text>
             </View>)}
             <Pressable onPress={() => mudarItem(idx, { servicos: [...item.servicos, novoServico()] })} className="self-start rounded-lg border border-[#6f4f28] px-3 py-2"><Text className="text-xs font-medium text-[#6f4f28]">+ Adicionar serviço</Text></Pressable>

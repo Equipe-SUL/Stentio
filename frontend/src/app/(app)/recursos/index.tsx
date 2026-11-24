@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, View, Text, Pressable, TextInput } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, View, Text, Pressable, TextInput, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { DataTable } from "../../../components/usuarios/DataTable";
 import { RowActions } from "../../../components/usuarios/RowActions";
@@ -133,6 +133,7 @@ const VALORES_INICIAIS_VAZIOS: RecursoFormValues = {
 
 export default function RecursosPage() {
   const { usuario } = useSession();
+  const { width } = useWindowDimensions();
   const [termo, setTermo] = useState("");
   const [status, setStatus] = useState<FiltroStatus>("todos");
   const [filtroVerificacao, setFiltroVerificacao] = useState<"todos" | "pendentes">("todos");
@@ -152,6 +153,8 @@ export default function RecursosPage() {
   const [verificandoId, setVerificandoId] = useState<string | null>(null);
 
   const podeVerificar = usuario?.role === "ADMIN" || usuario?.role === "GESTOR_PROJETO";
+  const paddingHorizontal = Platform.OS === "web" ? (width < 768 ? 16 : 96) : 24;
+  const paddingVertical = Platform.OS === "web" ? (width < 768 ? 24 : 48) : 24;
 
   const recarregar = useCallback(() => {
     setCarregando(true);
@@ -329,7 +332,8 @@ export default function RecursosPage() {
   return (
     <ScrollView
       className="flex-1 bg-neutral-50"
-      contentContainerClassName="gap-6 p-6 web:px-24 web:py-12 web:items-center"
+      contentContainerClassName="gap-6 web:items-center"
+      contentContainerStyle={{ paddingHorizontal, paddingVertical }}
       keyboardShouldPersistTaps="handled"
     >
       <View className="w-full web:max-w-6xl gap-6">

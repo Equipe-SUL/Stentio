@@ -12,6 +12,9 @@ export interface OrcamentoPublico {
   valor_total: number;
   data_expiracao: string;
   itens: ItemOrcamento[];
+  numero_versao?: number | null;
+  criado_em?: string | null;
+  solicitacao?: SolicitacaoPublica | null;
 }
 export interface DecisaoOrcamento {
   id: string;
@@ -38,9 +41,9 @@ export function validarMotivo(motivo: string): string | null {
 export function baseUrl(): string {
   // Em produção, o Nginx encaminha /api/v1/public/orcamentos ao Core.
   // No Expo local, o Core é acessado diretamente; respeita origem explícita.
+  if (process.env.NODE_ENV === 'production') return '';
   const configurada = process.env.EXPO_PUBLIC_CORE_API_URL;
   if (configurada !== undefined) return configurada.replace(/\/$/, '');
-  if (process.env.NODE_ENV === 'production') return '';
   if (typeof window !== 'undefined') {
     const url = new URL(window.location.origin);
     url.port = '8082';
@@ -122,17 +125,6 @@ export interface SolicitacaoPublica {
   idioma_origem?: IdiomaPublico | null;
   idioma_destino?: IdiomaPublico | null;
   arquivos?: ArquivoPublico[];
-}
-
-export interface OrcamentoPublico {
-  id: string;
-  status: StatusOrcamento;
-  valor_total: number;
-  data_expiracao: string;
-  itens: ItemOrcamento[];
-  numero_versao?: number | null;
-  criado_em?: string | null;
-  solicitacao?: SolicitacaoPublica | null;
 }
 
 export function getLogoEmpresaPublicaUrl(token: string): string {

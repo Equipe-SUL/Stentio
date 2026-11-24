@@ -10,6 +10,7 @@ import {
   entregarEtapaRecurso,
   listarMinhasDemandas,
   recusarEtapaRecurso,
+  type ArquivoDaSolicitacao,
   type DemandaRecurso,
   type EntregaEtapaResponse,
 } from "../../../components/recursos/portalRecursoApi";
@@ -30,6 +31,12 @@ const STATUS: Record<string, { label: string; cor: string }> = {
   ACEITA: { label: "Em execução", cor: "bg-indigo-50 text-indigo-800 border-indigo-200" },
   ENTREGUE: { label: "Entregue", cor: "bg-neutral-100 text-neutral-700 border-neutral-300" },
 };
+
+function formatarTamanho(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+}
 
 function formatarDataHora(valor?: string | null): string {
   if (!valor) return "Prazo não definido";
@@ -95,6 +102,8 @@ export default function MinhasDemandasScreen() {
   const [resultadoEntrega, setResultadoEntrega] = useState<EntregaEtapaResponse | null>(null);
   const [avisoAceite, setAvisoAceite] = useState("");
   const [progresso, setProgresso] = useState<number | null>(null);
+  const [anexoBaixandoId, setAnexoBaixandoId] = useState<string | null>(null);
+  const [entradaBaixandoId, setEntradaBaixandoId] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -184,6 +193,18 @@ export default function MinhasDemandasScreen() {
     }
   }
 
+  async function handleBaixarAnexo(arquivo: ArquivoDaSolicitacao) {
+    setErroAcao("");
+    setAnexoBaixandoId(arquivo.id);
+    try {
+      await baixarEntrega(arquivo.url, arquivo.nome);
+    } catch (error) {
+      setErroAcao(getApiErrorMessage(error));
+    } finally {
+      setAnexoBaixandoId(null);
+    }
+  }
+
   async function handleBaixarEntrega(demanda: DemandaRecurso) {
     if (!demanda.arquivo_entrega_url) return;
     setErroAcao("");
@@ -191,6 +212,19 @@ export default function MinhasDemandasScreen() {
       await baixarEntrega(demanda.arquivo_entrega_url, demanda.arquivo_nome || "entrega");
     } catch (error) {
       setErroAcao(getApiErrorMessage(error));
+    }
+  }
+
+  async function handleBaixarArquivoEntrada(demanda: DemandaRecurso) {
+    if (!demanda.arquivo_entrada) return;
+    setErroAcao("");
+    setEntradaBaixandoId(demanda.etapa_id);
+    try {
+      await baixarEntrega(demanda.arquivo_entrada.url, demanda.arquivo_entrada.nome);
+    } catch (error) {
+      setErroAcao(getApiErrorMessage(error));
+    } finally {
+      setEntradaBaixandoId(null);
     }
   }
 
@@ -256,20 +290,20 @@ export default function MinhasDemandasScreen() {
   return (
     <ScrollView className="flex-1" contentContainerClassName="items-center p-5 py-8 md:p-8">
       <View className="w-full max-w-5xl gap-6">
-        <View className="flex-row flex-wrap items-start justify-between gap-4">
-          <View className="flex-1 gap-1">
+        <View className="flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <View className="w-full gap-1 md:flex-1">
             <Text className="text-2xl font-bold text-neutral-900">Demandas de produção</Text>
             <Text className="text-sm text-neutral-600">
               Acompanhe suas etapas alocadas, convites abertos e registre suas entregas.
             </Text>
           </View>
 
-          <View className="flex-row rounded-xl border border-neutral-200 bg-white p-1">
+          <View className="w-full flex-row rounded-xl border border-neutral-200 bg-white p-1 md:w-auto">
             <Pressable
               accessibilityRole="tab"
               accessibilityState={{ selected: abaAtiva === "MINHAS" }}
               onPress={() => setAbaAtiva("MINHAS")}
-              className={`flex-row items-center gap-2 rounded-lg px-3.5 py-2 ${
+              className={`flex-1 flex-row items-center justify-center gap-2 rounded-lg px-3 py-2 md:flex-none ${
                 abaAtiva === "MINHAS" ? "bg-[#8c5230]" : "bg-transparent"
               }`}
             >
@@ -299,7 +333,7 @@ export default function MinhasDemandasScreen() {
               accessibilityRole="tab"
               accessibilityState={{ selected: abaAtiva === "DISPONIVEIS" }}
               onPress={() => setAbaAtiva("DISPONIVEIS")}
-              className={`flex-row items-center gap-2 rounded-lg px-3.5 py-2 ${
+              className={`flex-1 flex-row items-center justify-center gap-2 rounded-lg px-3 py-2 md:flex-none ${
                 abaAtiva === "DISPONIVEIS" ? "bg-[#8c5230]" : "bg-transparent"
               }`}
             >
@@ -472,31 +506,88 @@ export default function MinhasDemandasScreen() {
                   </View>
 
                   <View className="flex-row flex-wrap gap-x-8 gap-y-3 border-t border-neutral-100 pt-4">
-                    <View className="min-w-[130px] flex-1 gap-1">
+                    <View className="min-w-32.5 flex-1 gap-1">
                       <Text className="text-xs text-neutral-500">Tipo de serviço</Text>
                       <Text className="text-sm font-medium text-neutral-800">
                         {demanda.tipo_servico}
                       </Text>
                     </View>
-                    <View className="min-w-[170px] flex-1 gap-1">
+                    <View className="min-w-42.5 flex-1 gap-1">
                       <Text className="text-xs text-neutral-500">Par de idiomas</Text>
                       <Text className="text-sm font-medium text-neutral-800">
                         {demanda.idioma_origem} → {demanda.idioma_destino}
                       </Text>
                     </View>
-                    <View className="min-w-[160px] flex-1 gap-1">
+                    <View className="min-w-40 flex-1 gap-1">
                       <Text className="text-xs text-neutral-500">Prazo</Text>
                       <Text className="text-sm font-medium text-neutral-800">
                         {formatarDataHora(demanda.data_limite_entrega)}
                       </Text>
                     </View>
-                    <View className="min-w-[130px] flex-1 gap-1">
+                    <View className="min-w-32.5 flex-1 gap-1">
                       <Text className="text-xs text-neutral-500">Estimativa</Text>
                       <Text className="text-sm font-medium text-neutral-800">
                         {demanda.prazo_estimado_horas} h
                       </Text>
                     </View>
                   </View>
+
+                  {demanda.arquivo_entrada ? (
+                    <View className="gap-2 border-t border-neutral-100 pt-3">
+                      <Text className="text-xs font-semibold text-[#744127]">
+                        Arquivo para esta etapa (entrega da etapa anterior)
+                      </Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Baixar arquivo ${demanda.arquivo_entrada.nome} da etapa anterior`}
+                        disabled={Platform.OS !== "web" || entradaBaixandoId === demanda.etapa_id}
+                        onPress={() => void handleBaixarArquivoEntrada(demanda)}
+                        className="self-start flex-row items-center gap-2 rounded-xl border border-[#d6b9a2] bg-[#fdfaf8] px-3 py-2"
+                      >
+                        {entradaBaixandoId === demanda.etapa_id ? (
+                          <ActivityIndicator size="small" color="#8c5230" />
+                        ) : (
+                          <Ionicons name="download-outline" size={16} color="#8c5230" />
+                        )}
+                        <Text className="text-xs font-semibold text-[#744127]" numberOfLines={1}>
+                          {demanda.arquivo_entrada.nome}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+
+                  {/* Documentos originais do cliente: o Core só os envia para quem está com a etapa */}
+                  {demanda.arquivos && demanda.arquivos.length > 0 ? (
+                    <View className="gap-2 border-t border-neutral-100 pt-3">
+                      <Text className="text-xs font-semibold text-neutral-500">
+                        Documentos do cliente
+                      </Text>
+                      <View className="flex-row flex-wrap gap-2">
+                        {demanda.arquivos.map((arquivo) => (
+                          <Pressable
+                            key={arquivo.id}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Baixar ${arquivo.nome}`}
+                            disabled={Platform.OS !== "web" || anexoBaixandoId === arquivo.id}
+                            onPress={() => void handleBaixarAnexo(arquivo)}
+                            className="flex-row items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 py-2"
+                          >
+                            {anexoBaixandoId === arquivo.id ? (
+                              <ActivityIndicator size="small" color="#8c5230" />
+                            ) : (
+                              <Ionicons name="document-attach-outline" size={16} color="#8c5230" />
+                            )}
+                            <Text className="text-xs font-medium text-neutral-800" numberOfLines={1}>
+                              {arquivo.nome}
+                            </Text>
+                            <Text className="text-[11px] text-neutral-500">
+                              {formatarTamanho(arquivo.tamanho_bytes)}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
 
                   {/* Alerta de reabertura / motivo da reprovação (US-015 Task 3 · CA.11/CA.13) */}
                   {demanda.situacao === "ACEITA" && demanda.motivo_revisao ? (

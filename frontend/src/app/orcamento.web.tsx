@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Head from 'expo-router/head';
 import { useLocalSearchParams } from 'expo-router';
 import {
@@ -9,6 +9,9 @@ import {
 
 const moeda = (valor: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 const data = (valor: string) => new Date(valor).toLocaleString('pt-BR');
+const subscribeWithoutUpdates = () => () => {};
+const getHydratedSnapshot = () => true;
+const getServerSnapshot = () => false;
 const rotuloStatus = (status: string) => ({
   AGUARDANDO_APROVACAO: 'Aguardando sua decisão', APROVADO: 'Proposta já aprovada',
   REJEITADO: 'Proposta já recusada',
@@ -16,7 +19,12 @@ const rotuloStatus = (status: string) => ({
 
 export default function OrcamentoRoute() {
   const { token } = useLocalSearchParams<{ token?: string | string[] }>();
-  const valor = typeof token === 'string' ? token.trim() : '';
+  const montado = useSyncExternalStore(
+    subscribeWithoutUpdates,
+    getHydratedSnapshot,
+    getServerSnapshot,
+  );
+  const valor = montado && typeof token === 'string' ? token.trim() : '';
   return <PaginaOrcamento key={valor} token={valor} />;
 }
 function PaginaOrcamento({ token }: { token: string }) {
@@ -92,7 +100,7 @@ function PaginaOrcamento({ token }: { token: string }) {
   }
   return (
     <main className="orcamento-publico">
-      <Head><title>Seu orçamento | Stentio</title><meta name="referrer" content="no-referrer" /><meta name="robots" content="noindex, nofollow" /></Head>
+      <Head><meta name="referrer" content="no-referrer" /><meta name="robots" content="noindex, nofollow" /></Head>
       <style>{css}</style>
       <div className="op-container">
         <header className="op-brand">

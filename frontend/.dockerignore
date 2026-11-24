@@ -1,5 +1,6 @@
 .expo/
 node_modules/
+.env
 .env*.local
 dist/
 .git/

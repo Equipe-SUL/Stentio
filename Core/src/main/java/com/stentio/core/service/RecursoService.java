@@ -109,6 +109,7 @@ public class RecursoService {
         return recursoMapper.paraResponse(recursoRepository.saveAndFlush(recurso));
     }
 
+    @Transactional
     public RecursoResponse editar(UUID id, RecursoRequest request) {
         Recurso recurso = buscarEntidade(id);
 

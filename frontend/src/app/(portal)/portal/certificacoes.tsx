@@ -169,7 +169,7 @@ export default function MinhasCertificacoesScreen() {
       <View className="w-full max-w-5xl gap-6">
         {/* Top Header */}
         <View className="flex-row flex-wrap items-start justify-between gap-4">
-          <View className="flex-1 gap-1 min-w-[260px]">
+          <View className="flex-1 gap-1 min-w-65">
             <Text className="text-2xl font-bold text-neutral-900">Minhas certificações</Text>
             <Text className="text-sm text-neutral-600">
               Envie comprovações para cada par de idiomas que você atende para liberar alocações.
@@ -230,19 +230,19 @@ export default function MinhasCertificacoesScreen() {
           </View>
 
           <View className="flex-row flex-wrap gap-3 border-t border-neutral-100 pt-3">
-            <View className="flex-1 min-w-[130px] rounded-xl bg-emerald-50 p-3">
+            <View className="flex-1 min-w-32.5 rounded-xl bg-emerald-50 p-3">
               <Text className="text-xs font-semibold text-emerald-800">Aprovadas</Text>
               <Text className="text-xl font-bold text-emerald-900">{totalAprovadas}</Text>
               <Text className="text-[11px] text-emerald-700">Pares liberados</Text>
             </View>
 
-            <View className="flex-1 min-w-[130px] rounded-xl bg-amber-50 p-3">
+            <View className="flex-1 min-w-32.5 rounded-xl bg-amber-50 p-3">
               <Text className="text-xs font-semibold text-amber-800">Em análise</Text>
               <Text className="text-xl font-bold text-amber-900">{totalPendentes}</Text>
               <Text className="text-[11px] text-amber-700">Aguardando gestor</Text>
             </View>
 
-            <View className="flex-1 min-w-[130px] rounded-xl bg-red-50 p-3">
+            <View className="flex-1 min-w-32.5 rounded-xl bg-red-50 p-3">
               <Text className="text-xs font-semibold text-red-800">Rejeitadas</Text>
               <Text className="text-xl font-bold text-red-900">{totalRejeitadas}</Text>
               <Text className="text-[11px] text-red-700">Necessitam reenvio</Text>
@@ -370,7 +370,7 @@ export default function MinhasCertificacoesScreen() {
                   {cert ? (
                     <View className="gap-2.5 rounded-xl bg-neutral-50 p-4 border border-neutral-100">
                       <View className="flex-row flex-wrap items-center justify-between gap-3">
-                        <View className="flex-row items-center gap-2 flex-1 min-w-[200px]">
+                        <View className="flex-row items-center gap-2 flex-1 min-w-50">
                           <Ionicons name="document-text-outline" size={18} color="#8c5230" />
                           <View className="flex-1">
                             <Text className="text-xs font-semibold text-neutral-900" numberOfLines={1}>

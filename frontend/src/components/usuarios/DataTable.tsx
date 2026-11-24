@@ -4,11 +4,11 @@ import type { ColumnDef, DataTableProps } from "./types";
 
 const DEFAULT_MOBILE_BREAKPOINT = 480;
 
-function cellStyle(width?: number) {
+function cellStyle(width?: number, flex?: number) {
   if (width) {
     return { width, flexGrow: 0, flexShrink: 0 };
   }
-  return { flex: 1, minWidth: 0 };
+  return { flex: flex ?? 1, minWidth: 0 };
 }
 
 function renderCellValue<T>(item: T, column: ColumnDef<T>) {
@@ -65,10 +65,10 @@ export function DataTable<T>({
           {columns.map((column) => (
             <View
               key={String(column.key)}
-              style={cellStyle(column.width)}
+              style={cellStyle(column.width, column.flex)}
               className={getAlignmentClass(column.align)}
             >
-              <Text className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <Text numberOfLines={1} className="shrink text-xs font-semibold uppercase tracking-wide text-neutral-500">
                 {column.header}
               </Text>
             </View>
@@ -112,7 +112,7 @@ function TableRow<T>({
       {columns.map((column) => (
         <View
           key={String(column.key)}
-          style={cellStyle(column.width)}
+          style={cellStyle(column.width, column.flex)}
           className={getAlignmentClass(column.align)}
         >
           {renderCellValue(item, column)}

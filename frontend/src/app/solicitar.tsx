@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -9,7 +8,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Ionicons } from "@expo/vector-icons";
 import { router, type Href } from "expo-router";
@@ -74,9 +73,7 @@ export default function SolicitacaoPublicaScreen() {
   const {
     control,
     handleSubmit,
-    watch,
     reset,
-    setValue,
     setError,
     formState: { errors, isValid, isSubmitting },
   } = useForm<SolicitacaoPublicaFormInput>({
@@ -85,9 +82,9 @@ export default function SolicitacaoPublicaScreen() {
     mode: "onChange",
   });
 
-  const idiomaOrigemId = watch("idiomaOrigemId");
-  const idiomaDestinoId = watch("idiomaDestinoId");
-  const descricao = watch("descricao") ?? "";
+  const idiomaOrigemId = useWatch({ control, name: "idiomaOrigemId" });
+  const idiomaDestinoId = useWatch({ control, name: "idiomaDestinoId" });
+  const descricao = useWatch({ control, name: "descricao" }) ?? "";
 
   const idiomasIguais =
     Boolean(idiomaOrigemId) &&
@@ -96,24 +93,44 @@ export default function SolicitacaoPublicaScreen() {
 
   const idiomasLadoALado = larguraJanela >= LARGURA_IDIOMAS_LADO_A_LADO;
 
-  async function carregarDadosIniciais() {
+  function carregarDadosIniciais() {
     setCarregandoOpcoes(true);
     setErroOpcoes("");
-    try {
-      const dados = await carregarOpcoesPublicas();
-      setCategorias(dados.categoriasProjeto);
-      setIdiomas(dados.idiomas);
-    } catch (err) {
-      setErroOpcoes(
-        "Não foi possível carregar as opções disponíveis. Verifique sua conexão e tente novamente."
-      );
-    } finally {
-      setCarregandoOpcoes(false);
-    }
+    carregarOpcoesPublicas()
+      .then((dados) => {
+        setCategorias(dados.categoriasProjeto);
+        setIdiomas(dados.idiomas);
+      })
+      .catch(() => {
+        setErroOpcoes(
+          "Não foi possível carregar as opções disponíveis. Verifique sua conexão e tente novamente.",
+        );
+      })
+      .finally(() => setCarregandoOpcoes(false));
   }
 
   useEffect(() => {
-    carregarDadosIniciais();
+    let ativo = true;
+    carregarOpcoesPublicas()
+      .then((dados) => {
+        if (!ativo) return;
+        setCategorias(dados.categoriasProjeto);
+        setIdiomas(dados.idiomas);
+      })
+      .catch(() => {
+        if (ativo) {
+          setErroOpcoes(
+            "Não foi possível carregar as opções disponíveis. Verifique sua conexão e tente novamente.",
+          );
+        }
+      })
+      .finally(() => {
+        if (ativo) setCarregandoOpcoes(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
   }, []);
 
   const opcoesCategoria = categorias.map((cat) => ({
@@ -568,7 +585,7 @@ export default function SolicitacaoPublicaScreen() {
                               numberOfLines={5}
                               maxLength={DESCRICAO_MAX}
                               textAlignVertical="top"
-                              className={`min-h-[120px] rounded-xl border px-4 py-3 text-base text-zinc-900 bg-zinc-50 ${
+                              className={`min-h-30 rounded-xl border px-4 py-3 text-base text-zinc-900 bg-zinc-50 ${
                                 errors.descricao ? "border-red-400 bg-red-50/20" : "border-zinc-300"
                               }`}
                             />
@@ -621,7 +638,7 @@ export default function SolicitacaoPublicaScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      onPress={onSubmit}
+                      onPress={() => onSubmit()}
                       disabled={!podeRegistrar}
                       className={`flex-row items-center justify-center gap-2 rounded-2xl bg-[#8c5230] px-8 py-4 shadow-md shadow-orange-900/20 active:opacity-85 ${
                         podeRegistrar ? "" : "opacity-50"

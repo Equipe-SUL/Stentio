@@ -3,6 +3,7 @@ package com.stentio.core.service;
 import com.stentio.core.dto.EtapaOrdemServicoResponse;
 import com.stentio.core.dto.EtapasOrdemServicoRequest;
 import com.stentio.core.dto.RecursoDisponivelResponse;
+import com.stentio.core.dto.RecursoRequest;
 import com.stentio.core.model.*;
 import com.stentio.core.repository.*;
 import org.junit.jupiter.api.AfterEach;
@@ -64,6 +65,7 @@ class RecursoCompetenciasPostgresTest {
     @Autowired OrdemServicoRepository ordensServico;
     @Autowired TipoServicoRepository tiposServico;
     @Autowired RecursoRepository recursos;
+    @Autowired RecursoService recursoService;
     @Autowired RecursoCertificacaoRepository certificacoes;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
@@ -156,6 +158,35 @@ class RecursoCompetenciasPostgresTest {
 
         new TransactionTemplate(transactionManager).executeWithoutResult(status ->
                 assertEquals(2, recursos.buscarPorUsuario(usuarioId).orElseThrow().getPrecos().size()));
+    }
+
+    @Test
+    @DisplayName("Editar recurso atualiza tipos de serviço e acrescenta um par de idiomas")
+    void editarAtualizaColecoesDeCompetencias() {
+        UUID recursoId = criarRecurso("Recurso editado", null, List.of(revisaoId),
+                List.<UUID[]>of(new UUID[]{espanholId, inglesId}));
+        String email = jdbc.queryForObject(
+                "select email from recursos where id = ?", String.class, recursoId);
+
+        RecursoRequest request = new RecursoRequest(
+                "Recurso editado " + marca,
+                email,
+                "11988887777",
+                List.of(revisaoId, traducaoId),
+                List.of(
+                        new RecursoRequest.PrecoRequest(
+                                espanholId, inglesId, UnidadeCobranca.PALAVRA, new BigDecimal("0.16")),
+                        new RecursoRequest.PrecoRequest(
+                                inglesId, espanholId, UnidadeCobranca.PALAVRA, new BigDecimal("0.21"))));
+
+        var resposta = recursoService.editar(recursoId, request);
+
+        assertEquals(2, resposta.tiposServico().size());
+        assertEquals(2, resposta.precos().size());
+        assertEquals(2, jdbc.queryForObject(
+                "select count(*) from recursos_tipos_servico where recurso_id = ?", Integer.class, recursoId));
+        assertEquals(2, jdbc.queryForObject(
+                "select count(*) from recursos_precos where recurso_id = ?", Integer.class, recursoId));
     }
 
     // ------------------------------------------------------------------ elegíveis da etapa

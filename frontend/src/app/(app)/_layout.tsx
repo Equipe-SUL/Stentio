@@ -23,7 +23,7 @@ function menuParaPerfil(role: Role): MenuGroup[] {
     );
   }
 
-  const grupos: MenuGroup[] = [{ title: "OPERACIONAL", icon: "construct-outline", items: operacional }];
+  const grupos: MenuGroup[] = [{ title: "OPERACIONAL", icon: "sticon", items: operacional }];
 
   if (["ADMIN", "GESTOR_PROJETO"].includes(role)) {
     grupos.unshift({

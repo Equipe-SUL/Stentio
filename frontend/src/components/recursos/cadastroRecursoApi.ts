@@ -55,7 +55,10 @@ export function perfilRecursoAusente(error: unknown): boolean {
     "Esta conta ainda não tem perfil de recurso. Conclua o cadastro para ver suas demandas";
 }
 
-export function errosDeCadastro(error: unknown): {
+export function errosDeCadastro(
+  error: unknown,
+  etapa: "conta" | "perfil" = "conta",
+): {
   campos: Record<string, string>;
   geral: string;
 } {
@@ -74,6 +77,16 @@ export function errosDeCadastro(error: unknown): {
   }
 
   if (status === 409) {
+    if (etapa === "perfil") {
+      const mensagem = typeof data?.message === "string"
+        ? data.message
+        : "Já existe um recurso com esse e-mail";
+      return {
+        campos: {},
+        geral: `${mensagem}. Contate a equipe para vincular o perfil existente à sua conta.`,
+      };
+    }
+
     campos.email = "Este e-mail já está cadastrado. Entre na sua conta para completar o perfil.";
     return { campos, geral: "" };
   }
