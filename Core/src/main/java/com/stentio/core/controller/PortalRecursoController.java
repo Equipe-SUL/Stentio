@@ -148,6 +148,26 @@ public class PortalRecursoController {
                 .body(conteudo);
     }
 
+    @GetMapping("/etapas/{etapaId}/entrada/arquivo")
+    @Operation(summary = "Baixa a entrega da etapa anterior para usar como entrada")
+    public ResponseEntity<Resource> baixarArquivoEntrada(@PathVariable UUID etapaId,
+                                                         Authentication autenticacao) {
+        PortalRecursoService.AnexoParaDownload arquivo =
+                portalRecursoService.localizarArquivoEntrada(etapaId, UsuarioAutenticado.de(autenticacao));
+        Resource conteudo = arquivoStorageService.carregar(arquivo.caminho());
+        ContentDisposition anexo = ContentDisposition.attachment()
+                .filename(arquivo.nomeOriginal(), StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "no-referrer")
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, anexo.toString())
+                .body(conteudo);
+    }
+
     @GetMapping("/etapas/{etapaId}/entrega/arquivo")
     @Operation(summary = "Baixa a entrega do profissional autenticado")
     public ResponseEntity<Resource> baixarEntrega(@PathVariable UUID etapaId, Authentication autenticacao) {

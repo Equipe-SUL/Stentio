@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -92,6 +93,19 @@ public class PortalRecursoService {
         return new AnexoParaDownload(arquivo.getNomeOriginal(), arquivo.getCaminho());
     }
 
+    @Transactional(readOnly = true)
+    public AnexoParaDownload localizarArquivoEntrada(UUID etapaId, UsuarioAutenticado ator) {
+        Recurso recurso = recursoAutenticado.resolver(ator);
+        EtapaOrdemServico etapa = etapas.buscarParaAceite(etapaId)
+                .filter(candidata -> candidata.pertenceA(recurso))
+                .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
+
+        return etapaAnteriorEntregue(etapa)
+                .map(anterior -> new AnexoParaDownload(
+                        anterior.getArquivoEntregueNome(), anterior.getArquivoEntregueCaminho()))
+                .orElseThrow(() -> new EtapaNaoEncontradaException(etapaId));
+    }
+
     private DemandaRecursoResponse paraDemanda(EtapaOrdemServico etapa, Recurso recurso) {
         Solicitacao solicitacao = etapa.getOrdemServico().getSolicitacao();
         // Convite aberto não tem dono: o documento só vai para quem assumiu a etapa.
@@ -104,6 +118,12 @@ public class PortalRecursoService {
                                 "/api/v1/recurso/etapas/" + etapa.getId() + "/arquivos/" + arquivo.getId()))
                         .toList()
                 : List.of();
+        DemandaRecursoResponse.ArquivoEtapaAnterior arquivoEntrada =
+                arquivoEntradaDaEtapa(etapa, recurso);
+        String arquivoEntregaUrl = etapa.getStatus() == StatusEtapaOrdemServico.ENTREGUE
+                && etapa.getArquivoEntregueCaminho() != null
+                ? "/api/v1/recurso/etapas/" + etapa.getId() + "/entrega/arquivo"
+                : null;
 
         return new DemandaRecursoResponse(
                 etapa.getId(),
@@ -118,7 +138,34 @@ public class PortalRecursoService {
                 etapaLiberacao.estaLiberada(etapa),
                 etapa.getPrazoEstimadoHoras(),
                 etapa.getDataLimiteEntrega(),
+                etapa.getEntregueEm(),
+                arquivoEntregaUrl == null ? null : etapa.getArquivoEntregueNome(),
+                arquivoEntregaUrl,
+                arquivoEntrada,
                 arquivos);
+    }
+
+    private DemandaRecursoResponse.ArquivoEtapaAnterior arquivoEntradaDaEtapa(
+            EtapaOrdemServico etapa, Recurso recurso) {
+        if (!etapa.pertenceA(recurso)) {
+            return null;
+        }
+        return etapaAnteriorEntregue(etapa)
+                .map(anterior -> new DemandaRecursoResponse.ArquivoEtapaAnterior(
+                        anterior.getArquivoEntregueNome(),
+                        "/api/v1/recurso/etapas/" + etapa.getId() + "/entrada/arquivo"))
+                .orElse(null);
+    }
+
+    private Optional<EtapaOrdemServico> etapaAnteriorEntregue(EtapaOrdemServico etapa) {
+        if (etapa.getOrdem() <= 1) {
+            return Optional.empty();
+        }
+        return etapas.findByOrdemServicoAndOrdem(
+                        etapa.getOrdemServico(), etapa.getOrdem() - 1)
+                .filter(anterior -> anterior.getStatus() == StatusEtapaOrdemServico.ENTREGUE)
+                .filter(anterior -> anterior.getArquivoEntregueNome() != null)
+                .filter(anterior -> anterior.getArquivoEntregueCaminho() != null);
     }
 
     public record AnexoParaDownload(String nomeOriginal, String caminho) {

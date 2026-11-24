@@ -103,6 +103,7 @@ export default function MinhasDemandasScreen() {
   const [avisoAceite, setAvisoAceite] = useState("");
   const [progresso, setProgresso] = useState<number | null>(null);
   const [anexoBaixandoId, setAnexoBaixandoId] = useState<string | null>(null);
+  const [entradaBaixandoId, setEntradaBaixandoId] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -211,6 +212,19 @@ export default function MinhasDemandasScreen() {
       await baixarEntrega(demanda.arquivo_entrega_url, demanda.arquivo_nome || "entrega");
     } catch (error) {
       setErroAcao(getApiErrorMessage(error));
+    }
+  }
+
+  async function handleBaixarArquivoEntrada(demanda: DemandaRecurso) {
+    if (!demanda.arquivo_entrada) return;
+    setErroAcao("");
+    setEntradaBaixandoId(demanda.etapa_id);
+    try {
+      await baixarEntrega(demanda.arquivo_entrada.url, demanda.arquivo_entrada.nome);
+    } catch (error) {
+      setErroAcao(getApiErrorMessage(error));
+    } finally {
+      setEntradaBaixandoId(null);
     }
   }
 
@@ -517,6 +531,30 @@ export default function MinhasDemandasScreen() {
                       </Text>
                     </View>
                   </View>
+
+                  {demanda.arquivo_entrada ? (
+                    <View className="gap-2 border-t border-neutral-100 pt-3">
+                      <Text className="text-xs font-semibold text-[#744127]">
+                        Arquivo para esta etapa (entrega da etapa anterior)
+                      </Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Baixar arquivo ${demanda.arquivo_entrada.nome} da etapa anterior`}
+                        disabled={Platform.OS !== "web" || entradaBaixandoId === demanda.etapa_id}
+                        onPress={() => void handleBaixarArquivoEntrada(demanda)}
+                        className="self-start flex-row items-center gap-2 rounded-xl border border-[#d6b9a2] bg-[#fdfaf8] px-3 py-2"
+                      >
+                        {entradaBaixandoId === demanda.etapa_id ? (
+                          <ActivityIndicator size="small" color="#8c5230" />
+                        ) : (
+                          <Ionicons name="download-outline" size={16} color="#8c5230" />
+                        )}
+                        <Text className="text-xs font-semibold text-[#744127]" numberOfLines={1}>
+                          {demanda.arquivo_entrada.nome}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
 
                   {/* Documentos originais do cliente: o Core só os envia para quem está com a etapa */}
                   {demanda.arquivos && demanda.arquivos.length > 0 ? (

@@ -201,6 +201,37 @@ class PortalRecursoControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "RECURSO")
+    @DisplayName("O download da entrada preserva as extensões TXT e DOCX")
+    void recursoBaixaEntregaDaEtapaAnteriorComExtensaoOriginal() throws Exception {
+        Resource conteudo = mock(Resource.class);
+        when(service.localizarArquivoEntrada(any(), any()))
+                .thenReturn(new PortalRecursoService.AnexoParaDownload("traducao.txt", "2026/11/id.txt"))
+                .thenReturn(new PortalRecursoService.AnexoParaDownload("revisao.docx", "2026/11/id.docx"));
+        when(arquivoStorageService.carregar(any())).thenReturn(conteudo);
+
+        mockMvc.perform(get(ETAPAS + "/" + ETAPA_ID + "/entrada/arquivo"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("traducao.txt")));
+
+        mockMvc.perform(get(ETAPAS + "/" + ETAPA_ID + "/entrada/arquivo"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("revisao.docx")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ATENDENTE")
+    @DisplayName("A entrega anterior não é acessível pelo portal a um usuário da equipe")
+    void equipeNaoBaixaEntregaAnteriorPeloPortal() throws Exception {
+        mockMvc.perform(get(ETAPAS + "/" + ETAPA_ID + "/entrada/arquivo"))
+                .andExpect(status().isForbidden());
+
+        verify(service, never()).localizarArquivoEntrada(any(), any());
+    }
+
+    @Test
     @WithMockUser(roles = "ATENDENTE")
     @DisplayName("a equipe não usa o endpoint de download privado do portal")
     void equipeNaoBaixaEntregaPeloPortal() throws Exception {

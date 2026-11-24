@@ -240,6 +240,61 @@ class PortalRecursoServiceTest {
     }
 
     @Test
+    @DisplayName("Cada etapa recebe como entrada a entrega da etapa imediatamente anterior")
+    void disponibilizaEntregaAnteriorComExtensaoOriginal() {
+        Instant agora = Instant.parse("2026-11-20T12:00:00Z");
+        Recurso mariaRecurso = perfilCadastrado();
+        EtapaOrdemServico base = etapaDe("Tradução", 1);
+        OrdemServico ordem = base.getOrdemServico();
+        TipoServico tipo = base.getTipoServico();
+        EtapaOrdemServico etapaAnteriorTxt = etapaEntregue(
+                ordem, 1, tipo, "traducao.txt", "2026/11/entrada-txt.txt", agora);
+        EtapaOrdemServico etapaAnteriorDocx = etapaEntregue(
+                ordem, 2, tipo, "revisao.docx", "2026/11/entrada-docx.docx", agora);
+        EtapaOrdemServico revisao = etapaAlocada(ordem, 2, tipo, "Revisão", mariaRecurso, agora);
+        EtapaOrdemServico formatacao = etapaAlocada(ordem, 3, tipo, "Formatação", mariaRecurso, agora);
+        Solicitacao solicitacao = ordem.getSolicitacao();
+        when(solicitacao.getArquivos()).thenReturn(List.of());
+        when(etapas.listarPorRecurso(any())).thenReturn(List.of(revisao, formatacao));
+        when(etapas.findByOrdemServicoAndOrdem(ordem, 1)).thenReturn(Optional.of(etapaAnteriorTxt));
+        when(etapas.findByOrdemServicoAndOrdem(ordem, 2)).thenReturn(Optional.of(etapaAnteriorDocx));
+        when(etapas.buscarStatusPorOrdem(ordem.getId(), 1))
+                .thenReturn(Optional.of(StatusEtapaOrdemServico.ENTREGUE));
+        when(etapas.buscarStatusPorOrdem(ordem.getId(), 2))
+                .thenReturn(Optional.of(StatusEtapaOrdemServico.ENTREGUE));
+
+        List<DemandaRecursoResponse> demandas = service.minhasDemandas(maria);
+
+        assertEquals("traducao.txt", demandas.getFirst().arquivoEntrada().nome());
+        assertEquals("/api/v1/recurso/etapas/" + revisao.getId() + "/entrada/arquivo",
+                demandas.getFirst().arquivoEntrada().url());
+        assertEquals("revisao.docx", demandas.getLast().arquivoEntrada().nome());
+        assertEquals("/api/v1/recurso/etapas/" + formatacao.getId() + "/entrada/arquivo",
+                demandas.getLast().arquivoEntrada().url());
+    }
+
+    @Test
+    @DisplayName("A lista informa o nome e a rota da própria entrega sem perder a extensão")
+    void entregaConcluidaRetornaNomeComExtensao() {
+        Instant agora = Instant.parse("2026-11-20T12:00:00Z");
+        Recurso mariaRecurso = perfilCadastrado();
+        EtapaOrdemServico etapa = etapaAlocada(
+                etapaDe("Tradução").getOrdemServico(), 1,
+                etapaDe("Tradução").getTipoServico(), "Tradução", mariaRecurso, agora);
+        etapa.aceitarPor(mariaRecurso, agora.plusSeconds(1), true);
+        etapa.entregar("traducao.txt", "2026/11/id.txt", agora.plusSeconds(2), true);
+        when(etapa.getOrdemServico().getSolicitacao().getArquivos()).thenReturn(List.of());
+        when(etapas.listarPorRecurso(any())).thenReturn(List.of(etapa));
+
+        DemandaRecursoResponse demanda = service.minhasDemandas(maria).getFirst();
+
+        assertEquals("traducao.txt", demanda.arquivoNome());
+        assertEquals("/api/v1/recurso/etapas/" + etapa.getId() + "/entrega/arquivo",
+                demanda.arquivoEntregaUrl());
+        assertEquals(agora.plusSeconds(2), demanda.entregueEm());
+    }
+
+    @Test
     @DisplayName("Convite aberto não traz anexos: o documento vai para quem assumiu a etapa")
     void conviteAbertoSemAnexos() {
         ArquivoSolicitacao contrato = anexo("contrato.pdf");
@@ -272,6 +327,29 @@ class PortalRecursoServiceTest {
     }
 
     @Test
+    @DisplayName("O recurso baixa a entrega da etapa anterior com o nome e a extensão originais")
+    void baixaEntregaAnterior() {
+        Recurso mariaRecurso = perfilCadastrado();
+        EtapaOrdemServico atual = etapaDe("Revisão", 2);
+        atual.alocar(mariaRecurso,
+                Instant.parse("2026-11-22T12:00:00Z"),
+                Instant.parse("2026-11-21T12:00:00Z"),
+                true);
+        EtapaOrdemServico anterior = etapaEntregue(
+                atual.getOrdemServico(), 1, atual.getTipoServico(),
+                "traducao.docx", "2026/11/id.docx", Instant.parse("2026-11-20T12:00:00Z"));
+        when(etapas.buscarParaAceite(atual.getId())).thenReturn(Optional.of(atual));
+        when(etapas.findByOrdemServicoAndOrdem(atual.getOrdemServico(), 1))
+                .thenReturn(Optional.of(anterior));
+
+        PortalRecursoService.AnexoParaDownload arquivo =
+                service.localizarArquivoEntrada(atual.getId(), maria);
+
+        assertEquals("traducao.docx", arquivo.nomeOriginal());
+        assertEquals("2026/11/id.docx", arquivo.caminho());
+    }
+
+    @Test
     @DisplayName("Download: etapa de outro profissional é 404, sem revelar o arquivo")
     void outroProfissionalNaoBaixa() {
         ArquivoSolicitacao contrato = anexo("contrato.pdf");
@@ -290,6 +368,29 @@ class PortalRecursoServiceTest {
     }
 
     @Test
+    @DisplayName("A entrega da etapa anterior não é exposta para outro profissional")
+    void outroProfissionalNaoBaixaEntregaAnterior() {
+        Recurso mariaRecurso = perfilCadastrado();
+        EtapaOrdemServico atual = etapaDe("Revisão", 2);
+        atual.alocar(mariaRecurso,
+                Instant.parse("2026-11-22T12:00:00Z"),
+                Instant.parse("2026-11-21T12:00:00Z"),
+                true);
+        when(etapas.buscarParaAceite(atual.getId())).thenReturn(Optional.of(atual));
+
+        UUID outroUsuario = UUID.randomUUID();
+        Recurso joao = new Recurso("João", "joao@exemplo.com", null);
+        ReflectionTestUtils.setField(joao, "id", UUID.randomUUID());
+        joao.vincularUsuario(outroUsuario);
+        when(recursos.buscarPorUsuario(outroUsuario)).thenReturn(Optional.of(joao));
+        UsuarioAutenticado tokenDoJoao = new UsuarioAutenticado("joao@exemplo.com", outroUsuario, false);
+
+        assertThrows(EtapaNaoEncontradaException.class,
+                () -> service.localizarArquivoEntrada(atual.getId(), tokenDoJoao));
+        verify(etapas, never()).findByOrdemServicoAndOrdem(any(), anyInt());
+    }
+
+    @Test
     @DisplayName("Download: arquivo de outra solicitação não sai por esta etapa")
     void arquivoDeOutraSolicitacao() {
         EtapaOrdemServico etapa = etapaDaMariaCom(anexo("contrato.pdf"));
@@ -297,5 +398,25 @@ class PortalRecursoServiceTest {
 
         assertThrows(EtapaNaoEncontradaException.class,
                 () -> service.localizarAnexo(etapa.getId(), UUID.randomUUID(), maria));
+    }
+
+    private static EtapaOrdemServico etapaAlocada(
+            OrdemServico ordem, int numeroOrdem, TipoServico tipo, String nome,
+            Recurso recurso, Instant agora) {
+        EtapaOrdemServico etapa = new EtapaOrdemServico(ordem, numeroOrdem, nome, tipo, 24);
+        ReflectionTestUtils.setField(etapa, "id", UUID.randomUUID());
+        etapa.alocar(recurso, agora.plusSeconds(3600), agora, true);
+        return etapa;
+    }
+
+    private static EtapaOrdemServico etapaEntregue(
+            OrdemServico ordem, int numeroOrdem, TipoServico tipo, String nomeArquivo,
+            String caminho, Instant agora) {
+        EtapaOrdemServico etapa = new EtapaOrdemServico(ordem, numeroOrdem, "Etapa", tipo, 24);
+        Recurso recurso = new Recurso("Recurso", "recurso@exemplo.com", null);
+        etapa.alocar(recurso, agora.plusSeconds(3600), agora, true);
+        etapa.aceitarPor(recurso, agora.plusSeconds(1), true);
+        etapa.entregar(nomeArquivo, caminho, agora.plusSeconds(2), true);
+        return etapa;
     }
 }

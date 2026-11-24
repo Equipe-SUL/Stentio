@@ -16,9 +16,9 @@ import java.util.UUID;
  * demais etapas da mesma ordem não entram: são dados do negócio da Aliança, e quem executa
  * uma etapa não precisa deles para executá-la.
  *
- * <p>O documento do cliente é a exceção: sem ele não há o que traduzir. {@code arquivos}
- * traz os anexos da solicitação só quando a etapa é deste profissional (alocada, aceita ou
- * entregue); no convite aberto vem vazio, porque o documento vai para quem assumiu.
+ * <p>Os anexos originais do cliente ficam em {@code arquivos}; {@code arquivoEntrada} é a
+ * entrega da etapa anterior, quando disponível. Ambos só são enviados para o profissional
+ * responsável pela etapa, nunca para um convite aberto.
  */
 public record DemandaRecursoResponse(
         @JsonProperty("etapa_id") UUID etapaId,
@@ -33,6 +33,10 @@ public record DemandaRecursoResponse(
         boolean liberada,
         @JsonProperty("prazo_estimado_horas") Integer prazoEstimadoHoras,
         @JsonProperty("data_limite_entrega") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant dataLimiteEntrega,
+        @JsonProperty("entregue_em") @JsonFormat(shape = JsonFormat.Shape.STRING) Instant entregueEm,
+        @JsonProperty("arquivo_nome") String arquivoNome,
+        @JsonProperty("arquivo_entrega_url") String arquivoEntregaUrl,
+        @JsonProperty("arquivo_entrada") ArquivoEtapaAnterior arquivoEntrada,
         List<ArquivoDaSolicitacao> arquivos
 ) {
 
@@ -43,5 +47,9 @@ public record DemandaRecursoResponse(
             @JsonProperty("tamanho_bytes") long tamanhoBytes,
             String url
     ) {
+    }
+
+    /** A entrega da etapa anterior, que serve de entrada para esta etapa. */
+    public record ArquivoEtapaAnterior(String nome, String url) {
     }
 }
